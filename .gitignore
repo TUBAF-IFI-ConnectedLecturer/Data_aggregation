@@ -1,0 +1,6 @@
+*/data*/
+app.log
+*/build*/
+*/__pycache__*/
+
+pipeline/pipeline.egg-info
