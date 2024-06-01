@@ -1,0 +1,29 @@
+# Defining data folder stucture
+folder_structure:
+  data_root_folder: &BASE ./data
+  raw_data_folder: &RAW !join [*BASE, /raw]
+  processed_data_folder: &PREPROCESSED !join [*BASE, /processed]
+
+# Referencing the modules containing modules
+stages_module_path:
+    - ../src/general/
+    - ../src/opal/
+
+# Defining stages and parameters
+stages:
+  - name: Generate data folder structure
+    class: ProvideDataFolders
+  - name: Collect raw data from OPAL database
+    class: CollectOPALOERdocuments
+    parameters:
+      repo_file_name: OPAL_repos.p
+      file_file_name: &OPALSINGLEFILES OPAL_files.p
+      json_file_name: OPAL_raw_data.json
+      json_url: https://bildungsportal.sachsen.de/opal/oer/content.json
+      overwrite_json: False
+  - name: Aggregate basic features from OPAL
+    class: Preprocessing
+    parameters: 
+       file_file_name_input: *OPALSINGLEFILES
+       file_file_name_output: &OPALSINGLEFILESATTRIB OPAL_files_attrib.p
+       check_changes: True
