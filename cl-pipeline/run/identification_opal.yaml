@@ -1,7 +1,9 @@
 # Defining data folder stucture
 folder_structure:
-  data_root_folder: &BASE ./data
+  #data_root_folder: &BASE ./data
+  data_root_folder: &BASE /mnt/9cd5c6a1-07f3-4580-be34-8d8dd9d6fe6d/Connected_Lecturers
   raw_data_folder: &RAW !join [*BASE, /raw]
+  pdf_file_folder: &PDF_FOLDER !join [*RAW, /pdf]
   processed_data_folder: &PREPROCESSED !join [*BASE, /processed]
 
 # Referencing the modules containing modules
@@ -13,7 +15,7 @@ stages_module_path:
 stages:
   - name: Generate data folder structure
     class: ProvideDataFolders
-  - name: Collect raw data from OPAL database
+  - name: Collect raw data from OPAL 
     class: CollectOPALOERdocuments
     parameters:
       repo_file_name: OPAL_repos.p
@@ -26,4 +28,19 @@ stages:
     parameters: 
        file_file_name_input: *OPALSINGLEFILES
        file_file_name_output: &OPALSINGLEFILESATTRIB OPAL_files_attrib.p
-       check_changes: True
+  - name: Download pdfs
+    class: DownloadPdfs
+    parameters: 
+       file_file_name_input: *OPALSINGLEFILESATTRIB
+       file_file_name_output: &OPALSINGLEFILESDOWNLOADS OPAL_files_downloads.p
+  - name: Extract pdf meta data
+    class: ExtractMetaDataFromFile
+    parameters: 
+       file_file_name_input: *OPALSINGLEFILESDOWNLOADS
+       file_file_name_output: OPAL_files_meta.p
+  - name: pdf 2 markdown
+    class: ExtractMarkdownFromPdf
+    parameters: 
+       file_file_name_input: *OPALSINGLEFILESDOWNLOADS
+       file_file_name_output: OPAL_content.p
+       force_run: True

@@ -55,6 +55,8 @@ class TaskWithInputFileMonitor(Task):
 
     def __init__(self, config_stage, config_global):
         super().__init__(config_stage, config_global)
+        if "force_run" not in self.parameters:
+            self.parameters['force_run'] = False
 
     # Check if all input files exist
     def all_input_files_exist(self):
@@ -96,7 +98,7 @@ class TaskWithInputFileMonitor(Task):
     @loggedExecution
     def run(self):
         if self.all_input_files_exist():
-            if self.changes_in_input_files():
+            if self.changes_in_input_files() or self.parameters['force_run'] == True:
                 logging.info(f"Input files for task have changed. Running task.")
                 self.execute_task()
             else:

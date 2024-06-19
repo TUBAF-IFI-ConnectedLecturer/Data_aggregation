@@ -5,7 +5,7 @@ import logging
 from pipeline.logger import setup_logger
 from pipeline.pipeline import Pipeline
 from pipeline.config import join
-from pipeline.taskfactory import import_stages, import_stages
+from pipeline.taskfactory import import_stages
 
 if __name__ == '__main__':
     setup_logger()

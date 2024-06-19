@@ -7,8 +7,13 @@ name = "pypi"
 pyyaml = "*"
 pipeline = {editable = true, path = "./../pipeline"}
 pandas = "*"
-deepdiff = "*"
 requests = "*"
+tqdm = "*"
+pypdf = "*"
+pymupdf4llm = "*"
+torch = "*"
+torchvision = "*"
+torchaudio = "*"
 
 [dev-packages]
 
