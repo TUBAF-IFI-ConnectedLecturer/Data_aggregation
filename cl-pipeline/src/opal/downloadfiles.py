@@ -7,34 +7,44 @@ import os
 
 from pipeline.taskfactory import TaskWithInputFileMonitor
 
-class DownloadPdfs(TaskWithInputFileMonitor):
+class DownloadOERFromOPAL(TaskWithInputFileMonitor):
     def __init__(self, config_stage, config_global):
         super().__init__(config_stage, config_global)
         stage_param = config_stage['parameters']
         self.file_file_name_inputs =  Path(config_global['raw_data_folder']) / stage_param['file_file_name_input']
         self.file_file_name_output =  Path(config_global['raw_data_folder']) / stage_param['file_file_name_output']
-        self.pdf_folder = Path(config_global['pdf_file_folder'])
+        self.file_folder = Path(config_global['file_folder'])
+        self.file_types = stage_param['file_types']
 
     def execute_task(self):
 
         df_files = pd.read_pickle(self.file_file_name_inputs)
-        df_files['download_date'] = pd.to_datetime('now')
 
+        download_list = []
         for index, row in tqdm(df_files.iterrows(), total=df_files.shape[0]):
-            if row['file_type'] != 'pdf':
+            download_list_sample = {}
+            if row['file_type'] not in self.file_types:
                 continue
-            pdf_path = self.pdf_folder / (row['ID'] + ".pdf")
-            df_files.loc[index, "error_download"] = 'none'
-            if (not os.path.exists(pdf_path)):
+            file_path = self.file_folder / (row['ID'] + "." + row['file_type'])
+
+            download_list_sample['file_path'] = file_path
+            download_list_sample['error_download'] = 'none'
+
+            if (not os.path.exists(file_path)):
+                download_list_sample['download_date'] = pd.to_datetime('now')
                 try:
-                    pdf_filename, headers = urllib.request.urlretrieve(row['oer_permalink'], pdf_path)
+                    pdf_filename, headers = urllib.request.urlretrieve(row['oer_permalink'], file_path)
                 except urllib.error.HTTPError as e:
                     print("Error while downloading.")
                     if e.code == 404:
-                        df_files.loc[index, "error_download"] = 'Missing(404)'
+                        download_list_sample["error_download"] = 'Missing(404)'
                     else:
-                        df_files.loc[index, "error_download"] = f'Unknown download error {e.code}'
+                        download_list_sample["error_download"] = f'Unknown download error {e.code}'
                 except:
-                    df_files.loc[index, "error_download"] = 'Unknown error'
+                    download_list_sample["error_download"] = 'Unknown error'
+            else:
+                download_list_sample['download_date'] = pd.to_datetime(os.path.getmtime(file_path), unit='s')
+            download_list.append(download_list_sample)
 
-        df_files.to_pickle(self.file_file_name_output)
+        df_download_list = pd.DataFrame(download_list)
+        df_download_list.to_pickle(self.file_file_name_output)

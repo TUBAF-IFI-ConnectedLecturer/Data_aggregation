@@ -12,16 +12,17 @@ from typing import Union
 import importlib.util
 import importlib.machinery
 
-
 from pipeline.logger import setup_logger
 
 # Decorator to log the execution of a task
 def loggedExecution(func):
     def wrapper(self, *args):
+        # Check if the task has a name attribute
         if not hasattr(self, "name"):
             name = "?"
         else:
             name = self.name
+        # Actual logging "enveloping" the execution of the task
         logging.info("Stage {} ({}) started", name, self.__class__.__name__) 
         res = func(self, *args)
         logging.info("Stage {} ({}) finished", name, self.__class__.__name__) 
@@ -44,10 +45,9 @@ class Task(ABC):
                 v = Path(v)
             setattr(self, k, v)
     
-    @loggedExecution
     def run(self):
         self.execute_task()
-        
+
     def execute_task(self):
         pass
 
@@ -97,6 +97,7 @@ class TaskWithInputFileMonitor(Task):
 
     @loggedExecution
     def run(self):
+        print(self.parameters)
         if self.all_input_files_exist():
             if self.changes_in_input_files() or self.parameters['force_run'] == True:
                 logging.info(f"Input files for task have changed. Running task.")

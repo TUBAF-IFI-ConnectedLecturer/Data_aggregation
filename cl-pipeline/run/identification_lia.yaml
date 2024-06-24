@@ -1,0 +1,29 @@
+# Defining data folder stucture
+folder_structure:
+  #data_root_folder: &BASE ./data
+  data_root_folder: &BASE /mnt/9cd5c6a1-07f3-4580-be34-8d8dd9d6fe6d/Connected_Lecturers/LiaScript
+  raw_data_folder: &RAW !join [*BASE, /raw]
+  file_folder: &FILE_FOLDER !join [*RAW, /files]
+  processed_data_folder: &PREPROCESSED !join [*BASE, /processed]
+
+# Referencing the modules containing modules
+stages_module_path:
+    - ../src/general/
+    - ../src/liascript/
+
+# Defining stages and parameters
+stages:
+  - name: Generate data folder structure
+    class: ProvideDataFolders
+  - name: Identify LiaScript repositories
+    class: CrawlGithubForLiaScript
+    parameters:
+      repo_data_file_name: &REPOSITORIES_DF LiaScript_repositories.p
+      force_run: False
+      #internal: ['LiaScript','TUBAF-IfI-LiaScript','LiaPlayground','SebastianZug','andre-dietrich','LiaBooks','LiaTemplates','TUBAF-IUZ-LiaScript','markjjacob','HueblerPatricia']
+  - name: Aggregate LiaScript repositories
+    class: AggregateLiaScriptFiles
+    parameters:
+      repo_data_file_name_input: *REPOSITORIES_DF
+      lia_files_name: &LIAFILES_DF LiaScript_files.p
+      force_run: True

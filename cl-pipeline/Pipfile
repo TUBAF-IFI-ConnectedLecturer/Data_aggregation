@@ -9,11 +9,11 @@ pipeline = {editable = true, path = "./../pipeline"}
 pandas = "*"
 requests = "*"
 tqdm = "*"
-pypdf = "*"
-pymupdf4llm = "*"
-torch = "*"
-torchvision = "*"
-torchaudio = "*"
+langchain-community = "*"
+unstructured = {extras = ["docx"], version = "*"}
+python-dotenv = "*"
+pygithub = "*"
+langdetect = "*"
 
 [dev-packages]
 
