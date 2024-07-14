@@ -5,7 +5,7 @@ import os
 from github import Github
 from github import Auth
 
-from pipeline.taskfactory import Task, loggedExecution
+from pipeline.taskfactory import Task, TaskWithInputFileMonitor, loggedExecution
 import logging
 from langdetect import detect_langs
 
@@ -15,35 +15,60 @@ from langdetect import detect_langs
 
 
 def extract_liafile_meta_data(file):
+
     if not file.name.endswith(".md"):
         print("-", end="")
-        return None 
+        return None, None 
+    
     if file.encoding != "base64":
         print( "b", end="")
-        return None 
-    content = file.decoded_content.decode()
-    if (not content.lstrip().startswith('<!--')) and \
-       (not "https://LiaScript.github.io/course/?" in content):
-        print( "n", end="")
-        return None 
+        return None, None
     
+    content = file.decoded_content.decode()
+    meta_data = extract_data(file, content)
+    meta_data['liaIndi_Lia_in_filename'] = False
+    meta_data['liaIndi_liaTemplates_used'] = False
+    meta_data['liaIndi_liascript_in_content'] = False
+    meta_data['liaIndi_lia_button'] = False
+    meta_data['liaIndi_comment_in_beginning'] = False
+
+    if "liascript" in file.name.lower():
+        meta_data['liaIndi_Lia_in_filename'] = True
+
+    if "liascript" in content.lower():
+        meta_data['liaIndi_liascript_in_content'] = True
+
+    if "liaTemplates" in content:
+        meta_data['liaIndi_liaTemplates_used'] = True
+
+    if "https://LiaScript.github.io/course/?" in content:
+        meta_data['liaIndi_lia_button'] = True
+
+    if content.lstrip().startswith("<!--"):
+        meta_data['liaIndi_comment_in_beginning'] = True
+        
+    return meta_data, content
+
+
+def extract_data(file, content):
     repo_data = {}
+    repo_data['id'] = hash(file.download_url)
     repo_data['repo_name'] = file.repository.name
     repo_data['repo_user'] = file.repository.owner.login
     repo_data['repo_url'] = file.repository.html_url
     repo_data['file_name'] = file.name
     repo_data['file_download_url'] = file.download_url
     repo_data['file_html_url'] = file.html_url
-    repo_data['file_content'] = content
     print("*", end="")
     return repo_data
 
 
 def explore_potential_lia_files(github_handle, data_folder,
-         repo_data_file_name, course_data_file_name):
+         repo_data_file_name, course_data_file_name, file_folder):
 
     repo_data_file = Path(data_folder) / repo_data_file_name
     course_data_file = Path(data_folder) / course_data_file_name
+    storage_folder = Path(file_folder)
 
     df_repos = pd.read_pickle(Path(repo_data_file))
 
@@ -60,7 +85,8 @@ def explore_potential_lia_files(github_handle, data_folder,
                 print(" already aggregated")
                 continue
         repo = github_handle.get_repo(row['user'] + '/' + row['name'])
-        # aggregate all files in repo
+        # aggregate all files in repo recursively
+        # https://pygithub.readthedocs.io/en/latest/examples/Repository.html#get-all-of-the-contents-of-the-repository-recursively
         try:   
             contents = repo.get_contents("")
             files = []
@@ -78,8 +104,12 @@ def explore_potential_lia_files(github_handle, data_folder,
             print(f"{len(files)} files ", end="")
             course_list = []
             for file in files:
-                repo_data = extract_liafile_meta_data(file)
+                repo_data, content = extract_liafile_meta_data(file)
                 if repo_data is not None:
+                    file_name = f"{repo_data['repo_user']}_{repo_data['repo_name']}_{repo_data['file_name']}"
+                    file_path = storage_folder / file_name
+                    with open(file_path, "w") as f:
+                        f.write(content)
                     course_list.append(repo_data)
 
             if len(course_list) > 0:     
@@ -92,59 +122,14 @@ def explore_potential_lia_files(github_handle, data_folder,
     df_courses.reset_index(drop=True, inplace=True)
     df_courses.to_pickle(Path(course_data_file))
     
-def identify_languages(s):
-    langs = detect_langs(s['file_content']) 
-    s['file_lang'] = langs[0].lang
-    s['file_lang_prob'] = langs[0].prob
-    return s
 
-def extract_commit_statistics(s, github_handle):
-    repo_signature = s['repo_user']+ "/" + s['repo_name']
-    remaining = s['file_download_url'].split(repo_signature)[1]
-    print(s['file_download_url'])
-    if "/master/" in remaining:
-        remaining=remaining.replace("/master/", "")
-    if "/main/" in remaining:
-        remaining=remaining.replace("/main/", "")
-    print(remaining)
-
-    repo = github_handle.get_repo(repo_signature)
-    commits = repo.get_commits(path=remaining)
-
-    feature_list = []
-    for commit in commits:
-        sample = {}
-        try:
-            sample['author'] = commit.author.login
-        except:
-            sample['author'] = "unknown"
-        sample['date'] = commit.commit.author.date
-        feature_list.append(sample)
-
-    df_features = pd.DataFrame(feature_list)
-    if df_features.shape[0] > 0:
-        df_features['date']=pd.to_datetime(df_features['date'])
-        s['contributors_list'] = df_features.author.to_list()
-        s['author_count'] = len(df_features.author.unique())
-        s['commit_count'] = df_features.shape[0]
-        s['first_commit'] = df_features.date.min()
-        s['last_commit']  = df_features.date.max()
-        s['commit_hist_extracted'] = True
-    else:
-        s['contributors_list'] = []
-        s['author_count'] = 0
-        s['commit_count'] = 0
-
-    print(s['commit_count'], s['author_count'])
-    return s
-
-
-class AggregateLiaScriptFiles(Task):
+class AggregateLiaScriptFiles(TaskWithInputFileMonitor):
     def __init__(self, config_stage, config_global):
         super().__init__(config_stage, config_global)
         stage_param = config_stage['parameters']
         self.data_folder = Path(config_global['raw_data_folder'])
         self.repo_data_file_name = stage_param['repo_data_file_name_input']
+        self.file_folder = Path(config_global['file_folder'])
         
         self.file_file_name =  Path(config_global['raw_data_folder']) / stage_param['repo_data_file_name_input']
         self.lia_files_name =  Path(config_global['raw_data_folder']) / stage_param['lia_files_name']
@@ -160,6 +145,7 @@ class AggregateLiaScriptFiles(Task):
             github_handle=self.github_handle,
             data_folder=self.data_folder,
             repo_data_file_name=self.repo_data_file_name,
-            course_data_file_name=self.lia_files_name
+            course_data_file_name=self.lia_files_name,
+            file_folder=self.file_folder
         )
 
