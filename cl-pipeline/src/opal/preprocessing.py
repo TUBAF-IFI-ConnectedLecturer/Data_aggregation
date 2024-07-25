@@ -14,13 +14,6 @@ def getLastValue(aList):
     else:
         return "unknown"
 
-# alle unbekannten autoren werden mit "unknown" besetzt
-def checkAutorName(creator):
-    if creator=="":
-        return False
-    else:
-        return True
-
 class Preprocessing(TaskWithInputFileMonitor):
     def __init__(self, config_stage, config_global):
         super().__init__(config_stage, config_global)
@@ -32,12 +25,12 @@ class Preprocessing(TaskWithInputFileMonitor):
 
         df_files = pd.read_pickle(self.file_file_name_inputs)
         # Extract unique ID
-        df_files['ID'] = df_files.oer_permalink.apply(extractUniqueID)
+        df_files['pipe:ID'] = df_files['opal:oer_permalink'].apply(extractUniqueID)
        
         # Extract file extension
-        df_files['file_type'] = df_files.filename.str.split('.').apply(getLastValue).str.lower()
-       
-        # Add column for known creators
-        df_files['known_creator'] = df_files.creator.apply(checkAutorName)
+        df_files['pipe:file_type'] = df_files['opal:filename'].str.split('.').apply(getLastValue).str.lower()
+
         
+        #df_files = df_files[['ID', 'file_type', 'known_creator']]
+
         df_files.to_pickle(self.file_file_name_output)

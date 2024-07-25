@@ -21,9 +21,15 @@ stages:
       repo_data_file_name: &REPOSITORIES_DF LiaScript_repositories.p
       force_run: False
       #internal: ['LiaScript','TUBAF-IfI-LiaScript','LiaPlayground','SebastianZug','andre-dietrich','LiaBooks','LiaTemplates','TUBAF-IUZ-LiaScript','markjjacob','HueblerPatricia']
-  - name: Aggregate LiaScript repositories
+  - name: Aggregate LiaScript files
     class: AggregateLiaScriptFiles
     parameters:
       repo_data_file_name_input: *REPOSITORIES_DF
       lia_files_name: &LIAFILES_DF LiaScript_files.p
+      force_run: True
+  - name: Aggregate LiaScript commits
+    class: AggregateLiaScriptCommits
+    parameters:
+      lia_files_name: *LIAFILES_DF
+      lia_commits_name: LiaScript_commits.p
       force_run: True

@@ -15,6 +15,7 @@ stages_module_path:
 stages:
   - name: Generate data folder structure
     class: ProvideDataFolders
+
   - name: Collect raw data from OPAL 
     class: CollectOPALOERdocuments
     parameters:
@@ -23,23 +24,34 @@ stages:
       json_file_name: OPAL_raw_data.json
       json_url: https://bildungsportal.sachsen.de/opal/oer/content.json
       overwrite_json: False
+
   - name: Aggregate basic features from OPAL
     class: Preprocessing
     parameters: 
        file_file_name_input: *OPALSINGLEFILES
        file_file_name_output: &OPALSINGLEFILESATTRIB OPAL_files_attrib.p
-       force_run: True
+       force_run: False
+
   - name: Download files
     class: DownloadOERFromOPAL
     parameters: 
        file_file_name_input: *OPALSINGLEFILESATTRIB
        file_file_name_output: &OPALSINGLEFILESDOWNLOADS OPAL_files_downloads.p
-       force_run: True
-       file_types: ['pdf']
-  - name: Extract file content
-    class: ExtractFileContent
+       file_types: ['pptx', 'pdf', 'docx', 'xlsx']
+       force_run: False
+
+  - name: Extract meta data from files
+    class: MetaDataExtraction
     parameters: 
        file_file_name_input: *OPALSINGLEFILESATTRIB
-       file_file_name_output: &OPALSINGLEFILESCONTENT OPAL_files_content.p
+       file_file_name_output: &OPALSINGLEFILESMETA OPAL_files_meta.p
+       file_types: ['pptx', 'pdf', 'docx', 'xlsx']
+       force_run: False
+
+  - name: Extract meta data from content
+    class: AIMetaDataExtraction
+    parameters: 
+       file_file_name_input: *OPALSINGLEFILESATTRIB
+       file_file_name_output: &OPALSINGLEAIMETA OPAL_ai_meta.p
        force_run: True
        file_types: ['pdf']

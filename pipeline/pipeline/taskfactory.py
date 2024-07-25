@@ -63,7 +63,9 @@ class TaskWithInputFileMonitor(Task):
         for attribute in vars(self):
             if "_input" in attribute:
                 path = getattr(self, attribute)
+                
                 if path.exists() == False:
+                    print (path)
                     return False
                 logging.debug(f"Input file at {path} exists.")
         return True
@@ -97,7 +99,6 @@ class TaskWithInputFileMonitor(Task):
 
     @loggedExecution
     def run(self):
-        print(self.parameters)
         if self.all_input_files_exist():
             if self.changes_in_input_files() or self.parameters['force_run'] == True:
                 logging.info(f"Input files for task have changed. Running task.")
@@ -105,6 +106,7 @@ class TaskWithInputFileMonitor(Task):
             else:
                 logging.info(f"Input files are present but have not changed.")
         else:
+            print(self.parameters)
             logging.error(f"Input files are missing!")
 
 # Converting a string to a class name

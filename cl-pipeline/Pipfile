@@ -4,16 +4,22 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+langchain = "*"
+langchain-community = "*"
+sentence-transformers = "*"
+pymupdf = "*"
+faiss-cpu = "*"
 pyyaml = "*"
 pipeline = {editable = true, path = "./../pipeline"}
 pandas = "*"
 requests = "*"
 tqdm = "*"
-langchain-community = "*"
-unstructured = {extras = ["docx"], version = "*"}
 python-dotenv = "*"
 pygithub = "*"
 langdetect = "*"
+python-docx = "*"
+python-pptx = "*"
+openpyxl = "*"
 
 [dev-packages]
 

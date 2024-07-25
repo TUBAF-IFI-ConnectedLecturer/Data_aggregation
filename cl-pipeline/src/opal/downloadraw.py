@@ -32,7 +32,21 @@ class CollectOPALOERdocuments(Task):
             raw_data = json.load(f)
 
         df_files = pd.DataFrame(raw_data['files'])
-        df_lr = pd.DataFrame(raw_data['learning_resources'])    
-    
+        renaming_dict = {
+            'filename': 'opal:filename',
+            'oer_permalink': 'opal:oer_permalink',
+            'license': 'opal:license',
+            'creator': 'opal:creator',
+            'title': 'opal:title',
+            'comment': 'opal:comment',
+            'language': 'opal:language',
+            'publicationMonth': 'opal:publicationMonth',
+            'publicationYear': 'opal:publicationYear',
+        }
+        df_files = df_files.rename(columns=renaming_dict)
+        # Remove all columns that not in the renaming_dict
+        df_files = df_files[renaming_dict.values()]
         df_files.to_pickle(self.file_file)
+
+        df_lr = pd.DataFrame(raw_data['learning_resources']) 
         df_lr.to_pickle(self.repo_file_name)
