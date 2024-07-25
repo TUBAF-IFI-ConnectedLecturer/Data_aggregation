@@ -80,24 +80,28 @@ Aus den Dateien der Typen `docx`, `pptx`, `xlsx` und `pdf` werden Metadaten extr
 
 ## Metadaten extrahiert mit KI
 
-> TODO
+| CL-Naming     | Promt                                                                                                         |
+| ------------- | ------------------------------------------------------------------------------------------------------------- |
+| `ai:title`    | `f"Give me a title of the document {file}. Just answer by the title. Please answer in German."`               |
+| `ai:author`   | `f"Who is the author of the document {file}. Avoid all additional information, just answer by authors name."` |
+| `ai:keywords` | `f"Please extract 5 Keywords from {file}? Just answer by a list separted by commas. Please answer in German.` |
 
 ## OER Metadaten Schema
 
-Die Struktur aus [LOM for Higher Education OER Repositories](https://dini-ag-kim.github.io/hs-oer-lom-profil/latest/) wurde hier eingeebnet. Zur Projektlaufzeit wird das finale Schema festgelegt.
+Die Struktur aus [LOM for Higher Education OER Repositories](https://dini-ag-kim.github.io/hs-oer-lom-profil/latest/) wurde hier eingeebnet. Zur Projektlaufzeit wird das finale Schema festgelegt und ein Transformationsskript integriert.
 
-| Benennung            | Bemerkungen                                     | `pipe:`          | `opal:`              | `file:`         | `ai:` |
-| -------------------- | ----------------------------------------------- | ---------------- | -------------------- | --------------- | ----- |
-| `<title>`            |                                                 |                  | `opal:title`         | `file:title`    |       |
-| `<language>`         |                                                 | `pipe:language`  | `opal:language`      | `file:language` |       |
-| `<description>`      |                                                 |                  | `opal:comment`       | `file:subject`  |       |
-| `<keyword>`          |                                                 |                  |                      | `file:keywords` |       |
-| `<aggregationlevel>` | für einzelne, atomare Materialien  (1)          | 1                |                      |                 |       |
-| `<format>`           | z. B. application/pdf oder image/png.           | `pipe:file_type` |                      |                 |       |
-| `<location>`         | in der Regel ein Uniform Resource Locator (URL) |                  | `opal:oer_permalink` |                 |       |
-| `<rights>`           | Lizenzparameter                                 |                  | `opal:license`       |                 |       |
-| `<author>`           |                                                 |                  | `opal:creator`       | `file:author`   |       |
-| `<date>`             |                                                 |                  |                      | `file:modified` |       |
+| Benennung            | Bemerkungen                                     | `pipe:`          | `opal:`              | `file:`         | `ai:`         |
+| -------------------- | ----------------------------------------------- | ---------------- | -------------------- | --------------- | ------------- |
+| `<title>`            |                                                 |                  | `opal:title`         | `file:title`    | `ai:title`    |
+| `<language>`         |                                                 | `pipe:language`  | `opal:language`      | `file:language` |               |
+| `<description>`      |                                                 |                  | `opal:comment`       | `file:subject`  |               |
+| `<keyword>`          |                                                 |                  |                      | `file:keywords` | `ai:keywords` |
+| `<aggregationlevel>` | für einzelne, atomare Materialien  (1)          | 1                |                      |                 |               |
+| `<format>`           | z. B. application/pdf oder image/png.           | `pipe:file_type` |                      |                 |               |
+| `<location>`         | in der Regel ein Uniform Resource Locator (URL) |                  | `opal:oer_permalink` |                 |               |
+| `<rights>`           | Lizenzparameter                                 |                  | `opal:license`       |                 |               |
+| `<author>`           |                                                 |                  | `opal:creator`       | `file:author`   | `ai:author`   |
+| `<date>`             |                                                 |                  |                      | `file:modified` |               |
 
 
 
