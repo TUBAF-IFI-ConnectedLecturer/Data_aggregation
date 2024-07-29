@@ -143,3 +143,40 @@ flowchart TD
     class Datenaggregation white
     class Datenaggregation,Metadatenaggregation,Evaluation gray
 ```
+
+## Generelle Installation 
+
++ Installation von `pipenv` als virtuelle Entwicklungsumgebung
++ Ausführen von `pipenv install` im Projektordner
+
+
+### OPAL
+
+*Vorbereitung*
+
++ Prüfen der Angaben der Ordnerstruktur und den internen Nutzern in `identification_opal.yaml`
+
+*Ausführung*
+
+``` 
+pipenv shell
+(pipenv) cd run
+(pipenv) python run_pipeline.py -c identification_opal.yaml
+```
+
+### LiaScript 
+
+*Vorbereitung*
+
++ github Account anlegen und in `.env` hinterlegen
++ Prüfen der Angaben der Ordnerstruktur und den internen Nutzern in `identification_liascript.yaml`
+
+*Ausführung*
+
+``` 
+pipenv shell
+(pipenv) cd run
+(pipenv) python run_pipeline.py -c identification_liascript.yaml
+```
+
+> Wegen der API Limitierung von Github, kann es sein, dass das Auslesen der Datensätze von Github mehrere Tage dauern!
