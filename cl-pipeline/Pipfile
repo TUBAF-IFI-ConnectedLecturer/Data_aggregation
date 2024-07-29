@@ -20,6 +20,8 @@ langdetect = "*"
 python-docx = "*"
 python-pptx = "*"
 openpyxl = "*"
+unstructured = "*"
+wrapt-timeout-decorator = "*"
 
 [dev-packages]
 
