@@ -51,7 +51,7 @@ flowchart TD
     classDef yellow fill:#ffd966
     classDef gray fill:#bcbcbc
 
-    subgraph Materialidentifikation
+    subgraph Datenidentifikation und -aggregation
     subgraph OPAL Pipeline  
     direction TB
     OPAL[(OPAL)] --> OPAL_QUERY(OPAL Query):::green
