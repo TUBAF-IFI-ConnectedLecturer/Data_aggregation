@@ -93,7 +93,7 @@ flowchart TD
     classDef green fill:#5bd21c
     classDef yellow fill:#ffd966
     classDef gray fill:#bcbcbc
-    classDef white fill:#ffffff
+    classDef white fill:#ffffff,stroke:#ffffff
 
     subgraph Datenaggregation
     OPAL_FILES[(OPAL Files\noffice,pdf)]
@@ -105,17 +105,20 @@ flowchart TD
     class Materialidentifikation, gray
 
     subgraph Metadatenaggregation
+    subgraph OPAL Pipeline
     OPAL_EXTRACTION_TYP_MD(Extraktion Datei-\n typspezifischer Metadaten):::green
     OPAL_EXTRACTION_LLM_MD(LLM basierte\nExtraktion Metadaten):::green
     OPAL_EXTRACTION_TYP_MD--> |file:|OPALFILES[(Metadaten \nSammlung\n OPAL)]
     OPAL_EXTRACTION_LLM_MD --> |ai:|OPALFILES
     OPAL_METADATA_FILES --> |opal:|OPALFILES
-
+    end
+    subgraph LiaScript Pipeline
     LIA_EXTRACTION_TYP_MD(Extraktion markdown-\n spezifischer Metadaten):::yellow
     LIA_EXTRACTION_LLM_MD(LLM basierte\nExtraktion Metadaten):::yellow
     LIA_EXTRACTION_TYP_MD--> |md:|LIAFILES[(Metadaten \nSammlung\n LiaScript)]
     LIA_EXTRACTION_LLM_MD --> |ai:|LIAFILES
     LIA_METADATA_FILES --> |github:|LIAFILES
+    end
 
     subgraph Evaluation
     KREUZVERGLEICH(Kreuzvergleich Autoren):::green 
@@ -137,5 +140,6 @@ flowchart TD
     Evaluation --> METADATA_PROPOSALS(Metadatenvorschläge\nfür Autoren)
     Evaluation --> METADATA_Analysis(Analyse der Datensätze)
 
+    class Datenaggregation white
     class Datenaggregation,Metadatenaggregation,Evaluation gray
 ```
