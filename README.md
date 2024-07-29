@@ -71,7 +71,7 @@ flowchart TD
     LIA_IDENT --> |Reposuche| LIA_REPOS[(LiaScript\nRepo Liste)]
 
     LIA_FILES -->  GITHUB_DOWNLOAD(Github Download):::green
-    GITHUB_DOWNLOAD -->  LIA_FILES_[(OPAL Files\noffice,pdf)]
+    GITHUB_DOWNLOAD -->  LIA_FILES_[(LiaScript\nFiles)]
     LIA_REPOS -.-> FEATURE_EXTRACTION_LIA(Github Metadaten Query)
     FEATURE_EXTRACTION_LIA  -. github: .->  LIA_METADATA_FILES[(LiaScript\nMetadata)]
     LIA_FILES -.-> FEATURE_EXTRACTION_LIA
