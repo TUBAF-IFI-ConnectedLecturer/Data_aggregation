@@ -2,16 +2,20 @@ import pandas as pd
 from pathlib import Path
 from langchain.llms import Ollama
 from langchain import PromptTemplate
-from langchain_community.document_loaders import UnstructuredMarkdownLoader
 from langchain_core.documents import Document
-# Importing the necessary packages
 from langchain.embeddings import HuggingFaceEmbeddings
+from langchain.document_loaders import DirectoryLoader
 from langchain.document_loaders import PyMuPDFLoader
+from langchain_community.document_loaders import (UnstructuredPowerPointLoader, 
+                                                  UnstructuredExcelLoader,
+                                                 UnstructuredMarkdownLoader,
+                                                 UnstructuredWordDocumentLoader)
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores import FAISS
 from langchain.chains import RetrievalQA
 from tqdm import tqdm
 import logging
+from wrapt_timeout_decorator import *
 
 from pipeline.taskfactory import TaskWithInputFileMonitor
 
@@ -83,6 +87,43 @@ provided to you. If you don't know the answer, just say you don't know. Don't tr
 ### Response:
 """
 
+# Define a dictionary to map file extensions to their respective loaders
+loaders = {
+    'pdf': PyMuPDFLoader,
+    'pptx': UnstructuredPowerPointLoader,
+    'md': UnstructuredMarkdownLoader,
+    'docx': UnstructuredWordDocumentLoader,
+    'xlsx': UnstructuredExcelLoader
+}
+
+def get_loader_for_file_type(file_type, file_path):
+    loader_class = loaders[file_type]
+    # Baseloader seams not to work with current Pathlib objects
+    return loader_class(file_path=str(file_path))
+
+@timeout(60)
+def prepare_retriever(file_path, file_type, embed):
+    loader = get_loader_for_file_type(file_type, file_path)
+    try:
+        docs = loader.load()
+    except:
+        return None
+
+    documents = split_docs(documents=docs)
+    if len(documents) == 0:
+        return None 
+    
+    vectorstore = create_embeddings(documents, embed)
+    retriever = vectorstore.as_retriever()
+    return retriever
+
+def filtered(AI_response):
+    blacklist = ["don't know", "weiß nicht", "weiß es nicht"]
+    if any(x in AI_response for x in blacklist):
+        return ""
+    else:
+        return AI_response
+
 class AIMetaDataExtraction(TaskWithInputFileMonitor):
     def __init__(self, config_stage, config_global):
         super().__init__(config_stage, config_global)
@@ -95,6 +136,7 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
     def execute_task(self):
 
         logging.getLogger('urllib3').setLevel(logging.CRITICAL)
+        logging.getLogger('unstructured').setLevel(logging.CRITICAL)
 
         df_files = pd.read_pickle(self.file_file_name_inputs)
 
@@ -106,45 +148,49 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
         llm = Ollama(model="llama3", temperature=0)
         embed = load_embedding_model(model_path="all-MiniLM-L6-v2")
 
+        for file_type in self.file_types:
+            if file_type not in loaders:
+                raise ValueError(f"Loader for file type '{file_type}' not found.")
+
         metadata_list = []
         for index, row in tqdm(df_files.iterrows(), total=df_files.shape[0]):
 
-            if df_metadata[df_metadata['pipe:ID'] == row['pipe:ID']].shape[0] > 0:
-                continue
+            print(index, df_metadata.shape[0], row['pipe:file_type'])
+            # Check if the ai metadata already exists for the file 
+            if df_metadata.shape[0] > 0:
+                if df_metadata[df_metadata['pipe:ID'] == row['pipe:ID']].shape[0] > 0:
+                    continue
 
             metadata_list_sample = {}
             metadata_list_sample['pipe:ID'] = row['pipe:ID']
             metadata_list_sample['pipe:file_type'] = row['pipe:file_type']
             if row['pipe:file_type'] not in self.file_types:
                 continue
-            #if row['pipe:file_type'] not in extractors:
-            #    raise ValueError(f"Extractor for file type '{row['pipe:file_type']}' not found.")
 
             file_path = self.file_folder / (row['pipe:ID'] + "." + row['pipe:file_type'])
-
             try:
-                loader = PyMuPDFLoader(file_path=file_path)
-                docs = loader.load()
+                retriever = prepare_retriever(file_path, row['pipe:file_type'], embed)
             except:
+                print("Stoped due to timeout!")
                 continue
 
-            documents = split_docs(documents=docs)
-            if len(documents) == 0:
+            if retriever== None:
                 continue
-            vectorstore = create_embeddings(documents, embed)
-            retriever = vectorstore.as_retriever()
 
             prompt = PromptTemplate.from_template(template)
             chain = load_qa_chain(retriever, llm, prompt)
 
             file = (row['pipe:ID'] + "." + row['pipe:file_type'])
-            author = get_response(f"Who is the author of the document {file}. Avoid all additional information, just answer by authors name.", chain)
-            metadata_list_sample['ai:author_raw'] = author
-            if "don't know" in author:
-                author = ""
-            metadata_list_sample['ai:author'] = author
-            metadata_list_sample['ai:title'] = get_response(f"Give me a title of the document {file}. Just answer by the title. Please answer in German.", chain)
-            metadata_list_sample['ai:keywords'] = get_response(f"Please extract 5 Keywords from {file}? Just answer by a list separted by commas. Please answer in German.", chain)
+            author = get_response(f"Who is the author of the document {file}. Avoid all additional information, just answer by authors name. Do not add something like 'The autor of the document is'. Please answer in German.", chain)
+            metadata_list_sample['ai:author'] = filtered(author)
+
+            title = get_response(f"Give me a title of the document {file}. Just answer by the title. Please answer in German.", chain)
+            metadata_list_sample['ai:title'] = filtered(title)
+
+            keywords = get_response(f"Please extract 5 Keywords from {file}? Just answer by a list separted by commas. Please answer in German.", chain)
+            metadata_list_sample['ai:keywords'] = filtered(keywords)
+
+            print(filtered(author) + "-" + file)
 
             metadata_list=[]
             metadata_list.append(metadata_list_sample)

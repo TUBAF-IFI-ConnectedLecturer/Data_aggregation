@@ -75,6 +75,8 @@ class ColorizedArgsFormatter(logging.Formatter):
     def format(self, record):
         orig_msg = record.msg
         orig_args = record.args
+        if record.levelno == 15:   # 15 is the level number for "DETAIL" in unstructured logging :-(
+            record.levelno = logging.DEBUG
         formatter = self.level_to_formatter.get(record.levelno)
         self.rewrite_record(record)
         formatted = formatter.format(record)
