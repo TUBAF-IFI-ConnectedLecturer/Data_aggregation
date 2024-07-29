@@ -56,10 +56,12 @@ flowchart TD
     direction TB
     OPAL[(OPAL)] --> OPAL_QUERY(OPAL Query):::green
     OPAL_QUERY --> |Ganze  Dateien| OPAL_REPOS[?]
-    OPAL_QUERY --> |Einzelne Dateien| OPAL_DOWNLOAD[Opal Download]:::green
+    OPAL_QUERY --> |Einzelne Dateien| TYPE_FILTER[Extrahiere Dateityp]:::green
+    TYPE_FILTER -->  |.pdf, .pptx, ... | OPAL_DOWNLOAD[Opal Download]:::green
+    TYPE_FILTER -->  |.pdf, .pptx, ... | EXTRACT_OPAL_META[Opal Metadaten]:::green
     OPAL_DOWNLOAD -->  OPAL_FILES[(OPAL Files\noffice,pdf)]
     OPAL_DOWNLOAD -.->  OPAL_METADATA_FILES[(OPAL Meta\noffice,pdf)]
-    OPAL_QUERY -. opal: .->  OPAL_METADATA_FILES[(OPAL Meta\noffice,pdf)]
+    EXTRACT_OPAL_META -. opal: .->  OPAL_METADATA_FILES[(OPAL Meta\noffice,pdf)]
     end    
 
     subgraph LiaScript Pipeline
