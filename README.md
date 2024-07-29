@@ -40,7 +40,7 @@ stages:
 ...
 ```
 
-## Realisierung
+## Verabeitungskette und Pipelinestufen
 
 ### Schritt 1: Datenidentifikation und -aggregation
 
