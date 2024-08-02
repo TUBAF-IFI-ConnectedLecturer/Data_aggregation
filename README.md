@@ -1,5 +1,10 @@
 # Pipeline Umsetzung
 
+## Zielstellung
+
++ automatisiertes "Auffüllen" von Metadaten für existierende OPAL Datensätze
++ Unterstützung bei der Eingabe von Metadaten während der Eingabe durch den Lehrenden
+
 ## Konzept
 
 Die Umsetzung der einzelnen Aggregationsstufen baut auf der im Ordner `pipeline` vorgesehenen [Implemetierung](https://github.com/TUBAF-IFI-ConnectedLecturer/Data_aggregation/blob/main/pipeline/README.md) auf. 
