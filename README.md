@@ -4,6 +4,7 @@
 
 + automatisiertes "Auffüllen" von Metadaten für existierende OPAL Datensätze
 + Unterstützung bei der Eingabe von Metadaten während der Eingabe durch den Lehrenden
++ Identifikation von ähnlichen Inhalten
 
 ## Konzept
 
