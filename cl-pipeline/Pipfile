@@ -22,8 +22,9 @@ python-pptx = "*"
 openpyxl = "*"
 unstructured = "*"
 wrapt-timeout-decorator = "*"
+chromadb = "*"
 
 [dev-packages]
 
 [requires]
-python_version = "3.10"
+python_version = "3.12"
