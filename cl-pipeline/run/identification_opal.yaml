@@ -4,6 +4,7 @@ folder_structure:
   data_root_folder: &BASE /media/sz/Data/Connected_Lecturers/Opal
   raw_data_folder: &RAW !join [*BASE, /raw]
   file_folder: &FILE_FOLDER !join [*RAW, /files]
+  content_folder: &CONTENT_FOLDER !join [*RAW, /content]
   processed_data_folder: &PREPROCESSED !join [*BASE, /processed]
 
 # Referencing the modules containing modules
@@ -48,6 +49,14 @@ stages:
        file_types: ['pptx', 'pdf', 'docx', 'xlsx']
        force_run: False
 
+  - name: Extract content
+    class: ExtractFileContent
+    parameters: 
+       file_file_name_input: *OPALSINGLEFILESATTRIB
+       file_file_name_output: &OPALSINGLEAICONTENT OPAL_content.p
+       force_run: False
+       file_types: ['pptx', 'pdf', 'docx', 'xlsx']
+
   - name: Extract meta data from content
     class: AIMetaDataExtraction
     parameters: 
@@ -56,9 +65,9 @@ stages:
        force_run: False
        file_types: ['pptx', 'pdf', 'docx', 'xlsx']
 
-#  - name: Determine similarity between files
-#    class: DocumentSimilarity
-#    parameters: 
-#       file_file_name_input: *OPALSINGLEFILESATTRIB
-#       file_file_name_output: &OPALSINGLESIMILARITY OPAL_similaritiy.p
-#       force_run: True
+  - name: Determine similarity between files
+    class: DocumentSimilarity
+    parameters: 
+       file_file_name_input: *OPALSINGLEAICONTENT
+       file_file_name_output: &OPALSINGLESIMILARITY OPAL_similaritiy.p
+       force_run: True

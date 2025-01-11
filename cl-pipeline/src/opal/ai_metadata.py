@@ -1,17 +1,21 @@
+# Motivated by https://medium.com/@onkarmishra/using-langchain-for-question-answering-on-own-data-3af0a82789ed
+# Thanks to Onkar Mishra for the inspiration
+
 import pandas as pd
 from pathlib import Path
-from langchain.llms import Ollama
+
 from langchain import PromptTemplate
 from langchain_core.documents import Document
-from langchain.embeddings import HuggingFaceEmbeddings
-from langchain.document_loaders import DirectoryLoader
-from langchain.document_loaders import PyMuPDFLoader
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_community.llms import Ollama
 from langchain_community.document_loaders import (UnstructuredPowerPointLoader, 
                                                   UnstructuredExcelLoader,
-                                                 UnstructuredMarkdownLoader,
-                                                 UnstructuredWordDocumentLoader)
+                                                  UnstructuredMarkdownLoader,
+                                                  UnstructuredWordDocumentLoader,
+                                                  PyMuPDFLoader,
+                                                  DirectoryLoader)
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.vectorstores import FAISS
+from langchain_community.vectorstores import FAISS
 from langchain.chains import RetrievalQA
 from tqdm import tqdm
 import logging
@@ -77,6 +81,7 @@ template = """
 ### System:
 You are an respectful and honest assistant. You have to answer the user's questions using only the context \
 provided to you. If you don't know the answer, just say you don't know. Don't try to make up an answer.
+Never say thank you, that you are happy to help, that you are an AI agent, etc. Just answer directly.
 
 ### Context:
 {context}
@@ -154,8 +159,6 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
 
         metadata_list = []
         for index, row in tqdm(df_files.iterrows(), total=df_files.shape[0]):
-
-            print(index, df_metadata.shape[0], row['pipe:file_type'])
             # Check if the ai metadata already exists for the file 
             if df_metadata.shape[0] > 0:
                 if df_metadata[df_metadata['pipe:ID'] == row['pipe:ID']].shape[0] > 0:
@@ -171,7 +174,7 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
             try:
                 retriever = prepare_retriever(file_path, row['pipe:file_type'], embed)
             except:
-                print("Stoped due to timeout!")
+                print("Stopped due to timeout!")
                 continue
 
             if retriever== None:
@@ -184,13 +187,25 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
             author = get_response(f"Who is the author of the document {file}. Avoid all additional information, just answer by authors name. Do not add something like 'The autor of the document is'. Please answer in German.", chain)
             metadata_list_sample['ai:author'] = filtered(author)
 
-            title = get_response(f"Give me a title of the document {file}. Just answer by the title. Please answer in German.", chain)
+            affilation = get_response(f"Which university published the document {file}?. Just answer by the name of the university and the department, separated by comma. Do not start with `Die Universität`. Please answer in German.", chain)
+            metadata_list_sample['ai:affilation'] = filtered(affilation)
+
+            title = get_response(f"Extract the title of the document {file}. Just answer by the title. Please answer in German.", chain)
             metadata_list_sample['ai:title'] = filtered(title)
 
-            keywords = get_response(f"Please extract 5 Keywords from {file}? Just answer by a list separted by commas. Please answer in German.", chain)
+            keywords = get_response(f"Please extract 10 Keywords from {file}? Just answer by a list separted by commas. Answer in German.", chain)
             metadata_list_sample['ai:keywords'] = filtered(keywords)
 
-            print(filtered(author) + "-" + file)
+            keywords2 = get_response(f"Please use 10 keywords to describe the content of {file}? Just answer by a list separted by commas. Answer in German.", chain)
+            metadata_list_sample['ai:keywords2'] = filtered(keywords2)
+
+            dewey = get_response(f"Please assign the document {file} according to the dewey decimal classification. Answer with the classification number only. Do not explain that you are not able to find a classification.", chain)
+            metadata_list_sample['ai:dewey'] = filtered(dewey)
+
+            print(filtered(author) + "-" + filtered(dewey))
+            print(filtered(keywords))
+            print(filtered(keywords2))
+            print(filtered(affilation))
 
             metadata_list=[]
             metadata_list.append(metadata_list_sample)
