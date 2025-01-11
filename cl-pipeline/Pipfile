@@ -23,6 +23,7 @@ openpyxl = "*"
 unstructured = "*"
 wrapt-timeout-decorator = "*"
 chromadb = "*"
+langchain-ollama = "*"
 
 [dev-packages]
 
