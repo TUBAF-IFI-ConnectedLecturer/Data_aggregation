@@ -5,9 +5,9 @@ import os
 from github import Github
 from github import Auth
 
-from pipeline.taskfactory import Task, loggedExecution
+from pipeline.taskfactory import loggedExecution
+from pipeline.taskfactory import TaskWithInputFileMonitor
 import logging
-from langdetect import detect_langs
 
 def explore_potential_lia_commits(github_handle, data_folder,
          course_data_file_name, commits_data_file_name):
@@ -75,13 +75,13 @@ def extract_commit_statistics(s, github_handle):
     return s
 
 
-class AggregateLiaScriptCommits(Task):
+class AggregateLiaScriptCommits(TaskWithInputFileMonitor):
     def __init__(self, config_stage, config_global):
         super().__init__(config_stage, config_global)
         stage_param = config_stage['parameters']
         self.data_folder = Path(config_global['raw_data_folder'])
         
-        self.lia_files_name =  Path(config_global['raw_data_folder']) / stage_param['lia_files_name']
+        self.lia_files_name =  Path(config_global['raw_data_folder']) / stage_param['lia_files_name_input']
         self.lia_commits_name =  Path(config_global['raw_data_folder']) / stage_param['lia_commits_name']
         
         github_api_token =os.environ["GITHUB_API_KEY"]

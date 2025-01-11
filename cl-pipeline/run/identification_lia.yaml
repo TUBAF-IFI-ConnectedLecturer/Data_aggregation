@@ -1,7 +1,7 @@
 # Defining data folder stucture
 folder_structure:
   #data_root_folder: &BASE ./data
-  data_root_folder: &BASE /mnt/9cd5c6a1-07f3-4580-be34-8d8dd9d6fe6d/Connected_Lecturers/LiaScript
+  data_root_folder: &BASE /media/sz/Data/Connected_Lecturers/LiaScript
   raw_data_folder: &RAW !join [*BASE, /raw]
   file_folder: &FILE_FOLDER !join [*RAW, /files]
   processed_data_folder: &PREPROCESSED !join [*BASE, /processed]
