@@ -9,6 +9,10 @@ from datetime import datetime
 
 from pipeline.taskfactory import TaskWithInputFileMonitor
 
+import sys
+sys.path.append('../src/general/')
+from checkAuthorNames import NameChecker
+
 class pdfMetaExtractor:
     def __init__(self, path, file_type):
         self.path = path
@@ -183,4 +187,15 @@ class MetaDataExtraction(TaskWithInputFileMonitor):
         df_metadata_list = pd.DataFrame(metadata_list)
         df_metadata_list['file:created'] = pd.to_datetime(df_metadata_list['file:created'], utc=True)
         df_metadata_list['file:modified'] = pd.to_datetime(df_metadata_list['file:modified'], utc=True)
+        df_metadata_list.to_pickle(self.file_file_name_output)
+
+        # Evaluate author names
+        nc = NameChecker()
+        df_metadata_list.loc[:, 'file:revisedAuthor'] = ""
+        for index, row in tqdm(df_metadata_list.iterrows(), total=df_metadata_list.shape[0]):
+            if row['file:author'] != "":
+                result = nc.get_validated_name(row['file:author'])
+                if result != None:
+                    df_metadata_list.at[index, 'file:revisedAuthor'] = f"{result.Vorname}/{result.Familienname}"
+                    print(f"{result.Vorname} {result.Familienname}")
         df_metadata_list.to_pickle(self.file_file_name_output)

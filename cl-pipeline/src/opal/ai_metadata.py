@@ -23,6 +23,10 @@ from wrapt_timeout_decorator import *
 
 from pipeline.taskfactory import TaskWithInputFileMonitor
 
+import sys
+sys.path.append('../src/general/')
+from checkAuthorNames import NameChecker
+
 
 # Responsible for splitting the documents into several chunks
 def split_docs(documents, chunk_size=1000, chunk_overlap=20):
@@ -157,6 +161,8 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
             if file_type not in loaders:
                 raise ValueError(f"Loader for file type '{file_type}' not found.")
 
+        nc = NameChecker()
+
         metadata_list = []
         for index, row in tqdm(df_files.iterrows(), total=df_files.shape[0]):
             # Check if the ai metadata already exists for the file 
@@ -186,6 +192,12 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
             file = (row['pipe:ID'] + "." + row['pipe:file_type'])
             author = get_response(f"Who is the author of the document {file}. Avoid all additional information, just answer by authors name. Do not add something like 'The autor of the document is'. Please answer in German.", chain)
             metadata_list_sample['ai:author'] = filtered(author)
+
+            result = nc.get_validated_name(filtered(author))
+            if result is not None:
+                df_files.at[index, 'ai:revisedAuthor'] = f"{result.Vorname}/{result.Familienname}"
+            else:
+                df_files.at[index, 'ai:revisedAuthor'] = ""
 
             affilation = get_response(f"Which university published the document {file}?. Just answer by the name of the university and the department, separated by comma. Do not start with `Die Universität`. Please answer in German.", chain)
             metadata_list_sample['ai:affilation'] = filtered(affilation)

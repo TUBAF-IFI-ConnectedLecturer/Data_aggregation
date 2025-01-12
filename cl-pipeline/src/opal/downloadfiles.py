@@ -36,7 +36,7 @@ class DownloadOERFromOPAL(TaskWithInputFileMonitor):
             if (not os.path.exists(file_path)):
                 download_list_sample['pipe:download_date'] = pd.to_datetime('now')
                 try:
-                    pdf_filename, headers = urllib.request.urlretrieve(row['oer_permalink'], file_path)
+                    _, _ = urllib.request.urlretrieve(row['opal:oer_permalink'], file_path)
                 except urllib.error.HTTPError as e:
                     print("Error while downloading.")
                     if e.code == 404:

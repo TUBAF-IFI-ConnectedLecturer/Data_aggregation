@@ -4,8 +4,13 @@ import urllib.request
 import os
 import json
 import logging
+from tqdm import tqdm
 
 from pipeline.taskfactory import Task, loggedExecution
+
+import sys
+sys.path.append('../src/general/')
+from checkAuthorNames import NameChecker
 
 class CollectOPALOERdocuments(Task):
     def __init__(self, config_stage, config_global):
@@ -36,7 +41,7 @@ class CollectOPALOERdocuments(Task):
             'filename': 'opal:filename',
             'oer_permalink': 'opal:oer_permalink',
             'license': 'opal:license',
-            'creator': 'opal:creator',
+            'creator': 'opal:author',
             'title': 'opal:title',
             'comment': 'opal:comment',
             'language': 'opal:language',
@@ -46,7 +51,21 @@ class CollectOPALOERdocuments(Task):
         df_files = df_files.rename(columns=renaming_dict)
         # Remove all columns that not in the renaming_dict
         df_files = df_files[renaming_dict.values()]
-        df_files.to_pickle(self.file_file)
 
-        df_lr = pd.DataFrame(raw_data['learning_resources']) 
-        df_lr.to_pickle(self.repo_file_name)
+        df_files = df_files[renaming_dict.values()]
+
+        # Evaluate author names
+        logging.getLogger('urllib3').setLevel(logging.CRITICAL)
+        logging.getLogger("urllib3").propagate = False
+        logging.getLogger('requests').setLevel(logging.CRITICAL)
+
+        nc = NameChecker()
+        df_files.loc[:, 'opal:revisedAuthor'] = ""
+        for index, row in tqdm(df_files.iterrows(), total=df_files.shape[0]):
+            if row['opal:author'] != "":
+                result = nc.get_validated_name(row['opal:author'])
+                if result is not None:
+                    df_files.at[index, 'opal:revisedAuthor'] = f"{result.Vorname}/{result.Familienname}"
+                    #print(f"{result.Vorname} {result.Familienname}")
+
+        df_files.to_pickle(self.file_file)
