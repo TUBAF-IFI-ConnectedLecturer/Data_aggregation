@@ -1,5 +1,11 @@
 # Pipeline Umsetzung
 
+## Zielstellung
+
++ automatisiertes "Auffüllen" von Metadaten für existierende OPAL Datensätze
++ Unterstützung bei der Eingabe von Metadaten während der Eingabe durch den Lehrenden
++ Identifikation von ähnlichen Inhalten
+
 ## Konzept
 
 Die Umsetzung der einzelnen Aggregationsstufen baut auf der im Ordner `pipeline` vorgesehenen [Implemetierung](https://github.com/TUBAF-IFI-ConnectedLecturer/Data_aggregation/blob/main/pipeline/README.md) auf. 
@@ -59,9 +65,9 @@ flowchart TD
     OPAL_QUERY --> |Einzelne Dateien| TYPE_FILTER[Extrahiere Dateityp]:::green
     TYPE_FILTER -->  |.pdf, .pptx, ... | OPAL_DOWNLOAD[Opal Download]:::green
     TYPE_FILTER -->  |.pdf, .pptx, ... | EXTRACT_OPAL_META[Opal Metadaten]:::green
-    OPAL_DOWNLOAD -->  OPAL_FILES[(OPAL Files\noffice,pdf)]
-    OPAL_DOWNLOAD -.->  OPAL_METADATA_FILES[(OPAL Meta\noffice,pdf)]
-    EXTRACT_OPAL_META -. opal: .->  OPAL_METADATA_FILES[(OPAL Meta\noffice,pdf)]
+    OPAL_DOWNLOAD -->  OPAL_FILES[(OPAL Files<br>office,pdf)]
+    OPAL_DOWNLOAD -.->  OPAL_METADATA_FILES[(OPAL Meta<br>office,pdf)]
+    EXTRACT_OPAL_META -. opal: .->  OPAL_METADATA_FILES[(OPAL Meta<br>office,pdf)]
     end    
 
     subgraph LiaScript Pipeline
@@ -69,13 +75,13 @@ flowchart TD
     LIA_IDENT(Liascript Suche)
     GITHUB[(Github)] --> |Github API| LIA_IDENT:::green
     LIA_REPOS --> |Dateisuche| LIA_FILES
-    LIA_IDENT --> |Dateisuche| LIA_FILES[(LiaScript\nDatei Liste)]
-    LIA_IDENT --> |Reposuche| LIA_REPOS[(LiaScript\nRepo Liste)]
+    LIA_IDENT --> |Dateisuche| LIA_FILES[(LiaScript<br>Datei Liste)]
+    LIA_IDENT --> |Reposuche| LIA_REPOS[(LiaScript<br>Repo Liste)]
 
     LIA_FILES -->  GITHUB_DOWNLOAD(Github Download):::green
-    GITHUB_DOWNLOAD -->  LIA_FILES_[(LiaScript\nFiles)]
+    GITHUB_DOWNLOAD -->  LIA_FILES_[(LiaScript<br>Files)]
     LIA_REPOS -.-> FEATURE_EXTRACTION_LIA(Github Metadaten Query)
-    FEATURE_EXTRACTION_LIA  -. github: .->  LIA_METADATA_FILES[(LiaScript\nMetadata)]
+    FEATURE_EXTRACTION_LIA  -. github: .->  LIA_METADATA_FILES[(LiaScript<br>Metadata)]
     LIA_FILES -.-> FEATURE_EXTRACTION_LIA
     FEATURE_EXTRACTION_LIA:::green
     end  
@@ -96,26 +102,26 @@ flowchart TD
     classDef white fill:#ffffff,stroke:#ffffff
 
     subgraph Datenaggregation
-    OPAL_FILES[(OPAL Files\noffice,pdf)]
-    OPAL_METADATA_FILES[(OPAL Meta\noffice,pdf)]
-    LIA_FILES_[(LiaScript\nFiles)]
-    LIA_METADATA_FILES[(LiaScript\nMetadata)]
+    OPAL_FILES[(OPAL Files<br>office,pdf)]
+    OPAL_METADATA_FILES[(OPAL Meta<br>office,pdf)]
+    LIA_FILES_[(LiaScript<br>Files)]
+    LIA_METADATA_FILES[(LiaScript<br>Metadata)]
     end
 
     class Materialidentifikation, gray
 
     subgraph Metadatenaggregation
     subgraph OPAL Pipeline
-    OPAL_EXTRACTION_TYP_MD(Extraktion Datei-\n typspezifischer Metadaten):::green
-    OPAL_EXTRACTION_LLM_MD(LLM basierte\nExtraktion Metadaten):::green
-    OPAL_EXTRACTION_TYP_MD--> |file:|OPALFILES[(Metadaten \nSammlung\n OPAL)]
+    OPAL_EXTRACTION_TYP_MD(Extraktion Datei-<br> typspezifischer Metadaten):::green
+    OPAL_EXTRACTION_LLM_MD(LLM basierte<br>Extraktion Metadaten):::green
+    OPAL_EXTRACTION_TYP_MD--> |file:|OPALFILES[(Metadaten<br>Sammlung<br> OPAL)]
     OPAL_EXTRACTION_LLM_MD --> |ai:|OPALFILES
     OPAL_METADATA_FILES --> |opal:|OPALFILES
     end
     subgraph LiaScript Pipeline
-    LIA_EXTRACTION_TYP_MD(Extraktion markdown-\n spezifischer Metadaten):::yellow
-    LIA_EXTRACTION_LLM_MD(LLM basierte\nExtraktion Metadaten):::yellow
-    LIA_EXTRACTION_TYP_MD--> |md:|LIAFILES[(Metadaten \nSammlung\n LiaScript)]
+    LIA_EXTRACTION_TYP_MD(Extraktion markdown-<br>spezifischer Metadaten):::yellow
+    LIA_EXTRACTION_LLM_MD(LLM basierte<br>Extraktion Metadaten):::yellow
+    LIA_EXTRACTION_TYP_MD--> |md:|LIAFILES[(Metadaten <br>Sammlung<br>LiaScript)]
     LIA_EXTRACTION_LLM_MD --> |ai:|LIAFILES
     LIA_METADATA_FILES --> |github:|LIAFILES
     end
@@ -137,8 +143,9 @@ flowchart TD
     LIA_FILES_ --> LIA_EXTRACTION_TYP_MD
     LIA_FILES_ --> LIA_EXTRACTION_LLM_MD
 
-    Evaluation --> METADATA_PROPOSALS(Metadatenvorschläge\nfür Autoren)
     Evaluation --> METADATA_Analysis(Analyse der Datensätze)
+    Evaluation --> METADATA_PROPOSALS(Metadatenvorschläge<br>für Autoren)
+    Evaluation --> METADATA_CLASSIFICATION(Materialklassifikation<br>für Autoren)
 
     class Datenaggregation white
     class Datenaggregation,Metadatenaggregation,Evaluation gray
