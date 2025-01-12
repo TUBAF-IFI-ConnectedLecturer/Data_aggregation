@@ -4,3 +4,7 @@ app.log
 */__pycache__*/
 
 pipeline/pipeline.egg-info
+.env
+
+index.faiss
+index.pkl
