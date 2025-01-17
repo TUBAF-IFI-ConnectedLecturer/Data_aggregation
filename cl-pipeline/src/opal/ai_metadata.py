@@ -83,9 +83,14 @@ def get_response(query, chain):
 
 template = """
 ### System:
-You are an respectful and honest assistant. You have to answer the user's questions using only the context \
-provided to you. If you don't know the answer, just say you don't know. Don't try to make up an answer.
-Never say thank you, that you are happy to help, that you are an AI agent, etc. Just answer directly.
+Sie sind ein respektvoller Assistent. 
+Sie müssen die Fragen des Benutzers nur mithilfe des 
+Kontexts beantworten, der Ihnen zur Verfügung gestellt. 
+Wenn Sie die Antwort nicht kennen, sagen Sie einfach, 
+dass Sie es nicht wissen. Versuchen Sie nicht, eine 
+Antwort zu erfinden. Sagen Sie niemals Danke, dass Sie 
+gerne helfen, dass Sie ein KI-Agent sind usw. Antworten 
+Sie einfach direkt.
 
 ### Context:
 {context}
@@ -127,7 +132,8 @@ def prepare_retriever(file_path, file_type, embed):
     return retriever
 
 def filtered(AI_response):
-    blacklist = ["don't know", "weiß nicht", "weiß es nicht"]
+    blacklist = ["don't know", "weiß nicht", "weiß es nicht", "Ich kenne ",
+                 "Ich sehe kein", "Es gibt kein", "Ich kann "]
     if any(x in AI_response for x in blacklist):
         return ""
     else:
@@ -144,8 +150,14 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
 
     def execute_task(self):
 
-        logging.getLogger('urllib3').setLevel(logging.CRITICAL)
-        logging.getLogger('unstructured').setLevel(logging.CRITICAL)
+        # vgl. https://github.com/encode/httpcore/blob/master/httpcore/_sync/http11.py
+        logging.getLogger("httpcore.http11").setLevel(logging.CRITICAL)
+       
+        # https://github.com/langchain-ai/langchain/discussions/19256
+        logging.getLogger("langchain_text_splitters.base").setLevel(logging.ERROR)
+        logging.getLogger("urllib3.connectionpool").setLevel(logging.CRITICAL)
+        logging.getLogger("httpx").setLevel(logging.CRITICAL)
+        logging.getLogger("httpcore").setLevel(logging.CRITICAL)
 
         df_files = pd.read_pickle(self.file_file_name_inputs)
 
@@ -190,7 +202,10 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
             chain = load_qa_chain(retriever, llm, prompt)
 
             file = (row['pipe:ID'] + "." + row['pipe:file_type'])
-            author = get_response(f"Who is the author of the document {file}. Avoid all additional information, just answer by authors name. Do not add something like 'The autor of the document is'. Please answer in German.", chain)
+            author = get_response(f"""
+                Wer ist der Autor der Datei {file}. Vermeiden Sie alle zusätzlichen Informationen 
+                und antworten Sie einfach mit dem Namen des Autors. Fügen Sie nicht etwas wie `Der 
+                Autor des Dokuments ist` hinzu. Bitte antworten Sie auf Deutsch.""", chain)
             metadata_list_sample['ai:author'] = filtered(author)
 
             result = nc.get_validated_name(filtered(author))
@@ -199,25 +214,66 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
             else:
                 df_files.at[index, 'ai:revisedAuthor'] = ""
 
-            affilation = get_response(f"Which university published the document {file}?. Just answer by the name of the university and the department, separated by comma. Do not start with `Die Universität`. Please answer in German.", chain)
+            affilation = get_response(f"""
+                An welcher Institution (Universität, Hochschule) entstand die Datei {file}?.
+                Antworten Sie einfach mit dem Namen der Universität und gegebenenfalls des 
+                Fachbereichs oder der Fakultät, getrennt durch Komma. 
+                Beginnen Sie nicht mit „Die Universität“. Bitte antworten Sie auf Deutsch.""", chain)
             metadata_list_sample['ai:affilation'] = filtered(affilation)
 
-            title = get_response(f"Extract the title of the document {file}. Just answer by the title. Please answer in German.", chain)
+            title = get_response(f"""
+                Extrahieren Sie den Titel des Dokuments {file}. Antworten Sie einfach mit 
+                dem Titel. Bitte antworten Sie auf Deutsch.""", chain)
             metadata_list_sample['ai:title'] = filtered(title)
 
-            keywords = get_response(f"Please extract 10 Keywords from {file}? Just answer by a list separted by commas. Answer in German.", chain)
+            document_type = get_response(f"""
+                Welcher Typ von Dokument liegt bei {file} vor? Unterscheiden Sie zwischen 
+                Aufgabenblatt, Vorlesungsfolien, wissenschaftliches Paper, Buchauszug, 
+                Seminararbeit, Doktorarbeit, Dokumentation, Tutorial usw. Antworten Sie 
+                nur mit einer Typbezeichnung.""", chain)
+            metadata_list_sample['ai:type'] = filtered(document_type)
+
+            keywords = get_response(f"""
+                Bitte extrahiere mindestens 10 deutsche Schlagworte aus dem Dokument {file}.
+                Bitte geben Sie nur eine Liste deutscher Schlagworte zurück, die für eine 
+                bibliothekarische Erschließung geeignet sind. Die Schlagworte sollten 
+                möglichst präzise und spezifisch sein. Antworten Sie einfach 
+                durch eine durch Kommas getrennte Liste. Fügen Sie nicht etwas einleitendes 
+                wie `Hier sind 10 deutsche Schlagworte` etc. hinzu. Bitte antworten 
+                Sie auf Deutsch.""", chain)
             metadata_list_sample['ai:keywords'] = filtered(keywords)
 
-            keywords2 = get_response(f"Please use 10 keywords to describe the content of {file}? Just answer by a list separted by commas. Answer in German.", chain)
+            keywords2 = get_response(f"""
+                Generieren Sie mindestens 10 deutsche Schlagworte die den Inhalt des
+                Dokumentes {file} repräsentieren.
+                Bitte geben Sie nur eine Liste deutscher Schlagworte zurück, die für eine 
+                bibliothekarische Erschließung geeignet sind. Die Schlagworte sollten 
+                möglichst präzise und spezifisch sein. Antworten Sie einfach 
+                durch eine durch Kommas getrennte Liste. Fügen Sie nicht etwas 
+                einleitendes wie `Hier  sind 10 deutsche Schlagworte` etc. hinzu. Bitte 
+                antworten Sie auf Deutsch""", chain)
             metadata_list_sample['ai:keywords2'] = filtered(keywords2)
 
-            dewey = get_response(f"Please assign the document {file} according to the dewey decimal classification. Answer with the classification number only. Do not explain that you are not able to find a classification.", chain)
+            dewey = get_response(f"""
+                Bitte ordnen Sie das Dokument {file} entsprechend der 
+                Dewey-Dezimalklassifizierung zu. Antworten Sie nur mit der 
+                Klassifizierungsnummer. Wenn Sie keine eindeutige Zuordnung finden,
+                antworten Sie mit einem leeren String. Erklären Sie nicht, 
+                dass Sie keine Klassifizierung finden können. Bitte antworten Sie auf 
+                Deutsch""", chain)
             metadata_list_sample['ai:dewey'] = filtered(dewey)
 
-            print(filtered(author) + "-" + filtered(dewey))
-            print(filtered(keywords))
-            print(filtered(keywords2))
-            print(filtered(affilation))
+            if result is not None:
+                revised_author = f"{result.Vorname}/{result.Familienname}"
+            else:
+                revised_author = ""
+            print(f"""
+            Author   : {filtered(author)} / {revised_author}
+            Title    : {filtered(title)}
+            Typ      : {filtered(document_type)}
+            Keywords : {filtered(keywords)}
+            Keywords2: {filtered(keywords2)}
+            """)
 
             metadata_list=[]
             metadata_list.append(metadata_list_sample)
