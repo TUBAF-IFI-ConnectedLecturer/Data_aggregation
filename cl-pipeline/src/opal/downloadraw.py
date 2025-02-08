@@ -20,22 +20,31 @@ class CollectOPALOERdocuments(Task):
         self.file_file =  Path(config_global['raw_data_folder']) / stage_param['file_file_name']
         self.repo_file_name =  Path(config_global['raw_data_folder']) / stage_param['repo_file_name']
         self.json_url = stage_param['json_url']
+        self.force_run = stage_param['force_run']
 
+    @loggedExecution
     def execute_task(self):
-        if not self.json_file.exists():
-            logging.info(f"OPAL data set already downloaded.")
+        if self.json_file.exists() and not self.force_run:
+            logging.debug(f"OPAL data set already exists.")
+            return
+
+        if not self.force_run:
+            logging.info(f"OPAL data set is missing.")
+        else:
+            logging.info(f"Forcing download of a new OPAL data set.")
           
-            try:
-                urllib.request.urlretrieve(self.json_url, self.json_file)
-            except Exception as e:
-                logging.error(f"Download failed: {e}")
-                return
+        try:
+            urllib.request.urlretrieve(self.json_url, self.json_file)
+        except Exception as e:
+            logging.error(f"Download failed: {e}")
+            return
         
-        logging.info(f"OPAL data set successfully downloaded.")
+        logging.debug(f"OPAL data set successfully downloaded.")
 
         with open(self.json_file) as f:
             raw_data = json.load(f)
 
+        logging.debug(f"Extract metadata from json data set.")
         df_files = pd.DataFrame(raw_data['files'])
         renaming_dict = {
             'filename': 'opal:filename',
@@ -56,16 +65,20 @@ class CollectOPALOERdocuments(Task):
 
         # Evaluate author names
         logging.getLogger('urllib3').setLevel(logging.CRITICAL)
-        logging.getLogger("urllib3").propagate = False
         logging.getLogger('requests').setLevel(logging.CRITICAL)
+        logging.getLogger('httpcore').setLevel(logging.CRITICAL)
+        logging.getLogger('httpx').setLevel(logging.CRITICAL)
 
+        logging.debug("Running name AI based name checks.")
         nc = NameChecker()
         df_files.loc[:, 'opal:revisedAuthor'] = ""
+        count = 0
         for index, row in tqdm(df_files.iterrows(), total=df_files.shape[0]):
             if row['opal:author'] != "":
                 result = nc.get_validated_name(row['opal:author'])
                 if result is not None:
+                    count = count + 1
                     df_files.at[index, 'opal:revisedAuthor'] = f"{result.Vorname}/{result.Familienname}"
-                    #print(f"{result.Vorname} {result.Familienname}")
 
+        logging.debug(f"{count} names validated.")
         df_files.to_pickle(self.file_file)
