@@ -101,6 +101,8 @@ class TaskWithInputFileMonitor(Task):
     def run(self):
         if self.all_input_files_exist():
             if self.changes_in_input_files() or self.parameters['force_run'] == True:
+                if self.parameters['force_run'] == True:
+                    logging.info(f"Forcing task to run.")
                 logging.info(f"Input files for task have changed. Running task.")
                 self.execute_task()
             else:
