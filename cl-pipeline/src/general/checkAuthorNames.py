@@ -7,7 +7,8 @@ class Name(BaseModel):
     Titel: str | None
 
 black_list = ["Ich kann ", "Name", "name", "Vorname", "vorname", "Prof", "Dr", 
-              "Kein Hinweis", "home", "unknown", "None", "nicht ", "keiner", "kein"]
+              "Kein Hinweis", "home", "unknown", "None", "nicht ", "keiner", "kein"
+              "?", "!", "keine "]
 
 class NameChecker():
     def __init__(self):
