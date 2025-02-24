@@ -34,11 +34,13 @@ def filtered(AI_response):
     # Check for deepseeg tags and remove explanations
     if "<think>" in AI_response:
         AI_response = re.sub(r'<think>.*?</think>', '', AI_response, flags=re.DOTALL)
+    # Remove newlines
+    AI_response = AI_response.replace("\n", "")
     # Check for blacklist words and remove them
     blacklist = ["don't know", "weiß nicht", "weiß es nicht", "Ich kenne ",
                  "Ich sehe kein", "Es gibt kein", "Ich kann ", "Ich sehe",
                  "Entschuldigung", "Leider kann ich", "Keine Antwort",
-                 "Der Autor", "die Frage", "Ich habe keine", "Ich habe ",
+                 "Der Autor", "die Frage", "Ich habe keine", "Ich habe ", "Ich brauche",
                  "Bitte geben", "Das Dokument ", "Es tut mir leid", "Es handelt sich"]
     if any(x in AI_response for x in blacklist):
         return ""
@@ -103,7 +105,6 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
         self.file_types = stage_param['file_types']
         self.processed_data_folder = config_global['processed_data_folder']
         self.chroma_file = Path(config_global['processed_data_folder']) / "chroma_db"
-        self.temp_document_path = Path(config_global['processed_data_folder']) / "documents.pkl"
 
     def execute_task(self):
 
@@ -142,13 +143,16 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
         )
         
         chroma_client = chromadb.PersistentClient(path=str(self.chroma_file))
-        collection = chroma_client.get_or_create_collection(name="oer_connected_lecturer")       
+        collection = chroma_client.get_or_create_collection(
+            name="oer_connected_lecturer"
+        )       
         name_result= collection.get()
         filenames_list = [x["filename"] for x in name_result['metadatas']]
         chunk_counter = Counter(filenames_list)
 
-        llm_deepseek = Ollama(model="deepseek-r1", temperature=0)
-        llm_llama = Ollama(model="llama3.1", temperature=0)
+        #llm_deepseek = Ollama(model="deepseek-r1", temperature=0)
+        #llm_llama = Ollama(model="llama3.1", temperature=0)
+        llm_gemma = Ollama(model="gemma2:27b", temperature=0)
         #llm = Ollama(model="llama3.3:70b-instruct-q2_K", temperature=0)
         #llm = Ollama(model="phi4:14b-q8_0")
 
@@ -177,7 +181,7 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
                                "k": pages})
 
             prompt = PromptTemplate.from_template(template)
-            chain = load_qa_chain(retriever_with_filter, llm_llama, prompt)
+            chain = load_qa_chain(retriever_with_filter, llm_gemma, prompt)
 
             author = get_monitored_response(f"""
                 Wer ist der Autor oder die Autoren der Datei {file}. Vermeide alle zusätzlichen Informationen 
@@ -192,11 +196,23 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
                 df_files.at[index, 'ai:revisedAuthor'] = ""
 
             affilation = get_monitored_response(f"""
-                An welcher Institution (Universität, Hochschule) entstand das Dokument {file}?.
-                Antworte einfach mit dem Namen der Universität und gegebenenfalls des 
-                Fachbereichs oder der Fakultät, getrennt durch Komma. 
-                Beginne nicht mit „Die Universität“. Bitte antworten Sie auf Deutsch.""", chain)
-            metadata_list_sample['ai:affilation'] = filtered(affilation)
+                An welcher Universität oder Hochschule entstand die Datei {file}?.
+                Wenn Du keine Information auf der ersten Seite findest, antworte mit einem leeren Text.
+                Wenn Du einen Namen entdeckt hast antworte nur mit diesem. 
+                Beginne nicht mit „Die Universität“ oder ähnlichem. Bitte antworte auf Deutsch.""", chain)
+
+            filtered_affilation = filtered(affilation)
+            content = ""
+            if filtered_affilation:
+                suchergebnisse = collection.get(
+                    where={"filename": {"$eq": file}},
+                    include=["documents"]
+                )
+                content = "".join(suchergebnisse['documents']).replace("\n", "")
+            if filtered_affilation in content:
+                metadata_list_sample['ai:affilation'] = filtered_affilation
+            else:
+                metadata_list_sample['ai:affilation'] = ""
 
             title = get_monitored_response(f"""
                 Wie lautet die Überschrift oder der Titel des Dokumentes {file}? Antworte
@@ -234,9 +250,9 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
             keywords3 = get_monitored_response(f"""
                 Du bist ein erfahrener Bibliothekar und sollst das Dokument {file}
                 inhaltlich erschließen. Ordne dem Inhalt 10 Schlagworte der Gemeinsame 
-                Normdatei (GND) zu. Nutzen Sie dafür den Bestand der GND und 
-                fügen Sie keine eigenen Schlagworte hinzu. Füge nicht etwas 
-                einleitendes wie `Hier sind 10 Schlagwörter der Gemeinsamen 
+                Normdatei (GND) zu. Nutzen Sie dafür ausschließlich den Bestand der GND und 
+                fügen Sie keine eigenen Schlagworte hinzu. 
+                Füge nicht etwas  einleitendes wie `Hier sind 10 Schlagwörter der Gemeinsamen 
                 Normdatei (GND)` oder `Ich habe die Schlagwörter entnommen und 
                 mit denen der GND abgeglichen.` etc. hinzu. Antworten einfach 
                 durch eine mit Kommas getrennten Liste der Worte. 
@@ -257,12 +273,14 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
             else:
                 revised_author = ""
             print(f"""
-            File     : {(row['pipe:ID'] + "." + row['pipe:file_type'])}
-            Author   : {filtered(author)} / {revised_author}
-            Title    : {filtered(title)}
-            Typ      : {filtered(document_type)}
-            Keywords : {filtered(keywords)}
-            Keywords3: {filtered(keywords3)}
+            File      : {(row['pipe:ID'] + "." + row['pipe:file_type'])}
+            Author    : {filtered(author)} / {revised_author}
+            Affilation: {metadata_list_sample['ai:affilation']}
+            Title     : {filtered(title)}
+            Typ       : {filtered(document_type)}
+            Keywords  : {filtered(keywords)}
+            Keywords3 : {filtered(keywords3)}
+            Dewey     : {filtered(dewey)}
             """)
 
             metadata_list=[]

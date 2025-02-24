@@ -20,6 +20,7 @@ import pickle
 
 from pipeline.taskfactory import TaskWithInputFileMonitor
 
+
 # Define a dictionary to map file extensions to their respective loaders
 loaders = {
     'pdf': PyMuPDFLoader,
@@ -56,6 +57,7 @@ class AIEmbeddingsGeneration(TaskWithInputFileMonitor):
         self.file_file_name_output =  Path(config_global['raw_data_folder']) / stage_param['file_file_name_output']
         self.file_types = stage_param['file_types']
         self.file_folder = Path(config_global['file_folder'])
+        self.content_folder = Path(config_global['content_folder'])
         self.processed_data_folder = config_global['processed_data_folder']
         self.chroma_file = Path(config_global['processed_data_folder']) / "chroma_db"
 
@@ -82,12 +84,6 @@ class AIEmbeddingsGeneration(TaskWithInputFileMonitor):
             model = "jina/jina-embeddings-v2-base-de"
             #show_progress=True
         )
-        
-        # Initialize text splitter
-        # text_splitter = RecursiveCharacterTextSplitter(
-        #     chunk_size=1000,
-        #     chunk_overlap=200
-        # )
 
         # Initialize text splitter
         text_splitter = RecursiveCharacterTextSplitter(
