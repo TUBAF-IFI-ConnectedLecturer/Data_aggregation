@@ -48,7 +48,7 @@ stages:
 
 ## Verabeitungskette und Pipelinestufen
 
-### Schritt 1: Datenidentifikation und -aggregation
+### Schritt 1: OER Material-Aggregation und Vorverarbeitung
 
 ```mermaid
 flowchart TD
@@ -57,41 +57,72 @@ flowchart TD
     classDef yellow fill:#ffd966
     classDef gray fill:#bcbcbc
 
-    subgraph Datenaggregation
-    subgraph OPAL Pipeline  
-    direction TB
-    OPAL[(OPAL)] --> OPAL_QUERY(OPAL Query):::green
-    OPAL_QUERY --> |Ganze  Dateien| OPAL_REPOS[?]
-    OPAL_QUERY --> |Einzelne Dateien| TYPE_FILTER[Extrahiere Dateityp]:::green
-    TYPE_FILTER -->  |.pdf, .pptx, ... | OPAL_DOWNLOAD[Opal Download]:::green
-    TYPE_FILTER -->  |.pdf, .pptx, ... | EXTRACT_OPAL_META[Opal Metadaten]:::green
-    OPAL_DOWNLOAD -->  OPAL_FILES[(OPAL Files<br>office,pdf)]
-    OPAL_DOWNLOAD -.->  OPAL_METADATA_FILES[(OPAL Meta<br>office,pdf)]
-    EXTRACT_OPAL_META -. opal: .->  OPAL_METADATA_FILES[(OPAL Meta<br>office,pdf)]
-    end    
+    
+    subgraph BASIC[OPAL Datenaggregation]
 
-    subgraph LiaScript Pipeline
-    direction TB
-    LIA_IDENT(Liascript Suche)
-    GITHUB[(Github)] --> |Github API| LIA_IDENT:::green
-    LIA_REPOS --> |Dateisuche| LIA_FILES
-    LIA_IDENT --> |Dateisuche| LIA_FILES[(LiaScript<br>Datei Liste)]
-    LIA_IDENT --> |Reposuche| LIA_REPOS[(LiaScript<br>Repo Liste)]
+    OPAL[(OPAL <br> Materialien <br> & Kurse)] 
 
-    LIA_FILES -->  GITHUB_DOWNLOAD(Github Download):::green
-    GITHUB_DOWNLOAD -->  LIA_FILES_[(LiaScript<br>Files)]
-    LIA_REPOS -.-> FEATURE_EXTRACTION_LIA(Github Metadaten Query)
-    FEATURE_EXTRACTION_LIA  -. github: .->  LIA_METADATA_FILES[(LiaScript<br>Metadata)]
-    LIA_FILES -.-> FEATURE_EXTRACTION_LIA
-    FEATURE_EXTRACTION_LIA:::green
-    end  
+    subgraph A. OPAL API
+    direction LR
+    OPAL_QUERY(Abfrage <br>OER Inhalte):::green
+    OPAL_QUERY --> |Ganze  Kurse| OPAL_REPOS[ignore]
+    OPAL_QUERY --> |Einzelne Dateien| TYPE_FILTER[Extrahiere <br>OPAL Metadaten]:::green
+    
+    end
+    OPAL<--> OPAL_QUERY
+
+    subgraph FILE_AGG["B. "Dateierfassung]
+    direction LR
+    FILE_DOWNLOAD[Datei<br>Download]:::green --> TEXT_EXTRAKTION[Text-<br>extraktion]:::green --> TEXT_ANALYSIS[Textbasis-<br>analyse]:::green
+    FILE_DOWNLOAD --> FILE_METADATA_EXTRACTION[Metadaten<br>extraktion]:::green
     end
 
-    class Datenaggregation, gray
+    TYPE_FILTER -->  |.pdf, .pptx, ... | FILE_DOWNLOAD
+
+    OPAL_FILES[(Material-<br>dateien)]
+    FILE_DOWNLOAD --> OPAL_FILES
+
+    FILE_METADATA[(Datei<br>Metadaten)]
+    FILE_METADATA_EXTRACTION --> FILE_METADATA
+
+    OPAL_METADATA[(OPAL<br>Metadaten)]
+    TYPE_FILTER --> |.pdf, .pptx, ... | OPAL_METADATA
+
+    OPAL_CONTENT[(Datei<br>Textinhalt)]
+    TEXT_EXTRAKTION --> OPAL_CONTENT
+
+    CONTENT_METADATA[(Inhalt<br> Metadaten)]
+    TEXT_ANALYSIS --> CONTENT_METADATA
+
+    subgraph FUSION["C. "Fusion & Validierung]
+    direction TB
+    ABC[Autoren-<br>name]:::yellow
+    CDE[Sprache<br>.]:::yellow
+    EFG[Erstellungs-<br>datum]:::yellow
+
+    end
+
+    subgraph FILTER["D. Filterung <a href='http://google.com'>[Link]</a>"]
+    direction TB
+    Sprache:::green
+    Textlängen:::green
+    Dublikate:::green
+    end
+
+    CONTENT_METADATA --> FILTER
+    FILE_METADATA --> FUSION
+    OPAL_METADATA --> FUSION
+    OPAL_CONTENT --> FILTER
+
+    FUSION --> FILTER
+
+    end
+
+    class BASIC, gray
 ```
 
 
-## Schritt 2: Metadatenextraktion und Evaluation
+## Schritt 2: Metadatenextraktion und -generierung
 
 ```mermaid
 flowchart TD
