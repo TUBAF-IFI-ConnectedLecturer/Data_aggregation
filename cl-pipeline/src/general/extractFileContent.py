@@ -5,6 +5,7 @@ import urllib.request
 import urllib.error
 import os
 import hashlib
+import warnings
 
 from langchain.schema import Document
 import json
@@ -19,6 +20,7 @@ from langchain_community.document_loaders import (UnstructuredPowerPointLoader,
                                                   UnstructuredWordDocumentLoader,
                                                   PyMuPDFLoader)
 
+from langdetect import detect_langs
 from pipeline.taskfactory import TaskWithInputFileMonitor
 
 # Define a dictionary to map file extensions to their respective loaders
@@ -69,7 +71,8 @@ class ExtractFileContent(TaskWithInputFileMonitor):
             if file_type not in loaders:
                 raise ValueError(f"Loader for file type '{file_type}' not found.")
 
-        
+        warnings.filterwarnings("ignore", category=UserWarning, module="langchain")
+
         for index, row in tqdm(df_files.iterrows(), total=df_files.shape[0]):
             # Check if the ai metadata already exists for the file 
             if df_content.shape[0] > 0:
@@ -104,7 +107,23 @@ class ExtractFileContent(TaskWithInputFileMonitor):
                 content_list_sample['pipe:content_pages'] = len(docs)
                 content_list_sample['pipe:content_words'] = len(content.split())
                 
+                try:
+                    languages = detect_langs(content)
+                except:
+                    languages = []
+                if languages:
+                    most_probable = max(languages, key=lambda lang: lang.prob)
+                    language, probability = most_probable.lang, most_probable.prob
+                else:
+                    language, probability = None, None
+                content_list_sample['pipe:most_prob_language'] = language
+                content_list_sample['pipe:language_probability'] = probability 
+
                 df_aux = pd.DataFrame([content_list_sample])
+                if df_aux.isna().all().all():
+                    print(df_aux)
+                    raise ValueError("Empty dataframe")
+
                 df_content = pd.concat([ df_content, df_aux])
                 df_content.to_pickle(self.file_file_name_output)
                 # just for testing

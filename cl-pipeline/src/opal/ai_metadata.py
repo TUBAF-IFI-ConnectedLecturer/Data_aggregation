@@ -3,22 +3,18 @@
 
 import pandas as pd
 from pathlib import Path
-
 import numpy as np
-import faiss
 from typing import List, Dict, Any, Optional
 from langchain import PromptTemplate
 from langchain_core.documents import Document
-from langchain_community.embeddings import OllamaEmbeddings
-from langchain_community.llms import Ollama
+#from langchain_community.llms import Ollama
+from langchain_ollama import OllamaLLM
 from langchain_core.vectorstores import VectorStore
 from langchain.chains import RetrievalQA
 from tqdm import tqdm
 import logging
-from langchain.embeddings.base import Embeddings
-from wrapt_timeout_decorator import *
-from pathlib import Path
-from langchain.vectorstores import Chroma
+from langchain_ollama import OllamaEmbeddings
+from langchain_chroma import Chroma
 import chromadb
 import re
 from collections import Counter
@@ -38,8 +34,8 @@ def filtered(AI_response):
     AI_response = AI_response.replace("\n", "")
     # Check for blacklist words and remove them
     blacklist = ["don't know", "weiß nicht", "weiß es nicht", "Ich kenne ",
-                 "Ich sehe kein", "Es gibt kein", "Ich kann ", "Ich sehe",
-                 "Entschuldigung", "Leider kann ich", "Keine Antwort",
+                 "Ich sehe kein", "Es gibt kein", "Ich kann ", "Ich sehe", "Es wird keine ",
+                 "Entschuldigung", "Leider kann ich", "Keine Antwort", "Die Antwort kann ich",
                  "Der Autor", "die Frage", "Ich habe keine", "Ich habe ", "Ich brauche",
                  "Bitte geben", "Das Dokument ", "Es tut mir leid", "Es handelt sich"]
     if any(x in AI_response for x in blacklist):
@@ -150,11 +146,11 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
         filenames_list = [x["filename"] for x in name_result['metadatas']]
         chunk_counter = Counter(filenames_list)
 
-        #llm_deepseek = Ollama(model="deepseek-r1", temperature=0)
-        #llm_llama = Ollama(model="llama3.1", temperature=0)
-        llm_gemma = Ollama(model="gemma2:27b", temperature=0)
-        #llm = Ollama(model="llama3.3:70b-instruct-q2_K", temperature=0)
-        #llm = Ollama(model="phi4:14b-q8_0")
+        #llm_deepseek = OllamaLLM(model="deepseek-r1", temperature=0)
+        #llm_llama = OllamaLLM(model="llama3.1", temperature=0)
+        llm_gemma = OllamaLLM(model="gemma2:27b", temperature=0)
+        #llm = OllamaLLM(model="llama3.3:70b-instruct-q2_K", temperature=0)
+        #llm = OllamaLLM(model="phi4:14b-q8_0")
 
         metadata_list = []
         for index, row in tqdm(df_files.iterrows(), total=df_files.shape[0]):
@@ -190,10 +186,9 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
             metadata_list_sample['ai:author'] = filtered(author)
 
             name_result = nc.get_validated_name(filtered(author))
+            metadata_list_sample['ai:revisedAuthor'] = ""
             if name_result is not None:
-                df_files.at[index, 'ai:revisedAuthor'] = f"{name_result.Vorname}/{name_result.Familienname}"
-            else:
-                df_files.at[index, 'ai:revisedAuthor'] = ""
+                metadata_list_sample['ai:revisedAuthor'] = f"{name_result.Vorname}/{name_result.Familienname}"
 
             affilation = get_monitored_response(f"""
                 An welcher Universität oder Hochschule entstand die Datei {file}?.
@@ -261,31 +256,38 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
 
             dewey = get_monitored_response(f"""
                 Bitte ordne das Dokument {file} entsprechend der 
-                Dewey-Dezimalklassifizierung zu. Antworten Sie nur mit der 
-                Klassifizierungsnummer. Wenn Du keine eindeutige Zuordnung findest,
+                Dewey-Dezimalklassifizierung zu. Antworte zuerste mit der 
+                Klassifizierungsnummer und dann nach einem Komma mit der Bezeichnung der Klasse. 
+                Wenn Du keine eindeutige Zuordnung findest,
                 antworten mit einem leeren String. Erkläre nicht, 
                 dass Du keine Klassifizierung finden kannst. Bitte antworte auf 
                 Deutsch.""", chain)
-            metadata_list_sample['ai:dewey'] = filtered(dewey)
+            dewey_answer = filtered(dewey)
+            metadata_list_sample['ai:dewey'] = ""
+            metadata_list_sample['ai:dewey_name'] = ""
+            if dewey_answer:
+                dewey = dewey_answer.split(",")
+                if len(dewey) == 2:
+                    metadata_list_sample['ai:dewey'] = dewey[0].strip()
+                    metadata_list_sample['ai:dewey_name'] = dewey[1].strip()
 
-            if name_result is not None:
-                revised_author = f"{name_result.Vorname}/{name_result.Familienname}"
-            else:
-                revised_author = ""
             print(f"""
             File      : {(row['pipe:ID'] + "." + row['pipe:file_type'])}
-            Author    : {filtered(author)} / {revised_author}
+            Author    : {filtered(author)} / {metadata_list_sample['ai:revisedAuthor']}
             Affilation: {metadata_list_sample['ai:affilation']}
             Title     : {filtered(title)}
             Typ       : {filtered(document_type)}
             Keywords  : {filtered(keywords)}
             Keywords3 : {filtered(keywords3)}
-            Dewey     : {filtered(dewey)}
+            Dewey     : {metadata_list_sample['ai:dewey']} ({metadata_list_sample['ai:dewey_name']})
             """)
 
-            metadata_list=[]
-            metadata_list.append(metadata_list_sample)
-            df_aux = pd.DataFrame(metadata_list)        
+            # Teste ob alle dict einträge deren Keys in check_keys genannt sind leer sind
+            check_keys = ["ai:keywords_gen", "ai:keywords_ext", "ai:keywords_dnb", "ai:affilation", "ai:author", "ai:title", "ai:type"]
+            if all(metadata_list_sample[key] == "" for key in check_keys):
+                continue
+
+            df_aux = pd.DataFrame([metadata_list_sample])        
 
             df_metadata = pd.concat([ df_metadata, df_aux])
             df_metadata.to_pickle(self.file_file_name_output)
