@@ -52,17 +52,18 @@ stages:
 
 ```mermaid
 flowchart TD
+%%{init:{'flowchart':{'nodeSpacing': 10, 'rankSpacing': 25}}}%%
 
     classDef green fill:#5bd21c
     classDef yellow fill:#ffd966
     classDef gray fill:#bcbcbc
 
     
-    subgraph BASIC[OPAL Datenaggregation]
+    subgraph BASIC[A.&nbsp;Material‑Identfikation&nbsp;und&nbsp;Aggregations‑Phase]
 
     OPAL[(OPAL <br> Materialien <br> & Kurse)] 
 
-    subgraph A. OPAL API
+    subgraph A. Materialidentifikation
     direction LR
     OPAL_QUERY(Abfrage <br>OER Inhalte):::green
     OPAL_QUERY --> |Ganze  Kurse| OPAL_REPOS[ignore]
@@ -71,7 +72,7 @@ flowchart TD
     end
     OPAL<--> OPAL_QUERY
 
-    subgraph FILE_AGG["B. "Dateierfassung]
+    subgraph FILE_AGG["B. "Datenerfassung]
     direction LR
     FILE_DOWNLOAD[Datei<br>Download]:::green --> TEXT_EXTRAKTION[Text-<br>extraktion]:::green --> TEXT_ANALYSIS[Textbasis-<br>analyse]:::green
     FILE_DOWNLOAD --> FILE_METADATA_EXTRACTION[Metadaten<br>extraktion]:::green
@@ -125,61 +126,52 @@ flowchart TD
 ## Schritt 2: Metadatenextraktion und -generierung
 
 ```mermaid
-flowchart TD
+flowchart 
+%%{init:{'flowchart':{'nodeSpacing': 25, 'rankSpacing': 15}}}%%
 
     classDef green fill:#5bd21c
     classDef yellow fill:#ffd966
     classDef gray fill:#bcbcbc
     classDef white fill:#ffffff,stroke:#ffffff
+    
+    subgraph BASIC[KI&nbsp;basierte&nbsp;Extraktion&nbsp;der&nbsp;Metadaten]
+    OPAL_CONTENT[(Opal<br>Text Inhalte)]
+    OPAL_EMBEDDINGS(Embeddings Generation):::green
+    OPAL_CONTENT --> OPAL_EMBEDDINGS
 
-    subgraph Datenaggregation
-    OPAL_FILES[(OPAL Files<br>office,pdf)]
-    OPAL_METADATA_FILES[(OPAL Meta<br>office,pdf)]
-    LIA_FILES_[(LiaScript<br>Files)]
-    LIA_METADATA_FILES[(LiaScript<br>Metadata)]
+    subgraph RAG ["A.&nbsp;Retrieval‑Augmented&nbsp;Generation"]
+    VECTOR_DB[(Vektor<br> Datenbank)]
+    OPAL_EMBEDDINGS --> VECTOR_DB
+    PROMPTS@{ shape: doc, label: "Prompts für <br> Titel<br> Keywords <br> ..." }
+    LLM(Lokales LLM):::green
+    VECTOR_DB --> LLM
+    PROMPTS --> LLM
     end
 
-    class Materialidentifikation, gray
-
-    subgraph Metadatenaggregation
-    subgraph OPAL Pipeline
-    OPAL_EXTRACTION_TYP_MD(Extraktion Datei-<br> typspezifischer Metadaten):::green
-    OPAL_EXTRACTION_LLM_MD(LLM basierte<br>Extraktion Metadaten):::green
-    OPAL_EXTRACTION_TYP_MD--> |file:|OPALFILES[(Metadaten<br>Sammlung<br> OPAL)]
-    OPAL_EXTRACTION_LLM_MD --> |ai:|OPALFILES
-    OPAL_METADATA_FILES --> |opal:|OPALFILES
-    end
-    subgraph LiaScript Pipeline
-    LIA_EXTRACTION_TYP_MD(Extraktion markdown-<br>spezifischer Metadaten):::yellow
-    LIA_EXTRACTION_LLM_MD(LLM basierte<br>Extraktion Metadaten):::yellow
-    LIA_EXTRACTION_TYP_MD--> |md:|LIAFILES[(Metadaten <br>Sammlung<br>LiaScript)]
-    LIA_EXTRACTION_LLM_MD --> |ai:|LIAFILES
-    LIA_METADATA_FILES --> |github:|LIAFILES
+    subgraph GND ["B. "GND Check]
+    AI_METADATA[(AI generierte<br>Metadata)]
+    LLM --> AI_METADATA
+    GND_CHECK(GND Keyword Check):::green
     end
 
-    subgraph Evaluation
-    KREUZVERGLEICH(Kreuzvergleich Autoren):::green 
-    KLASSIFIKATION(Normierung der Keywords):::yellow
-    PLAUSIBILISIERUNG(Externer Check Autoren)
-    BIB_KLASSIFIKATION(Bibliografische Einordung)
+    subgraph SIMILARITY ["C. "Ähnlichkeitsanalyse]
+    KEYWORD_SIM(Keyword basiert):::green
+    EMBEDDING_SIM(Embedding basiert):::green
+    MINHASH_SIM(MinHash basiert):::green
+    RESULT@{ shape: documents, label: "Ähnlichkeitsmatrizen" }
+    MINHASH_SIM --> RESULT
+    EMBEDDING_SIM--> RESULT
+    KEYWORD_SIM--> RESULT
     end
-
-    OPALFILES --> Evaluation
-    LIAFILES --> Evaluation
-
+    AI_METADATA <--> GND_CHECK
+    OPAL_CONTENT --> MINHASH_SIM
+    VECTOR_DB --> EMBEDDING_SIM
+    AI_METADATA -->KEYWORD_SIM
     end
+    class BASIC, gray
 
-    OPAL_FILES --> OPAL_EXTRACTION_TYP_MD
-    OPAL_FILES --> OPAL_EXTRACTION_LLM_MD
-    LIA_FILES_ --> LIA_EXTRACTION_TYP_MD
-    LIA_FILES_ --> LIA_EXTRACTION_LLM_MD
 
-    Evaluation --> METADATA_Analysis(Analyse der Datensätze)
-    Evaluation --> METADATA_PROPOSALS(Metadatenvorschläge<br>für Autoren)
-    Evaluation --> METADATA_CLASSIFICATION(Materialklassifikation<br>für Autoren)
-
-    class Datenaggregation white
-    class Datenaggregation,Metadatenaggregation,Evaluation gray
+    class Metadatenaggregation,Evaluation gray
 ```
 
 ## Generelle Installation 
