@@ -73,14 +73,12 @@ def get_monitored_response(query, chain):
 
 template = """
 ### System:
-Du bist ein freundlicher KI-Agent, der darauf trainiert ist, Fragen
-zu beantworten, die auf den Inhalten von individuellen 
-Dokumenten basieren. Die Fragen des Benutzers dürfen 
-nur mithilfe dieser Dokumente beantwortet werden. 
-Wenn Du die Antwort nicht kennst, antworte mit einem 
-leeren Text. Versuche nicht, eine 
-Antwort zu erfinden. Sage niemals Danke, dass Du 
-gern hilfst, dass du ein KI-Agent sind usw. 
+You are an AI agent trained to answer questions based solely on the content of the document.
+Please only answer using information found within the document.
+If the answer cannot be found in the document, return an empty text.
+Do not invent answers or provide any additional information.
+Avoid any introductions or explanations such as "I am an AI agent" or "Thank you for asking."
+Only answer based on the content of the document.
 
 ### Context:
 {context}
@@ -152,8 +150,7 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
         #llm = OllamaLLM(model="llama3.3:70b-instruct-q2_K", temperature=0)
         #llm = OllamaLLM(model="phi4:14b-q8_0")
 
-        metadata_list = []
-        for index, row in tqdm(df_files.iterrows(), total=df_files.shape[0]):
+        for _, row in tqdm(df_files.iterrows(), total=df_files.shape[0]):
 
             #Check if the ai metadata already exists for the file 
             if df_metadata.shape[0] > 0:
@@ -180,9 +177,10 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
             chain = load_qa_chain(retriever_with_filter, llm_gemma, prompt)
 
             author = get_monitored_response(f"""
-                Wer ist der Autor oder die Autoren der Datei {file}. Vermeide alle zusätzlichen Informationen 
-                und antworte  einfach mit dem Namen des Autors. Füge  nicht etwas wie `Der 
-                Autor des Dokuments ist` hinzu. Bitte antworte  auf Deutsch.""", chain)
+                Who is the author (or authors) of the document {file}?
+                Do not include any additional information. Just reply with the name(s) only — no 
+                explanations, no phrases like "The author is".
+                Your answer should be in German.""", chain)
             metadata_list_sample['ai:author'] = filtered(author)
 
             name_result = nc.get_validated_name(filtered(author))
@@ -191,11 +189,13 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
                 metadata_list_sample['ai:revisedAuthor'] = f"{name_result.Vorname}/{name_result.Familienname}"
 
             affilation = get_monitored_response(f"""
-                An welcher Universität oder Hochschule entstand die Datei {file}?.
-                Wenn Du keine Information auf der ersten Seite findest, antworte mit einem leeren Text.
-                Wenn Du einen Namen entdeckt hast antworte nur mit diesem. 
-                Beginne nicht mit „Die Universität“ oder ähnlichem. Bitte antworte auf Deutsch.""", chain)
+                On which university or university of applied sciences was the document {file} written?
+                Only look at the first page. If you cannot find any university name, return an 
+                empty string — no explanation.
+                If you do find one, return only the name, in German — no extra words like 
+                “The university is” or “This was written at ...""", chain)
 
+            # Prüfe, ob die Affiliation im Text des Dokuments vorkommt.
             filtered_affilation = filtered(affilation)
             content = ""
             if filtered_affilation:
@@ -210,58 +210,67 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
                 metadata_list_sample['ai:affilation'] = ""
 
             title = get_monitored_response(f"""
-                Wie lautet die Überschrift oder der Titel des Dokumentes {file}? Antworte
-                einfach mit dem Titel und nicht in einem Satz. Bitte antworte auf Deutsch.""", chain)
+                What is the title or main heading of the document {file}?
+                Look at the first page only.
+                If no title is found, return an empty string — do not write "unknown" or anything else.
+                If a title is found, return only the title — no introductory phrases or explanations.
+                Your answer should be in German.""", chain)
             metadata_list_sample['ai:title'] = filtered(title)
 
             document_type = get_monitored_response(f"""
-                Welcher Typ von Material liegt bei Dokument {file} vor? Unterscheide zwischen 
-                Aufgabenblatt, Vorlesungsfolien, wissenschaftliches Paper, Buch, Buchauszug, 
-                Seminararbeit, Doktorarbeit, Dokumentation, Tutorial usw. Antworte 
-                nur mit einer Typbezeichnung.""", chain)
+                You are given a document {file}. Determine what type of material it is.
+                Choose exactly one of the following categories (German label), based on the English description:
+                + "Aufgabenblatt" = Exercise sheet: a list of tasks or problems, typically used in class or for homework.
+                + "Vorlesungsfolien" = Lecture slides: visual slides used in lectures or presentations.
+                + "Skript" = Lecture script: structured written notes for a lecture, often textbook-like.
+                + "Paper" = Scientific paper: academic or peer-reviewed research article.
+                + "Buch" = Book: a full-length published book.
+                + "Buchauszug" = Book excerpt: a section or chapter taken from a book.
+                + "Seminararbeit" = Seminar paper: a short academic paper submitted for a seminar (e.g., 5–15 pages).
+                + "Bachelorarbeit" = Bachelor's thesis: final thesis for a bachelor's degree.
+                + "Masterarbeit" = Master's thesis: final thesis for a master's degree.
+                + "Doktorarbeit" = Doctoral dissertation: dissertation written to obtain a doctoral degree.
+                + "Dokumentation" = Documentation: user, technical, or project documentation.
+                + "Tutorial" = Tutorial: instructional guide or how-to with practical steps.
+                + "Präsentation" = Presentation: general presentation document, not necessarily lecture-related.
+                + "Poster" = Poster: academic or scientific poster used at a conference.
+                + "Protokoll" = Protocol / Report: a record of an experiment, meeting, or session.
+                + "Sonstiges" = Other: if no category fits clearly.
+                If you are not sure or cannot determine the type confidently, return an empty string.
+                Otherwise, return only the German category name listed above — no explanation or additional text.
+                The output must be in German.""", chain)
             metadata_list_sample['ai:type'] = filtered(document_type)
 
             keywords = get_monitored_response(f"""
-                Bitte extrahiere mindestens 10 deutsche Schlagworte aus dem Dokument {file}.
-                Bitte gib nur eine Liste deutscher Schlagworte zurück, die für eine 
-                bibliothekarische Erschließung geeignet sind. Die Schlagworte sollten 
-                präzise und spezifisch sein. Antworte einfach 
-                durch eine durch Kommas getrennte Liste. Fügen nicht etwas einleitendes 
-                wie `Hier sind 10 deutsche Schlagworte` etc. hinzu. Bitte antworte 
-                auf Deutsch.""", chain)
+                Extract at least 10 precise German keywords from the document {file}.
+                The keywords should be suitable for library cataloging (bibliothekarische Erschließung).
+                Focus on specific and content-relevant terms — avoid generic words or phrases.
+                Return a comma-separated list of keywords in German, with no introduction or explanation.
+                Output only the list, in German.""", chain)
             metadata_list_sample['ai:keywords_ext'] = filtered(keywords)
 
             keywords2 = get_monitored_response(f"""
-                Generiere mindestens 10 deutsche Schlagworte, die den Inhalt des
-                Dokumentes {file} repräsentieren.
-                Bitte gib nur eine Liste deutscher Schlagworte zurück, die für eine 
-                bibliothekarische Erschließung geeignet sind. Die Schlagworte sollten 
-                möglichst präzise und spezifisch sein. Antworte einfach 
-                durch eine durch Kommas getrennte Liste. Füge nicht etwas 
-                einleitendes wie `Hier  sind 10 deutsche Schlagworte` etc. hinzu. Bitte 
-                antworte auf Deutsch.""", chain)
+                Generate at least 10 precise German keywords describing the content of the document {file}.
+                The keywords should be suitable for library cataloging (bibliothekarische Erschließung).
+                Focus on specific and content-relevant terms — avoid generic words or phrases.
+                Return a comma-separated list of keywords in German, with no introduction or explanation.
+                Output only the list, in German.""", chain)
             metadata_list_sample['ai:keywords_gen'] = filtered(keywords2)
 
             keywords3 = get_monitored_response(f"""
-                Du bist ein erfahrener Bibliothekar und sollst das Dokument {file}
-                inhaltlich erschließen. Ordne dem Inhalt 10 Schlagworte der Gemeinsame 
-                Normdatei (GND) zu. Nutzen Sie dafür ausschließlich den Bestand der GND und 
-                fügen Sie keine eigenen Schlagworte hinzu. 
-                Füge nicht etwas  einleitendes wie `Hier sind 10 Schlagwörter der Gemeinsamen 
-                Normdatei (GND)` oder `Ich habe die Schlagwörter entnommen und 
-                mit denen der GND abgeglichen.` etc. hinzu. Antworten einfach 
-                durch eine mit Kommas getrennten Liste der Worte. 
-                Bitte antworte auf Deutsch.""", chain)
+                Assign 10 keywords from the Gemeinsame Normdatei (GND) to the document {file}.
+                If no specific GND keywords are available for certain concepts, use broader terms where possible, even if they are more general.
+                Combine keywords into chains to specify specialized concepts more accurately, especially when only general terms are available.
+                Return only a comma-separated list of the GND keywords — no introduction or explanation.
+                The answer must be in German.""", chain)
             metadata_list_sample['ai:keywords_dnb'] = filtered(keywords3)
 
             dewey = get_monitored_response(f"""
-                Bitte ordne das Dokument {file} einer  
-                Dewey-Dezimalklassifizierung zu. Antworte zuerste mit der 
-                Klassifizierungsnummer und dann nach einem Komma mit der Bezeichnung der Klasse. 
-                Wenn Du keine eindeutige Zuordnung findest,
-                antworten mit einem leeren String. Erkläre nicht, 
-                dass Du keine Klassifizierung finden kannst. Bitte antworte auf 
-                Deutsch.""", chain)
+                Assign the document {file} to the corresponding Dewey Decimal Classification.
+                Respond first with the classification number, followed by a comma and the class name.
+                If no clear classification can be found, return an empty string.
+                Do not explain why no classification is found.
+                The answer must be in German.""", chain)
             dewey_answer = filtered(dewey)
             metadata_list_sample['ai:dewey'] = ""
             metadata_list_sample['ai:dewey_name'] = ""
