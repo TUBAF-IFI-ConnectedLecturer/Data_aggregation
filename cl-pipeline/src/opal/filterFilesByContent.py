@@ -1,26 +1,11 @@
 import pandas as pd
 from pathlib import Path
 from tqdm import tqdm
-import urllib.request
-import urllib.error
-import os
-import hashlib
-import warnings
 
-from langchain.schema import Document
-import json
-from typing import Iterable
 import logging
 from tqdm import tqdm
 from wrapt_timeout_decorator import *
 
-from langchain_community.document_loaders import (UnstructuredPowerPointLoader, 
-                                                  UnstructuredExcelLoader,
-                                                  UnstructuredMarkdownLoader,
-                                                  UnstructuredWordDocumentLoader,
-                                                  PyMuPDFLoader)
-
-from langdetect import detect_langs
 from pipeline.taskfactory import TaskWithInputFileMonitor
 
 class FilterFilesByContent(TaskWithInputFileMonitor):
@@ -37,11 +22,14 @@ class FilterFilesByContent(TaskWithInputFileMonitor):
         df_files = pd.read_pickle(self.file_file_name_inputs)
         df_content = pd.read_pickle(self.file_file_content)
 
+        logging.info(f"Starting with {df_content.shape[0]} relevant files by content.")
         # eliminate duplicates
-        df_content = df_content.drop_duplicates(subset=["pipe:content_hash"])
+        df_content.drop_duplicates(subset=["pipe:content_hash"], inplace=True)
 
         # eliminate files with less than 90 words
-        df_content = df_content[df_content["pipe:content_words"]>90]
+        max_words = 100000
+        min_words = 90
+        df_content = df_content[(df_content["pipe:content_words"]>min_words) & (df_content["pipe:content_words"]<max_words)]
 
         # elinimate files with less than 90% language probability and not german
         df_content = df_content[(df_content["pipe:language_probability"] > 0.9) & (df_content["pipe:most_prob_language"] == "de")]

@@ -7,6 +7,9 @@ from tqdm import tqdm
 import logging
 from typing import List, Tuple
 import numpy as np
+import chromadb
+from collections import Counter
+from sklearn.metrics.pairwise import cosine_similarity
 
 #from langchain_ollama import OllamaEmbeddings
 from langchain_community.embeddings import OllamaEmbeddings
@@ -20,109 +23,47 @@ class DocumentSimilarity(TaskWithInputFileMonitor):
         super().__init__(config_stage, config_global)
         stage_param = config_stage['parameters']
         self.file_file_name_inputs =  Path(config_global['raw_data_folder']) / stage_param['file_file_name_input']
-        self.file_file_name_output =  Path(config_global['raw_data_folder']) / stage_param['file_file_name_output']
-        self.content_folder = Path(config_global['content_folder'])
+        self.file_file_name_output =  Path(config_global['processed_data_folder']) / stage_param['file_file_name_output']
         self.file_folder = Path(config_global['file_folder'])
-
-    def get_embedding_model(self, model_name: str = "nomic-embed-text"):
-        embeddings = OllamaEmbeddings(
-            model=model_name,
-            model_kwargs={
-               "device": "gpu",
-            }
-        )
-        return embeddings
-
-    def get_embeddings_batch(self, embeddings_model, texts: List[str]) -> np.ndarray:
-        """
-        Generiert Embeddings für eine Liste von Texten
-        """
-        embeddings = embeddings_model.embed_documents(texts)
-        return np.array(embeddings)
-
-    def calculate_similarity(self, embedding1: np.ndarray, embedding2: np.ndarray) -> float:
-        """
-        Berechnet die Kosinus-Ähnlichkeit zwischen zwei Embeddings
-        """
-        return np.dot(embedding1, embedding2) / (np.linalg.norm(embedding1) * np.linalg.norm(embedding2))
-
-    def calculate_similarity_matrix(self, embeddings: np.ndarray) -> np.ndarray:
-        """
-        Berechnet die Ähnlichkeitsmatrix für alle Embedding-Paare
-        """
-        normalized = embeddings / np.linalg.norm(embeddings, axis=1)[:, np.newaxis]
-        return np.dot(normalized, normalized.T)
-
-    def get_most_similar_files(self, correlation_matrix, file_names, n_similar=3):
-            
-        # Erstelle leere Listen für die Ergebnisse
-        base_files = []
-        similar_files = []
-        similarity_scores = []
-
-        # Iteriere über alle Dateien
-        for i, file in enumerate(file_names):
-            # Hole die Ähnlichkeitswerte für die aktuelle Datei
-            similarities = correlation_matrix[i, :]
-            
-            # Setze den Ähnlichkeitswert mit sich selbst auf -1 um ihn auszuschließen
-            similarities_without_self = similarities.copy()
-            similarities_without_self[i] = -1
-            
-            # Finde die Indizes der n ähnlichsten Dateien
-            most_similar_indices = np.argsort(similarities_without_self)[-n_similar:][::-1]
-            
-            # Füge die Ergebnisse den Listen hinzu
-            for similar_idx in most_similar_indices:
-                base_files.append(file)
-                similar_files.append(file_names[similar_idx])
-                similarity_scores.append(similarities[similar_idx])
-        
-        # Erstelle das Ergebnis-DataFrame
-        results_df = pd.DataFrame({
-            'ai:filename': base_files,
-            'ai:filename_similar': similar_files,
-            'ai:similarity': similarity_scores
-        })
-        
-        return results_df
+        self.processed_data_folder = config_global['processed_data_folder']
+        self.chroma_file = Path(config_global['processed_data_folder']) / "chroma_db"
 
     def execute_task(self):
         logging.getLogger("urllib3").propagate = False
 
-        embeddings_model = self.get_embedding_model()
+        df_files = pd.read_pickle(self.file_file_name_inputs)
 
-        df_content = pd.read_pickle(self.file_file_name_inputs)
+        logging.info("Reading db files")
+        chroma_client = chromadb.PersistentClient(path=str(self.chroma_file))
+        collection = chroma_client.get_collection(
+            name="oer_connected_lecturer"
+        )       
+        results = collection.get(include=["embeddings", "metadatas", "documents"])
+        logging.info("Starting similarity analysis")
+        aggregated_embeddings = []
+        filenames = []
+        for index, row in tqdm(df_files.iterrows(), total=df_files.shape[0]):
 
-        if Path(self.file_file_name_output).exists():
-            df_similarity = pd.read_pickle(self.file_file_name_output)
-        else:
-            df_similarity = pd.DataFrame()
+            file = (row['pipe:ID'] + "." + row['pipe:file_type'])
 
-        content=[]
-        file_names = []
-        logging.info("Reading content files")
-        for _, row in tqdm(df_content.iterrows(), total=df_content.shape[0]):
-            file_path = self.content_folder / (row['pipe:ID'] + ".txt")
-            with open(file_path, 'r', encoding='utf-8') as file:
-                raw_text = file.read()
-                processed_text = raw_text.replace('\n', ' ').strip()
-            content.append(processed_text)
-            file_names.append(row['pipe:ID'])
+            # 1. Hole alle Chunks, deren Metadatum `filename` entspricht
+            results = collection.get(
+                where={"filename": file},
+                include=["embeddings"]
+            )
+            
+            if len(results["embeddings"]) == 0:
+                continue  # überspringe leere Dokumente
 
-        limit = len(content)   # Added for testing purposes to limit the number of files
-        content = content[:limit]
-        file_names = file_names[:limit]
+            # 2. Aggregiere die Embeddings (z. B. Mittelwert)
+            emb = np.mean(np.vstack(results["embeddings"]), axis=0)
 
-        logging.info("Generating embeddings")
-        embeddings = self.get_embeddings_batch(embeddings_model, content)
-        logging.info("Calculating similarity matrix")
-        similarity_matrix = self.calculate_similarity_matrix(embeddings)
-        correlation_matrix = similarity_matrix.astype(np.float32)
-        logging.info("Determining most similar files")
-        df_similarity = self.get_most_similar_files(similarity_matrix, file_names)
+            # 3. Speichern
+            aggregated_embeddings.append(emb)
+            filenames.append(row['pipe:ID'])
 
-        df_similarity.reset_index(drop=True, inplace=True)
+        emb_matrix = np.vstack(aggregated_embeddings)
+        similarity_matrix = cosine_similarity(emb_matrix)
+        df_similarity = pd.DataFrame(similarity_matrix, index=filenames, columns=filenames)
+
         df_similarity.to_pickle(self.file_file_name_output)
-        df_similarity.to_csv(self.file_file_name_output.with_suffix('.csv'), index=False)
-

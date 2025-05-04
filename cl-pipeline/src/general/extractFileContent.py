@@ -37,7 +37,7 @@ def get_loader_for_file_type(file_type, file_path):
     # Baseloader seams not to work with current Pathlib objects
     return loader_class(file_path=str(file_path))
 
-@timeout(60)
+@timeout(120)
 def provide_content(file_path, file_type):
     loader = get_loader_for_file_type(file_type, file_path)
     try:
@@ -97,6 +97,7 @@ class ExtractFileContent(TaskWithInputFileMonitor):
                 file_path = self.content_folder / (row['pipe:ID'] + ".txt")
                 with open(file_path, 'w') as f:
                     f.write(content)
+                print(f"File {file_path} written")
 
                 content_list_sample = {}
                 content_list_sample['pipe:ID'] = row['pipe:ID']

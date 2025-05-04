@@ -37,7 +37,7 @@ def filtered(AI_response):
                  "Ich sehe kein", "Es gibt kein", "Ich kann ", "Ich sehe", "Es wird keine ",
                  "Entschuldigung", "Leider kann ich", "Keine Antwort", "Die Antwort kann ich",
                  "Der Autor", "die Frage", "Ich habe keine", "Ich habe ", "Ich brauche",
-                 "Bitte geben", "Das Dokument ", "Es tut mir leid", "Es handelt sich"]
+                 "Bitte geben", "Das Dokument ", "Es tut mir leid", "Es handelt sich", "Es ist nicht", "Es konnte kein"]
     if any(x in AI_response for x in blacklist):
         return ""
     else:
@@ -148,7 +148,7 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
 
         #llm_deepseek = OllamaLLM(model="deepseek-r1", temperature=0)
         #llm_llama = OllamaLLM(model="llama3.1", temperature=0)
-        llm_gemma = OllamaLLM(model="gemma2:27b", temperature=0)
+        llm_gemma = OllamaLLM(model="gemma3:27b", temperature=0)
         #llm = OllamaLLM(model="llama3.3:70b-instruct-q2_K", temperature=0)
         #llm = OllamaLLM(model="phi4:14b-q8_0")
 
@@ -165,7 +165,7 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
             metadata_list_sample['pipe:file_type'] = row['pipe:file_type']
             if row['pipe:file_type'] not in self.file_types:
                 continue
-
+            
             file = (row['pipe:ID'] + "." + row['pipe:file_type'])
 
             pages = chunk_counter.get(file, 0)
@@ -255,7 +255,7 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
             metadata_list_sample['ai:keywords_dnb'] = filtered(keywords3)
 
             dewey = get_monitored_response(f"""
-                Bitte ordne das Dokument {file} entsprechend der 
+                Bitte ordne das Dokument {file} einer  
                 Dewey-Dezimalklassifizierung zu. Antworte zuerste mit der 
                 Klassifizierungsnummer und dann nach einem Komma mit der Bezeichnung der Klasse. 
                 Wenn Du keine eindeutige Zuordnung findest,

@@ -4,6 +4,8 @@ from tqdm import tqdm
 import requests
 import logging
 import json
+import spacy
+
 from pipeline.taskfactory import TaskWithInputFileMonitor
 
 def get_lobid_response(word):
@@ -68,6 +70,8 @@ class GNDKeywordCheck(TaskWithInputFileMonitor):
         else:
             df_keywords = pd.DataFrame()
 
+        nlp = spacy.load("de_core_news_md")
+
         for _, row in tqdm(df_metadata.iterrows(), total=df_metadata.shape[0]):
 
             #Check if gnd check is already done
@@ -91,7 +95,14 @@ class GNDKeywordCheck(TaskWithInputFileMonitor):
                 keyword_sample = {}
                 keyword_sample['raw_keyword'] = keyword
 
-                lobid = receive_lobid_keywords(keyword)
+                if " " not in keyword:
+                    doc = nlp(keyword)
+                    keyword_sample['lemma'] = "".join([token.lemma_ for token in doc])
+                    lobid = receive_lobid_keywords(keyword_sample['lemma'])
+                else:
+                    keyword_sample['lemma'] = ""
+                    lobid = receive_lobid_keywords(keyword)
+                
                 if lobid:
                     keyword_sample['is_gnd'] = True
                     lobbid_keys = ['gnd_link', 'sameAs_link', 'ddc_D2', 'ddc_D3', 'perferedNames', 'totalItems']
