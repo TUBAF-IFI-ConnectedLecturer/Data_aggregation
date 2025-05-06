@@ -1,15 +1,12 @@
 # Motivated by https://medium.com/@onkarmishra/using-langchain-for-question-answering-on-own-data-3af0a82789ed
 # Thanks to Onkar Mishra for the inspiration
 
+# lama runner process has terminated: GGML_ASSERT(n_backends <= GGML_SCHED_MAX_BACKENDS) failed (status code: 500)
+
 import pandas as pd
 from pathlib import Path
-import numpy as np
-from typing import List, Dict, Any, Optional
-from langchain import PromptTemplate
-from langchain_core.documents import Document
-#from langchain_community.llms import Ollama
+from langchain_core.prompts import PromptTemplate
 from langchain_ollama import OllamaLLM
-from langchain_core.vectorstores import VectorStore
 from langchain.chains import RetrievalQA
 from tqdm import tqdm
 import logging
@@ -19,6 +16,7 @@ import chromadb
 import re
 from collections import Counter
 from wrapt_timeout_decorator import *
+import json
 
 from pipeline.taskfactory import TaskWithInputFileMonitor
 
@@ -43,6 +41,34 @@ def filtered(AI_response):
     else:
         return AI_response.strip()
 
+def clean_and_parse_json_response(raw_response: str):
+    # Entferne evtl. Markdown-Codeblock-Markierungen wie ```json ... ```
+    cleaned = re.sub(r"^```json\s*|\s*```$", "", raw_response.strip(), flags=re.DOTALL)
+
+    try:
+        parsed = json.loads(cleaned)
+        return parsed
+    except json.JSONDecodeError as e:
+        print("Fehler beim Parsen:", e)
+        return None
+
+def has_valid_dewey_classification(json_response: str) -> bool:
+    try:
+        data = json.loads(json_response)
+        if not isinstance(data, list) or len(data) == 0:
+            return False
+
+        # Optional: Gültige Dewey-Notation prüfen (3 Ziffern, optional mit Unterklassen wie 004.67)
+        dewey_pattern = re.compile(r'^\d{3}(\.\d+)?$')
+
+        for entry in data:
+            print(entry)
+            notation = entry.get("notation", "")
+            if isinstance(notation, str) and dewey_pattern.match(notation):
+                return True  # mindestens ein gültiger Eintrag
+        return False
+    except (json.JSONDecodeError, TypeError):
+        return False
 
 # Creating the chain for Question Answering
 def load_qa_chain(retriever, llm, prompt):
@@ -54,11 +80,12 @@ def load_qa_chain(retriever, llm, prompt):
         chain_type_kwargs={'prompt': prompt} 
     )
 
-@timeout(120)
+@timeout(240)
 def get_response(query, chain):
     # Getting response from chain
     try:
-        response = chain({'query': query})
+        #response = chain({'query': query})
+        response = chain.invoke({'query': query})
         return response['result']
     except Exception as e:
         logging.error(f"Error processing {query}: {str(e)}")
@@ -73,12 +100,15 @@ def get_monitored_response(query, chain):
 
 template = """
 ### System:
-You are an AI agent trained to answer questions based solely on the content of the document.
-Please only answer using information found within the document.
-If the answer cannot be found in the document, return an empty text.
-Do not invent answers or provide any additional information.
-Avoid any introductions or explanations such as "I am an AI agent" or "Thank you for asking."
-Only answer based on the content of the document.
+You are an assistant trained to support the bibliographic cataloging and 
+indexing of academic and scientific documents.
+Your task is to extract structured metadata that supports library 
+cataloging, such as author names, titles, classification codes, and keywords.
+Only use information explicitly available in the document.
+If no relevant information is found, return an empty value.
+Do not generate or assume content.
+Avoid any explanations or filler text — output must be concise and structured.
+All answers must be in German, unless explicitly requested otherwise.
 
 ### Context:
 {context}
@@ -145,9 +175,10 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
         chunk_counter = Counter(filenames_list)
 
         #llm_deepseek = OllamaLLM(model="deepseek-r1", temperature=0)
-        #llm_llama = OllamaLLM(model="llama3.1", temperature=0)
+        #llm_llama = OllamaLLM(model="llama3:70b-instruct", temperature=0)
         llm_gemma = OllamaLLM(model="gemma3:27b", temperature=0)
-        #llm = OllamaLLM(model="llama3.3:70b-instruct-q2_K", temperature=0)
+        #llm_llama = OllamaLLM(model="llama3.3:70b", temperature=0)
+        #llm_llama = OllamaLLM(model="llama4:latest", temperature=0)
         #llm = OllamaLLM(model="phi4:14b-q8_0")
 
         for _, row in tqdm(df_files.iterrows(), total=df_files.shape[0]):
@@ -176,17 +207,26 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
             prompt = PromptTemplate.from_template(template)
             chain = load_qa_chain(retriever_with_filter, llm_gemma, prompt)
 
-            author = get_monitored_response(f"""
-                Who is the author (or authors) of the document {file}?
-                Do not include any additional information. Just reply with the name(s) only — no 
-                explanations, no phrases like "The author is".
-                Your answer should be in German.""", chain)
-            metadata_list_sample['ai:author'] = filtered(author)
-
-            name_result = nc.get_validated_name(filtered(author))
-            metadata_list_sample['ai:revisedAuthor'] = ""
-            if name_result is not None:
-                metadata_list_sample['ai:revisedAuthor'] = f"{name_result.Vorname}/{name_result.Familienname}"
+            authors = get_monitored_response(f"""
+                Who is the author or who are the authors of the document {file}?
+                If multiple authors or a team is listed, include all of them. Output the name(s) only, as a 
+                comma-separated list — without any introductions, explanations, or phrases like "The author is".
+                If no author is mentioned in the document, return an empty string.
+                Your answer must be in German.""", chain)
+            authors_list = []
+            for author in authors.split(","):
+                name_result = nc.get_validated_name(filtered(author.strip()))
+                entry = "/"
+                if name_result is not None:
+                    entry = ""
+                    if name_result.Vorname is not None:
+                        entry += name_result.Vorname
+                    entry += "/"
+                    if name_result.Familienname is not None:
+                        entry += name_result.Familienname
+                authors_list.append(entry)
+            metadata_list_sample['ai:author'] = authors
+            metadata_list_sample['ai:revisedAuthor'] = authors_list
 
             affilation = get_monitored_response(f"""
                 On which university or university of applied sciences was the document {file} written?
@@ -224,10 +264,9 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
                 + "Vorlesungsfolien" = Lecture slides: visual slides used in lectures or presentations.
                 + "Skript" = Lecture script: structured written notes for a lecture, often textbook-like.
                 + "Paper" = Scientific paper: academic or peer-reviewed research article.
-                + "Buch" = Book: a full-length published book.
-                + "Buchauszug" = Book excerpt: a section or chapter taken from a book.
+                + "Buch" = Book: a full-length or chapter of a published book.
                 + "Seminararbeit" = Seminar paper: a short academic paper submitted for a seminar (e.g., 5–15 pages).
-                + "Bachelorarbeit" = Bachelor's thesis: final thesis for a bachelor's degree.
+                + "Bachelor- oder Masterarbeit" = Bachelor's or Master's thesis: final thesis for a corresponding degree.
                 + "Masterarbeit" = Master's thesis: final thesis for a master's degree.
                 + "Doktorarbeit" = Doctoral dissertation: dissertation written to obtain a doctoral degree.
                 + "Dokumentation" = Documentation: user, technical, or project documentation.
@@ -266,29 +305,35 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
             metadata_list_sample['ai:keywords_dnb'] = filtered(keywords3)
 
             dewey = get_monitored_response(f"""
-                Assign the document {file} to the corresponding Dewey Decimal Classification.
-                Respond first with the classification number, followed by a comma and the class name.
-                If no clear classification can be found, return an empty string.
-                Do not explain why no classification is found.
-                The answer must be in German.""", chain)
+                Assign the document {file} to up to three suitable Dewey Decimal Classifications (DDC), ranked by relevance.
+                Return the result as a JSON array, where each entry includes:
+                + "notation": the DDC classification number (as a string),
+                + "label": the classification label in German,
+                + "score": a floating-point number between 0.0 and 1.0 representing relevance.
+                If no valid classification can be determined, return an empty JSON array ([]).
+                Use only Dewey Decimal Classifications notations officially recognized by the German National Library (DNB).
+                Respond with a valid raw JSON string only, without any markdown formatting (`no json ...), explanations, or commentary.""", chain)
             dewey_answer = filtered(dewey)
-            metadata_list_sample['ai:dewey'] = ""
-            metadata_list_sample['ai:dewey_name'] = ""
-            if dewey_answer:
-                dewey = dewey_answer.split(",")
-                if len(dewey) == 2:
-                    metadata_list_sample['ai:dewey'] = dewey[0].strip()
-                    metadata_list_sample['ai:dewey_name'] = dewey[1].strip()
+            if dewey_answer != "":
+                dewey_answer = clean_and_parse_json_response(dewey_answer)
+
+            if dewey_answer is not None:
+                if has_valid_dewey_classification(dewey_answer):
+                    metadata_list_sample['ai:dewey'] = dewey_answer
+                else:
+                    metadata_list_sample['ai:dewey'] = ""
+            else:
+                metadata_list_sample['ai:dewey'] = ""
 
             print(f"""
             File      : {(row['pipe:ID'] + "." + row['pipe:file_type'])}
-            Author    : {filtered(author)} / {metadata_list_sample['ai:revisedAuthor']}
+            Author    : {authors} / {metadata_list_sample['ai:revisedAuthor']}
             Affilation: {metadata_list_sample['ai:affilation']}
             Title     : {filtered(title)}
             Typ       : {filtered(document_type)}
             Keywords  : {filtered(keywords)}
             Keywords3 : {filtered(keywords3)}
-            Dewey     : {metadata_list_sample['ai:dewey']} ({metadata_list_sample['ai:dewey_name']})
+            Dewey     : {dewey_answer} 
             """)
 
             # Teste ob alle dict einträge deren Keys in check_keys genannt sind leer sind

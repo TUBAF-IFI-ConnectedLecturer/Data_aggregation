@@ -19,10 +19,10 @@ class NameChecker():
             messages=[
                 {
                     'role': 'user',
-                    'content': f"""Du bist eine Software für die Erkennung von Vor- und Familiennamen bzw. akademischen Titeln in Texten.
-                                Ich habe einen Text und möchte wissen, ob Du Vor- und Familiennamen erkennen kannst. 
-                                Wenn mehrere Namen im Text sind, extrahiere nur den ersten.
-                                Der Text lautet: {name_string}"""
+                    'content': f"""You are a tool for detecting first and last names as well as academic titles in text.
+                    Analyze the following input: {name_string}
+                    Extract only the first full name, including any academic titles that may appear.
+                    Return only the extracted name — no explanations, no additional names, no formatting or commentary."""
                 }
             ],
             model='llama3:latest',
