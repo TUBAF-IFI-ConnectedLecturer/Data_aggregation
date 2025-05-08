@@ -1,7 +1,7 @@
 # Motivated by https://medium.com/@onkarmishra/using-langchain-for-question-answering-on-own-data-3af0a82789ed
 # Thanks to Onkar Mishra for the inspiration
 
-# lama runner process has terminated: GGML_ASSERT(n_backends <= GGML_SCHED_MAX_BACKENDS) failed (status code: 500)
+# https://www.dnb.de/DE/Professionell/DDC-Deutsch/DDCUebersichten/ddcUebersichten_node.html
 
 import pandas as pd
 from pathlib import Path
@@ -84,7 +84,6 @@ def load_qa_chain(retriever, llm, prompt):
 def get_response(query, chain):
     # Getting response from chain
     try:
-        #response = chain({'query': query})
         response = chain.invoke({'query': query})
         return response['result']
     except Exception as e:
@@ -98,26 +97,11 @@ def get_monitored_response(query, chain):
         logging.error(f"Timeout of 60s {query}: {str(e)}")
         return ""
 
-template = """
-### System:
-You are an assistant trained to support the bibliographic cataloging and 
-indexing of academic and scientific documents.
-Your task is to extract structured metadata that supports library 
-cataloging, such as author names, titles, classification codes, and keywords.
-Only use information explicitly available in the document.
-If no relevant information is found, return an empty value.
-Do not generate or assume content.
-Avoid any explanations or filler text — output must be concise and structured.
-All answers must be in German, unless explicitly requested otherwise.
-
-### Context:
-{context}
-
-### User:
-{question}
-
-### Response:
-"""
+# Lade die Prompts aus der JSON-Datei
+def load_prompts(file_path):
+    with open(file_path, 'r', encoding='utf-8') as f:
+        prompts = json.load(f)
+    return prompts
 
 class AIMetaDataExtraction(TaskWithInputFileMonitor):
     def __init__(self, config_stage, config_global):
@@ -129,9 +113,10 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
         self.file_types = stage_param['file_types']
         self.processed_data_folder = config_global['processed_data_folder']
         self.chroma_file = Path(config_global['processed_data_folder']) / "chroma_db"
+        self.prompts_file = stage_param['prompts_file_name']
+        self.prompts = load_prompts(self.prompts_file)
 
     def execute_task(self):
-
         # vgl. https://github.com/encode/httpcore/blob/master/httpcore/_sync/http11.py
         logging.getLogger("httpcore.http11").setLevel(logging.CRITICAL)
        
@@ -154,10 +139,7 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
 
         embeddings = OllamaEmbeddings(
             base_url="http://localhost:11434",
-            #model="all-minilm",
             model="jina/jina-embeddings-v2-base-de"
-            #model = load_embedding_model(model_path="all-MiniLM-L6-v2")
-            #show_progress=True
         )
 
         vectorstore = Chroma(
@@ -174,15 +156,9 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
         filenames_list = [x["filename"] for x in name_result['metadatas']]
         chunk_counter = Counter(filenames_list)
 
-        #llm_deepseek = OllamaLLM(model="deepseek-r1", temperature=0)
-        #llm_llama = OllamaLLM(model="llama3:70b-instruct", temperature=0)
         llm_gemma = OllamaLLM(model="gemma3:27b", temperature=0)
-        #llm_llama = OllamaLLM(model="llama3.3:70b", temperature=0)
-        #llm_llama = OllamaLLM(model="llama4:latest", temperature=0)
-        #llm = OllamaLLM(model="phi4:14b-q8_0")
 
         for _, row in tqdm(df_files.iterrows(), total=df_files.shape[0]):
-
             #Check if the ai metadata already exists for the file 
             if df_metadata.shape[0] > 0:
                 if df_metadata[df_metadata['pipe:ID'] == row['pipe:ID']].shape[0] > 0:
@@ -204,15 +180,13 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
                 search_kwargs={"filter":{"filename":file},
                                "k": pages})
 
-            prompt = PromptTemplate.from_template(template)
+            # Verwende den Template aus der JSON-Datei
+            prompt = PromptTemplate.from_template(self.prompts["system_template"])
             chain = load_qa_chain(retriever_with_filter, llm_gemma, prompt)
 
-            authors = get_monitored_response(f"""
-                Who is the author or who are the authors of the document {file}?
-                If multiple authors or a team is listed, include all of them. Output the name(s) only, as a 
-                comma-separated list — without any introductions, explanations, or phrases like "The author is".
-                If no author is mentioned in the document, return an empty string.
-                Your answer must be in German.""", chain)
+            # Ersetze {file} in der Anfrage
+            author_query = self.prompts["author_query"].replace("{file}", file)
+            authors = get_monitored_response(author_query, chain)
             authors_list = []
             for author in authors.split(","):
                 name_result = nc.get_validated_name(filtered(author.strip()))
@@ -228,12 +202,8 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
             metadata_list_sample['ai:author'] = authors
             metadata_list_sample['ai:revisedAuthor'] = authors_list
 
-            affilation = get_monitored_response(f"""
-                On which university or university of applied sciences was the document {file} written?
-                Only look at the first page. If you cannot find any university name, return an 
-                empty string — no explanation.
-                If you do find one, return only the name, in German — no extra words like 
-                “The university is” or “This was written at ...""", chain)
+            affiliation_query = self.prompts["affiliation_query"].replace("{file}", file)
+            affilation = get_monitored_response(affiliation_query, chain)
 
             # Prüfe, ob die Affiliation im Text des Dokuments vorkommt.
             filtered_affilation = filtered(affilation)
@@ -249,70 +219,28 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
             else:
                 metadata_list_sample['ai:affilation'] = ""
 
-            title = get_monitored_response(f"""
-                What is the title or main heading of the document {file}?
-                Look at the first page only.
-                If no title is found, return an empty string — do not write "unknown" or anything else.
-                If a title is found, return only the title — no introductory phrases or explanations.
-                Your answer should be in German.""", chain)
+            title_query = self.prompts["title_query"].replace("{file}", file)
+            title = get_monitored_response(title_query, chain)
             metadata_list_sample['ai:title'] = filtered(title)
 
-            document_type = get_monitored_response(f"""
-                You are given a document {file}. Determine what type of material it is.
-                Choose exactly one of the following categories (German label), based on the English description:
-                + "Aufgabenblatt" = Exercise sheet: a list of tasks or problems, typically used in class or for homework.
-                + "Vorlesungsfolien" = Lecture slides: visual slides used in lectures or presentations.
-                + "Skript" = Lecture script: structured written notes for a lecture, often textbook-like.
-                + "Paper" = Scientific paper: academic or peer-reviewed research article.
-                + "Buch" = Book: a full-length or chapter of a published book.
-                + "Seminararbeit" = Seminar paper: a short academic paper submitted for a seminar (e.g., 5–15 pages).
-                + "Bachelor- oder Masterarbeit" = Bachelor's or Master's thesis: final thesis for a corresponding degree.
-                + "Masterarbeit" = Master's thesis: final thesis for a master's degree.
-                + "Doktorarbeit" = Doctoral dissertation: dissertation written to obtain a doctoral degree.
-                + "Dokumentation" = Documentation: user, technical, or project documentation.
-                + "Tutorial" = Tutorial: instructional guide or how-to with practical steps.
-                + "Präsentation" = Presentation: general presentation document, not necessarily lecture-related.
-                + "Poster" = Poster: academic or scientific poster used at a conference.
-                + "Protokoll" = Protocol / Report: a record of an experiment, meeting, or session.
-                + "Sonstiges" = Other: if no category fits clearly.
-                If you are not sure or cannot determine the type confidently, return an empty string.
-                Otherwise, return only the German category name listed above — no explanation or additional text.
-                The output must be in German.""", chain)
+            document_type_query = self.prompts["document_type_query"].replace("{file}", file)
+            document_type = get_monitored_response(document_type_query, chain)
             metadata_list_sample['ai:type'] = filtered(document_type)
 
-            keywords = get_monitored_response(f"""
-                Extract at least 10 precise German keywords from the document {file}.
-                The keywords should be suitable for library cataloging (bibliothekarische Erschließung).
-                Focus on specific and content-relevant terms — avoid generic words or phrases.
-                Return a comma-separated list of keywords in German, with no introduction or explanation.
-                Output only the list, in German.""", chain)
+            keywords_ext_query = self.prompts["keywords_ext_query"].replace("{file}", file)
+            keywords = get_monitored_response(keywords_ext_query, chain)
             metadata_list_sample['ai:keywords_ext'] = filtered(keywords)
 
-            keywords2 = get_monitored_response(f"""
-                Generate at least 10 precise German keywords describing the content of the document {file}.
-                The keywords should be suitable for library cataloging (bibliothekarische Erschließung).
-                Focus on specific and content-relevant terms — avoid generic words or phrases.
-                Return a comma-separated list of keywords in German, with no introduction or explanation.
-                Output only the list, in German.""", chain)
+            keywords_gen_query = self.prompts["keywords_gen_query"].replace("{file}", file)
+            keywords2 = get_monitored_response(keywords_gen_query, chain)
             metadata_list_sample['ai:keywords_gen'] = filtered(keywords2)
 
-            keywords3 = get_monitored_response(f"""
-                Assign 10 keywords from the Gemeinsame Normdatei (GND) to the document {file}.
-                If no specific GND keywords are available for certain concepts, use broader terms where possible, even if they are more general.
-                Combine keywords into chains to specify specialized concepts more accurately, especially when only general terms are available.
-                Return only a comma-separated list of the GND keywords — no introduction or explanation.
-                The answer must be in German.""", chain)
+            keywords_dnb_query = self.prompts["keywords_dnb_query"].replace("{file}", file)
+            keywords3 = get_monitored_response(keywords_dnb_query, chain)
             metadata_list_sample['ai:keywords_dnb'] = filtered(keywords3)
 
-            dewey = get_monitored_response(f"""
-                Assign the document {file} to up to three suitable Dewey Decimal Classifications (DDC), ranked by relevance.
-                Return the result as a JSON array, where each entry includes:
-                + "notation": the DDC classification number (as a string),
-                + "label": the classification label in German,
-                + "score": a floating-point number between 0.0 and 1.0 representing relevance.
-                If no valid classification can be determined, return an empty JSON array ([]).
-                Use only Dewey Decimal Classifications notations officially recognized by the German National Library (DNB).
-                Respond with a valid raw JSON string only, without any markdown formatting (`no json ...), explanations, or commentary.""", chain)
+            dewey_query = self.prompts["dewey_query"].replace("{file}", file)
+            dewey = get_monitored_response(dewey_query, chain)
             dewey_answer = filtered(dewey)
             if dewey_answer != "":
                 dewey_answer = clean_and_parse_json_response(dewey_answer)
@@ -324,6 +252,7 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
                     metadata_list_sample['ai:dewey'] = ""
             else:
                 metadata_list_sample['ai:dewey'] = ""
+
 
             print(f"""
             File      : {(row['pipe:ID'] + "." + row['pipe:file_type'])}
