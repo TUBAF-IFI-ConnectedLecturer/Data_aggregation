@@ -122,8 +122,8 @@ flowchart
     classDef white fill:#ffffff,stroke:#ffffff
     
     subgraph BASIC[KI&nbsp;basierte&nbsp;Extraktion&nbsp;der&nbsp;Metadaten]
-    OPAL_CONTENT[(Opal<br>Text Inhalte)]
-    OPAL_EMBEDDINGS(Embeddings Generation):::green
+    OPAL_CONTENT[(Dateien<br>Textinhalte)]
+    OPAL_EMBEDDINGS(Embeddings<br>Generation):::green
     OPAL_CONTENT --> OPAL_EMBEDDINGS
 
     subgraph RAG ["A.&nbsp;Retrieval‑Augmented&nbsp;Generation"]
@@ -139,26 +139,34 @@ flowchart
     AI_METADATA[(AI generierte<br>Metadata)]
     LLM --> AI_METADATA
     GND_CHECK(GND Keyword Check):::green
+    NAME_CHECK(Namens Check):::green
     end
 
     subgraph SIMILARITY ["C. "Ähnlichkeitsanalyse]
     KEYWORD_SIM(Keyword basiert):::green
     EMBEDDING_SIM(Embedding basiert):::green
     MINHASH_SIM(MinHash basiert):::green
-    RESULT@{ shape: documents, label: "Ähnlichkeitsmatrizen" }
+    RESULT@{ shape: documents, label: "Ähnlichkeits-<br>matrizen" }
     MINHASH_SIM --> RESULT
     EMBEDDING_SIM--> RESULT
     KEYWORD_SIM--> RESULT
     end
+
+    subgraph VISUALIZATION ["D. "Visualisierung]
+    GRAPH[(Erweitertes<br> Datenset)]
+    MAP@{ shape: doc, label: "Interactive<br>OER Inhaltslandkarte" }
+    end
+
     AI_METADATA <--> GND_CHECK
+    AI_METADATA <--> NAME_CHECK
     OPAL_CONTENT --> MINHASH_SIM
     VECTOR_DB --> EMBEDDING_SIM
     AI_METADATA -->KEYWORD_SIM
+    AI_METADATA --> VISUALIZATION
+    RESULT --> VISUALIZATION
     end
-    class BASIC, gray
-
-
-    class Metadatenaggregation,Evaluation gray
+    
+    class BASIC,Metadatenaggregation,Evaluation gray
 ```
 
 ## Generelle Installation 
