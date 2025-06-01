@@ -51,14 +51,14 @@ stages:
 ### Schritt 1: OER Material-Aggregation und Vorverarbeitung
 
 ```mermaid
-flowchart TD
+flowchart
 %%{init:{'flowchart':{'nodeSpacing': 10, 'rankSpacing': 25}}}%%
 
     classDef green fill:#5bd21c
     classDef yellow fill:#ffd966
     classDef gray fill:#bcbcbc
 
-    
+
     subgraph BASIC[A.&nbsp;Material‑Identfikation&nbsp;und&nbsp;Aggregations‑Phase]
 
     OPAL[(OPAL <br> Materialien <br> & Kurse)] 
@@ -67,7 +67,7 @@ flowchart TD
     direction LR
     OPAL_QUERY(Abfrage <br>OER Inhalte):::green
     OPAL_QUERY --> |Ganze  Kurse| OPAL_REPOS[ignore]
-    OPAL_QUERY --> |Einzelne Dateien| TYPE_FILTER[Extrahiere <br>OPAL Metadaten]:::green
+    OPAL_QUERY --> |Einzelne Dateien<br> .pdf, .pptx, ...| TYPE_FILTER[Extrahiere <br>OPAL Metadaten]:::green
     
     end
     OPAL<--> OPAL_QUERY
@@ -78,16 +78,13 @@ flowchart TD
     FILE_DOWNLOAD --> FILE_METADATA_EXTRACTION[Metadaten<br>extraktion]:::green
     end
 
-    TYPE_FILTER -->  |.pdf, .pptx, ... | FILE_DOWNLOAD
-
-    OPAL_FILES[(Material-<br>dateien)]
-    FILE_DOWNLOAD --> OPAL_FILES
+    TYPE_FILTER --> FILE_DOWNLOAD
 
     FILE_METADATA[(Datei<br>Metadaten)]
     FILE_METADATA_EXTRACTION --> FILE_METADATA
 
     OPAL_METADATA[(OPAL<br>Metadaten)]
-    TYPE_FILTER --> |.pdf, .pptx, ... | OPAL_METADATA
+    TYPE_FILTER -->  OPAL_METADATA
 
     OPAL_CONTENT[(Datei<br>Textinhalt)]
     TEXT_EXTRAKTION --> OPAL_CONTENT
@@ -95,27 +92,17 @@ flowchart TD
     CONTENT_METADATA[(Inhalt<br> Metadaten)]
     TEXT_ANALYSIS --> CONTENT_METADATA
 
-    subgraph FUSION["C. "Fusion & Validierung]
+    subgraph FILTER["C. Filterung der Materialien"]
     direction TB
-    ABC[Autoren-<br>name]:::yellow
-    CDE[Sprache<br>.]:::yellow
-    EFG[Erstellungs-<br>datum]:::yellow
-
-    end
-
-    subgraph FILTER["D. Filterung <a href='http://google.com'>[Link]</a>"]
-    direction TB
-    Sprache:::green
+    Dublikate:::green --> Sprache:::green
+    Sprache --> Textlängen:::green
     Textlängen:::green
-    Dublikate:::green
     end
 
     CONTENT_METADATA --> FILTER
-    FILE_METADATA --> FUSION
-    OPAL_METADATA --> FUSION
+    FILE_METADATA --> FILTER
+    OPAL_METADATA --> FILTER
     OPAL_CONTENT --> FILTER
-
-    FUSION --> FILTER
 
     end
 
