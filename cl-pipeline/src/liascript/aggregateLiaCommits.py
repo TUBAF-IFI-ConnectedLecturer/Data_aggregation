@@ -84,7 +84,11 @@ class AggregateLiaScriptCommits(TaskWithInputFileMonitor):
         self.lia_files_name =  Path(config_global['raw_data_folder']) / stage_param['lia_files_name_input']
         self.lia_commits_name =  Path(config_global['raw_data_folder']) / stage_param['lia_commits_name']
         
-        github_api_token =os.environ["GITHUB_API_KEY"]
+        # Get GitHub API token (should be loaded by run_pipeline.py)
+        github_api_token = os.environ.get("GITHUB_API_KEY")
+        if not github_api_token:
+            raise ValueError("GITHUB_API_KEY environment variable is not set. Make sure run_pipeline.py loads the .env file.")
+        
         auth = Auth.Token(github_api_token)
         self.github_handle = Github(auth=auth)
         logging.getLogger("urllib3").propagate = False

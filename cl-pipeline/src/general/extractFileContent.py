@@ -97,7 +97,6 @@ class ExtractFileContent(TaskWithInputFileMonitor):
                 file_path = self.content_folder / (row['pipe:ID'] + ".txt")
                 with open(file_path, 'w') as f:
                     f.write(content)
-                print(f"File {file_path} written")
 
                 content_list_sample = {}
                 content_list_sample['pipe:ID'] = row['pipe:ID']

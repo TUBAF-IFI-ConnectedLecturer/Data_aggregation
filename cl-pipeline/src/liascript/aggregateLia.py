@@ -24,7 +24,22 @@ def extract_liafile_meta_data(file):
         print( "b", end="")
         return None, None
     
-    content = file.decoded_content.decode()
+    try:
+        # Versuche UTF-8 Dekodierung
+        content = file.decoded_content.decode('utf-8')
+    except UnicodeDecodeError:
+        try:
+            # Fallback: Versuche latin-1 (kann alle Byte-Werte dekodieren)
+            content = file.decoded_content.decode('latin-1')
+        except UnicodeDecodeError:
+            try:
+                # Fallback: UTF-8 mit Fehlerbehandlung
+                content = file.decoded_content.decode('utf-8', errors='ignore')
+                print("i", end="")  # Markiere ignorierte Zeichen
+            except:
+                print("x", end="")  # Markiere nicht dekodierbare Datei
+                return None, None
+    
     meta_data = extract_data(file, content)
     meta_data['liaIndi_Lia_in_filename'] = False
     meta_data['liaIndi_liaTemplates_used'] = False
@@ -64,21 +79,34 @@ def extract_data(file, content):
 
 
 def explore_potential_lia_files(github_handle, data_folder,
-         repo_data_file_name, course_data_file_name, file_folder):
+         repo_data_file_name, course_data_file_name, file_folder, blacklist_indices=None):
 
     repo_data_file = Path(data_folder) / repo_data_file_name
     course_data_file = Path(data_folder) / course_data_file_name
     storage_folder = Path(file_folder)
 
     df_repos = pd.read_pickle(Path(repo_data_file))
+    
+    # Blacklist für Repository-Indizes
+    if blacklist_indices is None:
+        blacklist_indices = []
 
     if Path(course_data_file).exists():
         df_courses = pd.read_pickle(Path(course_data_file))
     else:
         df_courses = pd.DataFrame()
 
+    print()
+
     for i, row in df_repos.iterrows():
-        print(f"{i}/{df_repos.shape[0]} - {row['user'] + '/' + row['name']} - ", end='')
+        #print(f"{i}/{df_repos.shape[0]} - {row['user'] + '/' + row['name']} - ", end='')
+        print(f"{i}/{df_repos.index.max()} - {row['user'] + '/' + row['name']} - ", end='')
+        
+        # Prüfe Blacklist
+        if i in blacklist_indices:
+            print("skipped (blacklisted)")
+            continue
+            
         if df_courses.shape[0] > 0:
             if df_courses[(df_courses['repo_user'] == row['user']) &
                           (df_courses['repo_name'] == row['name'])].shape[0] > 0:
@@ -134,18 +162,25 @@ class AggregateLiaScriptFiles(TaskWithInputFileMonitor):
         self.file_file_name =  Path(config_global['raw_data_folder']) / stage_param['repo_data_file_name_input']
         self.lia_files_name =  Path(config_global['raw_data_folder']) / stage_param['lia_files_name']
         
-        github_api_token =os.environ["GITHUB_API_KEY"]
+        # Get GitHub API token (should be loaded by run_pipeline.py)
+        github_api_token = os.environ.get("GITHUB_API_KEY")
+        if not github_api_token:
+            raise ValueError("GITHUB_API_KEY environment variable is not set. Make sure run_pipeline.py loads the .env file.")
+        
         auth = Auth.Token(github_api_token)
         self.github_handle = Github(auth=auth)
         logging.getLogger("urllib3").propagate = False
 
     @loggedExecution
     def execute_task(self):
+        blacklist = [41, 580, 597, 598, 600, 607, 617, 640, 641, 647, 649, 683, 689, 712, 724, 725, 726, 727, 728, 729, 732, 733, 734, 741, 750, 809,
+                     763, 764, 765, 776, 799, 801, 816, 825, 842, 843, 850, 869, 880, 881, 897, 898, 900, 932, 933, 934]
         explore_potential_lia_files(
             github_handle=self.github_handle,
             data_folder=self.data_folder,
             repo_data_file_name=self.repo_data_file_name,
             course_data_file_name=self.lia_files_name,
-            file_folder=self.file_folder
+            file_folder=self.file_folder,
+            blacklist_indices=blacklist
         )
 
