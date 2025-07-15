@@ -115,6 +115,7 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
         self.chroma_file = Path(config_global['processed_data_folder']) / "chroma_db"
         self.prompts_file = stage_param['prompts_file_name']
         self.prompts = load_prompts(self.prompts_file)
+        self.llm = stage_param['model_name']
 
     def execute_task(self):
         # vgl. https://github.com/encode/httpcore/blob/master/httpcore/_sync/http11.py
@@ -156,7 +157,7 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
         filenames_list = [x["filename"] for x in name_result['metadatas']]
         chunk_counter = Counter(filenames_list)
 
-        llm_gemma = OllamaLLM(model="gemma3:27b", temperature=0)
+        #llm_gemma = OllamaLLM(model="gemma3:27b", temperature=0)
 
         for _, row in tqdm(df_files.iterrows(), total=df_files.shape[0]):
             #Check if the ai metadata already exists for the file 
@@ -182,25 +183,16 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
 
             # Verwende den Template aus der JSON-Datei
             prompt = PromptTemplate.from_template(self.prompts["system_template"])
-            chain = load_qa_chain(retriever_with_filter, llm_gemma, prompt)
+            chain = load_qa_chain(retriever_with_filter,
+                                  OllamaLLM(model=self.llm, temperature=0), 
+                                  prompt)
 
             # Ersetze {file} in der Anfrage
             author_query = self.prompts["author_query"].replace("{file}", file)
             authors = get_monitored_response(author_query, chain)
-            authors_list = []
-            for author in authors.split(","):
-                name_result = nc.get_validated_name(filtered(author.strip()))
-                entry = "/"
-                if name_result is not None:
-                    entry = ""
-                    if name_result.Vorname is not None:
-                        entry += name_result.Vorname
-                    entry += "/"
-                    if name_result.Familienname is not None:
-                        entry += name_result.Familienname
-                authors_list.append(entry)
+
             metadata_list_sample['ai:author'] = authors
-            metadata_list_sample['ai:revisedAuthor'] = authors_list
+            metadata_list_sample['ai:revisedAuthor'] = nc.get_all_names(authors)
 
             affiliation_query = self.prompts["affiliation_query"].replace("{file}", file)
             affilation = get_monitored_response(affiliation_query, chain)
@@ -252,7 +244,6 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
                     metadata_list_sample['ai:dewey'] = ""
             else:
                 metadata_list_sample['ai:dewey'] = ""
-
 
             print(f"""
             File      : {(row['pipe:ID'] + "." + row['pipe:file_type'])}

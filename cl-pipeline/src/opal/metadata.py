@@ -4,6 +4,9 @@ import docx
 import pptx
 import fitz
 import openpyxl
+import yaml
+import re
+import logging
 from tqdm import tqdm
 from datetime import datetime
 
@@ -12,6 +15,15 @@ from pipeline.taskfactory import TaskWithInputFileMonitor
 import sys
 sys.path.append('../src/general/')
 from checkAuthorNames import NameChecker
+
+# Suppress debug logs from httpcore and related libraries
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("ollama").setLevel(logging.WARNING)
+logging.getLogger("langchain").setLevel(logging.WARNING)
+logging.getLogger("langchain_ollama").setLevel(logging.WARNING)
+logging.getLogger("PIL").setLevel(logging.WARNING)
+logging.getLogger("PIL.PngImagePlugin").setLevel(logging.WARNING)
 
 class pdfMetaExtractor:
     def __init__(self, path, file_type):
@@ -146,11 +158,137 @@ class xlsxMetaExtractor:
         }
         return metadata_dict
 
+class mdMetaExtractor:
+    def __init__(self, path, file_type):
+        self.path = path
+        self.valid_file = False
+        if file_type == 'md':
+            try:
+                with open(self.path, 'r', encoding='utf-8') as file:
+                    self.content = file.read()
+                self.valid_file = True
+            except Exception as e:
+                print(f"Error loading {self.path}: {e}")
+
+    def extract(self):
+        if not self.valid_file:
+            return None
+        
+        try:
+            # Extract YAML front matter if it exists
+            yaml_front_matter = self._extract_yaml_front_matter()
+            
+            # Get file system dates as fallback
+            file_stats = Path(self.path).stat()
+            created_date = datetime.fromtimestamp(file_stats.st_ctime)
+            modified_date = datetime.fromtimestamp(file_stats.st_mtime)
+            
+            # Initialize metadata dict with file system dates
+            metadata_dict = {
+                'file:author': None,
+                'file:keywords': None,
+                'file:subject': None,
+                'file:title': None,
+                'file:created': created_date,
+                'file:modified': modified_date,
+            }
+            
+            # Override with YAML front matter if available
+            if yaml_front_matter:
+                # Map common YAML keys to our metadata format
+                key_mapping = {
+                    'author': 'file:author',
+                    'authors': 'file:author',
+                    'title': 'file:title',
+                    'subject': 'file:subject',
+                    'description': 'file:subject',
+                    'keywords': 'file:keywords',
+                    'tags': 'file:keywords',
+                    'date': 'file:created',
+                    'created': 'file:created',
+                    'modified': 'file:modified',
+                    'updated': 'file:modified'
+                }
+                
+                for yaml_key, meta_key in key_mapping.items():
+                    if yaml_key in yaml_front_matter:
+                        value = yaml_front_matter[yaml_key]
+                        
+                        # Handle different data types
+                        if yaml_key in ['date', 'created', 'modified', 'updated']:
+                            if isinstance(value, str):
+                                try:
+                                    # Try to parse datetime string
+                                    metadata_dict[meta_key] = pd.to_datetime(value)
+                                except:
+                                    pass
+                            elif hasattr(value, 'date'):  # datetime object
+                                metadata_dict[meta_key] = value
+                        elif yaml_key in ['keywords', 'tags']:
+                            # Handle lists for keywords/tags
+                            if isinstance(value, list):
+                                metadata_dict[meta_key] = ', '.join(str(v) for v in value)
+                            else:
+                                metadata_dict[meta_key] = str(value) if value else None
+                        elif yaml_key in ['authors']:
+                            # Handle author lists
+                            if isinstance(value, list):
+                                metadata_dict['file:author'] = ', '.join(str(v) for v in value)
+                            else:
+                                metadata_dict['file:author'] = str(value) if value else None
+                        else:
+                            metadata_dict[meta_key] = str(value) if value else None
+            
+            # Extract title from first heading if not in YAML
+            if not metadata_dict['file:title']:
+                title = self._extract_title_from_content()
+                if title:
+                    metadata_dict['file:title'] = title
+                    
+            return metadata_dict
+            
+        except Exception as e:
+            print(f"Error extracting metadata from {self.path}: {e}")
+            return None
+
+    def _extract_yaml_front_matter(self):
+        """Extract YAML front matter from markdown content"""
+        # Check if content starts with YAML front matter
+        if not self.content.startswith('---'):
+            return None
+            
+        # Find the end of YAML front matter
+        lines = self.content.split('\n')
+        yaml_end = -1
+        for i, line in enumerate(lines[1:], 1):
+            if line.strip() == '---':
+                yaml_end = i
+                break
+                
+        if yaml_end == -1:
+            return None
+            
+        # Extract and parse YAML
+        yaml_content = '\n'.join(lines[1:yaml_end])
+        try:
+            return yaml.safe_load(yaml_content)
+        except yaml.YAMLError:
+            return None
+
+    def _extract_title_from_content(self):
+        """Extract title from first H1 heading in markdown"""
+        # Look for first H1 heading (# Title)
+        match = re.search(r'^#\s+(.+)$', self.content, re.MULTILINE)
+        if match:
+            return match.group(1).strip()
+        return None
+
 extractors = {
     'pptx': officeMetaExtractor,
     'docx': officeMetaExtractor,
     'pdf': pdfMetaExtractor,
     'xlsx': xlsxMetaExtractor,
+    'md': mdMetaExtractor,
 }
 
 class MetaDataExtraction(TaskWithInputFileMonitor):
@@ -194,8 +332,8 @@ class MetaDataExtraction(TaskWithInputFileMonitor):
         df_metadata_list.loc[:, 'file:revisedAuthor'] = ""
         for index, row in tqdm(df_metadata_list.iterrows(), total=df_metadata_list.shape[0]):
             if row['file:author'] != "":
-                result = nc.get_validated_name(row['file:author'])
+                result = nc.get_all_names(row['file:author'])
                 if result != None:
-                    df_metadata_list.at[index, 'file:revisedAuthor'] = f"{result.Vorname}/{result.Familienname}"
-                    print(f"{result.Vorname} {result.Familienname}")
+                    df_metadata_list.at[index, 'file:revisedAuthor'] = result
+                    print(f"{row['file:author']} -- {result}")
         df_metadata_list.to_pickle(self.file_file_name_output)

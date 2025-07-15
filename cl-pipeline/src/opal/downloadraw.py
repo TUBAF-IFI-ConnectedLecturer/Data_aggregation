@@ -75,10 +75,10 @@ class CollectOPALOERdocuments(Task):
         count = 0
         for index, row in tqdm(df_files.iterrows(), total=df_files.shape[0]):
             if row['opal:author'] != "":
-                result = nc.get_validated_name(row['opal:author'])
+                result = nc.get_all_names(row['opal:author'])
                 if result is not None:
                     count = count + 1
-                    df_files.at[index, 'opal:revisedAuthor'] = f"{result.Vorname}/{result.Familienname}"
+                    df_files.at[index, 'opal:revisedAuthor'] = result
 
         logging.debug(f"{count} names validated.")
         df_files.to_pickle(self.file_file)

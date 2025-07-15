@@ -24,7 +24,22 @@ def extract_liafile_meta_data(file):
         print( "b", end="")
         return None, None
     
-    content = file.decoded_content.decode()
+    try:
+        # Versuche UTF-8 Dekodierung
+        content = file.decoded_content.decode('utf-8')
+    except UnicodeDecodeError:
+        try:
+            # Fallback: Versuche latin-1 (kann alle Byte-Werte dekodieren)
+            content = file.decoded_content.decode('latin-1')
+        except UnicodeDecodeError:
+            try:
+                # Fallback: UTF-8 mit Fehlerbehandlung
+                content = file.decoded_content.decode('utf-8', errors='ignore')
+                print("i", end="")  # Markiere ignorierte Zeichen
+            except:
+                print("x", end="")  # Markiere nicht dekodierbare Datei
+                return None, None
+    
     meta_data = extract_data(file, content)
     meta_data['liaIndi_Lia_in_filename'] = False
     meta_data['liaIndi_liaTemplates_used'] = False
@@ -134,7 +149,11 @@ class AggregateLiaScriptFiles(TaskWithInputFileMonitor):
         self.file_file_name =  Path(config_global['raw_data_folder']) / stage_param['repo_data_file_name_input']
         self.lia_files_name =  Path(config_global['raw_data_folder']) / stage_param['lia_files_name']
         
-        github_api_token =os.environ["GITHUB_API_KEY"]
+        # Get GitHub API token (should be loaded by run_pipeline.py)
+        github_api_token = os.environ.get("GITHUB_API_KEY")
+        if not github_api_token:
+            raise ValueError("GITHUB_API_KEY environment variable is not set. Make sure run_pipeline.py loads the .env file.")
+        
         auth = Auth.Token(github_api_token)
         self.github_handle = Github(auth=auth)
         logging.getLogger("urllib3").propagate = False

@@ -29,6 +29,8 @@ if __name__ == '__main__':
                         help="path to the config file")
     args=parser.parse_args()
 
-    load_dotenv()
-
+    load_dotenv(Path(__file__).parent / '.env')
+    print(Path(__file__).parent )
+    print(os.environ["GITHUB_API_KEY"])
+    print("----------------------------------------------------")
     run_pipeline(Path(args.config_path))
