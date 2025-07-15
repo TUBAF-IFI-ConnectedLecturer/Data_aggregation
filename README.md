@@ -48,107 +48,125 @@ stages:
 
 ## Verabeitungskette und Pipelinestufen
 
-### Schritt 1: Datenidentifikation und -aggregation
+### Schritt 1: OER Material-Aggregation und Vorverarbeitung
 
 ```mermaid
-flowchart TD
+flowchart
+%%{init:{'flowchart':{'nodeSpacing': 10, 'rankSpacing': 25}}}%%
 
     classDef green fill:#5bd21c
     classDef yellow fill:#ffd966
     classDef gray fill:#bcbcbc
 
-    subgraph Datenaggregation
-    subgraph OPAL Pipeline  
-    direction TB
-    OPAL[(OPAL)] --> OPAL_QUERY(OPAL Query):::green
-    OPAL_QUERY --> |Ganze  Dateien| OPAL_REPOS[?]
-    OPAL_QUERY --> |Einzelne Dateien| TYPE_FILTER[Extrahiere Dateityp]:::green
-    TYPE_FILTER -->  |.pdf, .pptx, ... | OPAL_DOWNLOAD[Opal Download]:::green
-    TYPE_FILTER -->  |.pdf, .pptx, ... | EXTRACT_OPAL_META[Opal Metadaten]:::green
-    OPAL_DOWNLOAD -->  OPAL_FILES[(OPAL Files<br>office,pdf)]
-    OPAL_DOWNLOAD -.->  OPAL_METADATA_FILES[(OPAL Meta<br>office,pdf)]
-    EXTRACT_OPAL_META -. opal: .->  OPAL_METADATA_FILES[(OPAL Meta<br>office,pdf)]
-    end    
 
-    subgraph LiaScript Pipeline
-    direction TB
-    LIA_IDENT(Liascript Suche)
-    GITHUB[(Github)] --> |Github API| LIA_IDENT:::green
-    LIA_REPOS --> |Dateisuche| LIA_FILES
-    LIA_IDENT --> |Dateisuche| LIA_FILES[(LiaScript<br>Datei Liste)]
-    LIA_IDENT --> |Reposuche| LIA_REPOS[(LiaScript<br>Repo Liste)]
+    subgraph BASIC[A.&nbsp;Material‑Identfikation&nbsp;und&nbsp;Aggregations‑Phase]
 
-    LIA_FILES -->  GITHUB_DOWNLOAD(Github Download):::green
-    GITHUB_DOWNLOAD -->  LIA_FILES_[(LiaScript<br>Files)]
-    LIA_REPOS -.-> FEATURE_EXTRACTION_LIA(Github Metadaten Query)
-    FEATURE_EXTRACTION_LIA  -. github: .->  LIA_METADATA_FILES[(LiaScript<br>Metadata)]
-    LIA_FILES -.-> FEATURE_EXTRACTION_LIA
-    FEATURE_EXTRACTION_LIA:::green
-    end  
+    OPAL[(OPAL <br> Materialien <br> & Kurse)] 
+
+    subgraph A. Materialidentifikation
+    direction LR
+    OPAL_QUERY(Abfrage <br>OER Inhalte):::green
+    OPAL_QUERY --> |Ganze  Kurse| OPAL_REPOS[ignore]
+    OPAL_QUERY --> |Einzelne Dateien<br> .pdf, .pptx, ...| TYPE_FILTER[Extrahiere <br>OPAL Metadaten]:::green
+    
+    end
+    OPAL<--> OPAL_QUERY
+
+    subgraph FILE_AGG["B. "Datenerfassung]
+    direction LR
+    FILE_DOWNLOAD[Datei<br>Download]:::green --> TEXT_EXTRAKTION[Text-<br>extraktion]:::green --> TEXT_ANALYSIS[Textbasis-<br>analyse]:::green
+    FILE_DOWNLOAD --> FILE_METADATA_EXTRACTION[Metadaten<br>extraktion]:::green
     end
 
-    class Datenaggregation, gray
+    TYPE_FILTER --> FILE_DOWNLOAD
+
+    FILE_METADATA[(Datei<br>Metadaten)]
+    FILE_METADATA_EXTRACTION --> FILE_METADATA
+
+    OPAL_METADATA[(OPAL<br>Metadaten)]
+    TYPE_FILTER -->  OPAL_METADATA
+
+    OPAL_CONTENT[(Datei<br>Textinhalt)]
+    TEXT_EXTRAKTION --> OPAL_CONTENT
+
+    CONTENT_METADATA[(Inhalt<br> Metadaten)]
+    TEXT_ANALYSIS --> CONTENT_METADATA
+
+    subgraph FILTER["C. Filterung der Materialien"]
+    direction TB
+    Dublikate:::green --> Sprache:::green
+    Sprache --> Textlängen:::green
+    Textlängen:::green
+    end
+
+    CONTENT_METADATA --> FILTER
+    FILE_METADATA --> FILTER
+    OPAL_METADATA --> FILTER
+    OPAL_CONTENT --> FILTER
+
+    end
+
+    class BASIC, gray
 ```
 
 
-## Schritt 2: Metadatenextraktion und Evaluation
+## Schritt 2: Metadatenextraktion und -generierung
 
 ```mermaid
-flowchart TD
+flowchart 
+%%{init:{'flowchart':{'nodeSpacing': 25, 'rankSpacing': 15}}}%%
 
     classDef green fill:#5bd21c
     classDef yellow fill:#ffd966
     classDef gray fill:#bcbcbc
     classDef white fill:#ffffff,stroke:#ffffff
+    
+    subgraph BASIC[KI&nbsp;basierte&nbsp;Extraktion&nbsp;der&nbsp;Metadaten]
+    OPAL_CONTENT[(Dateien<br>Textinhalte)]
+    OPAL_EMBEDDINGS(Embeddings<br>Generation):::green
+    OPAL_CONTENT --> OPAL_EMBEDDINGS
 
-    subgraph Datenaggregation
-    OPAL_FILES[(OPAL Files<br>office,pdf)]
-    OPAL_METADATA_FILES[(OPAL Meta<br>office,pdf)]
-    LIA_FILES_[(LiaScript<br>Files)]
-    LIA_METADATA_FILES[(LiaScript<br>Metadata)]
+    subgraph RAG ["A.&nbsp;Retrieval‑Augmented&nbsp;Generation"]
+    VECTOR_DB[(Vektor<br> Datenbank)]
+    OPAL_EMBEDDINGS --> VECTOR_DB
+    PROMPTS@{ shape: doc, label: "Prompts für <br> Titel<br> Keywords <br> ..." }
+    LLM(Lokales LLM):::green
+    VECTOR_DB --> LLM
+    PROMPTS --> LLM
     end
 
-    class Materialidentifikation, gray
-
-    subgraph Metadatenaggregation
-    subgraph OPAL Pipeline
-    OPAL_EXTRACTION_TYP_MD(Extraktion Datei-<br> typspezifischer Metadaten):::green
-    OPAL_EXTRACTION_LLM_MD(LLM basierte<br>Extraktion Metadaten):::green
-    OPAL_EXTRACTION_TYP_MD--> |file:|OPALFILES[(Metadaten<br>Sammlung<br> OPAL)]
-    OPAL_EXTRACTION_LLM_MD --> |ai:|OPALFILES
-    OPAL_METADATA_FILES --> |opal:|OPALFILES
-    end
-    subgraph LiaScript Pipeline
-    LIA_EXTRACTION_TYP_MD(Extraktion markdown-<br>spezifischer Metadaten):::yellow
-    LIA_EXTRACTION_LLM_MD(LLM basierte<br>Extraktion Metadaten):::yellow
-    LIA_EXTRACTION_TYP_MD--> |md:|LIAFILES[(Metadaten <br>Sammlung<br>LiaScript)]
-    LIA_EXTRACTION_LLM_MD --> |ai:|LIAFILES
-    LIA_METADATA_FILES --> |github:|LIAFILES
+    subgraph GND ["B. "GND Check]
+    AI_METADATA[(AI generierte<br>Metadata)]
+    LLM --> AI_METADATA
+    GND_CHECK(GND Keyword Check):::green
+    NAME_CHECK(Namens Check):::green
     end
 
-    subgraph Evaluation
-    KREUZVERGLEICH(Kreuzvergleich Autoren):::green 
-    KLASSIFIKATION(Normierung der Keywords):::yellow
-    PLAUSIBILISIERUNG(Externer Check Autoren)
-    BIB_KLASSIFIKATION(Bibliografische Einordung)
+    subgraph SIMILARITY ["C. "Ähnlichkeitsanalyse]
+    KEYWORD_SIM(Keyword basiert):::green
+    EMBEDDING_SIM(Embedding basiert):::green
+    MINHASH_SIM(MinHash basiert):::green
+    RESULT@{ shape: documents, label: "Ähnlichkeits-<br>matrizen" }
+    MINHASH_SIM --> RESULT
+    EMBEDDING_SIM--> RESULT
+    KEYWORD_SIM--> RESULT
     end
 
-    OPALFILES --> Evaluation
-    LIAFILES --> Evaluation
-
+    subgraph VISUALIZATION ["D. "Visualisierung]
+    GRAPH[(Erweitertes<br> Datenset)]
+    MAP@{ shape: doc, label: "Interactive<br>OER Inhaltslandkarte" }
     end
 
-    OPAL_FILES --> OPAL_EXTRACTION_TYP_MD
-    OPAL_FILES --> OPAL_EXTRACTION_LLM_MD
-    LIA_FILES_ --> LIA_EXTRACTION_TYP_MD
-    LIA_FILES_ --> LIA_EXTRACTION_LLM_MD
-
-    Evaluation --> METADATA_Analysis(Analyse der Datensätze)
-    Evaluation --> METADATA_PROPOSALS(Metadatenvorschläge<br>für Autoren)
-    Evaluation --> METADATA_CLASSIFICATION(Materialklassifikation<br>für Autoren)
-
-    class Datenaggregation white
-    class Datenaggregation,Metadatenaggregation,Evaluation gray
+    AI_METADATA <--> GND_CHECK
+    AI_METADATA <--> NAME_CHECK
+    OPAL_CONTENT --> MINHASH_SIM
+    VECTOR_DB --> EMBEDDING_SIM
+    AI_METADATA -->KEYWORD_SIM
+    AI_METADATA --> VISUALIZATION
+    RESULT --> VISUALIZATION
+    end
+    
+    class BASIC,Metadatenaggregation,Evaluation gray
 ```
 
 ## Generelle Installation 
