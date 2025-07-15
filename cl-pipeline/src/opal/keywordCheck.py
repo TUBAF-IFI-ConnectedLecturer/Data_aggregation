@@ -5,8 +5,42 @@ import requests
 import logging
 import json
 import spacy
+import re
 
 from pipeline.taskfactory import TaskWithInputFileMonitor
+
+def improved_lemmatization(keyword, nlp):
+    """
+    Verbesserte Lemmatisierung für deutsche Schlagworte
+    Gibt verschiedene Lemmatisierungsstrategien zurück
+    """
+    doc = nlp(keyword)
+    
+    # Verschiedene Strategien für bessere Lemmatisierung
+    strategies = []
+    
+    # Strategie 1: Konservative Lemmatisierung (nur kleine Änderungen)
+    lemma_conservative = []
+    for token in doc:
+        if (len(token.lemma_) > 0 and 
+            token.lemma_ != token.text and
+            abs(len(token.lemma_) - len(token.text)) <= 2):
+            lemma_conservative.append(token.lemma_)
+        else:
+            lemma_conservative.append(token.text)
+    strategies.append("".join(lemma_conservative))
+    
+    # Strategie 2: Standard spaCy Lemmatisierung
+    lemma_standard = "".join([token.lemma_ for token in doc])
+    if lemma_standard != strategies[0]:  # Nur hinzufügen wenn anders
+        strategies.append(lemma_standard)
+    
+    # Strategie 3: Original beibehalten (als letzter Fallback)
+    if keyword not in strategies:
+        strategies.append(keyword)
+    
+    return strategies
+
 
 def get_lobid_response(word):
     params = {
@@ -95,10 +129,30 @@ class GNDKeywordCheck(TaskWithInputFileMonitor):
                 keyword_sample = {}
                 keyword_sample['raw_keyword'] = keyword
 
+                # Verbesserte Lemmatisierung für deutsche Schlagworte
                 if " " not in keyword:
-                    doc = nlp(keyword)
-                    keyword_sample['lemma'] = "".join([token.lemma_ for token in doc])
-                    lobid = receive_lobid_keywords(keyword_sample['lemma'])
+                    lemma_candidates = improved_lemmatization(keyword, nlp)
+                    
+                    # Teste jede Lemma-Strategie nacheinander
+                    lobid = None
+                    used_lemma = keyword  # Fallback
+                    
+                    for i, lemma in enumerate(lemma_candidates):
+                        lobid = receive_lobid_keywords(lemma)
+                        if lobid:
+                            used_lemma = lemma
+                            # Optional: Logging für Debugging
+                            if i > 0:  # Nur loggen wenn nicht die erste Strategie erfolgreich war
+                                logging.debug(f"Keyword '{keyword}' -> Lemma '{lemma}' (Strategy {i+1})")
+                            break
+                    
+                    keyword_sample['lemma'] = used_lemma
+                    
+                    # Fallback: Wenn keine Lemmatisierung funktioniert, verwende das Originalwort
+                    if not lobid:
+                        lobid = receive_lobid_keywords(keyword)
+                        if lobid:
+                            keyword_sample['lemma'] = keyword
                 else:
                     keyword_sample['lemma'] = ""
                     lobid = receive_lobid_keywords(keyword)

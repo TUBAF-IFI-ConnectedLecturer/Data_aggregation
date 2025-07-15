@@ -2,9 +2,11 @@
 app.log
 */build*/
 */__pycache__*/
+__pycache__
 
 pipeline/pipeline.egg-info
 .env
 
 index.faiss
 index.pkl
+
