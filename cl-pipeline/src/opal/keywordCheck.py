@@ -19,7 +19,12 @@ def improved_lemmatization(keyword, nlp):
     # Verschiedene Strategien für bessere Lemmatisierung
     strategies = []
     
-    # Strategie 1: Konservative Lemmatisierung (nur kleine Änderungen)
+    # Strategie 1: Standard spaCy Lemmatisierung (bevorzugt für bessere Singularisierung)
+    lemma_standard = "".join([token.lemma_ for token in doc])
+    if lemma_standard != keyword:  # Nur hinzufügen wenn anders als Original
+        strategies.append(lemma_standard)
+    
+    # Strategie 2: Konservative Lemmatisierung (nur kleine Änderungen)
     lemma_conservative = []
     for token in doc:
         if (len(token.lemma_) > 0 and 
@@ -28,12 +33,11 @@ def improved_lemmatization(keyword, nlp):
             lemma_conservative.append(token.lemma_)
         else:
             lemma_conservative.append(token.text)
-    strategies.append("".join(lemma_conservative))
+    conservative_result = "".join(lemma_conservative)
     
-    # Strategie 2: Standard spaCy Lemmatisierung
-    lemma_standard = "".join([token.lemma_ for token in doc])
-    if lemma_standard != strategies[0]:  # Nur hinzufügen wenn anders
-        strategies.append(lemma_standard)
+    # Nur hinzufügen wenn anders als bereits vorhandene Strategien
+    if conservative_result not in strategies and conservative_result != keyword:
+        strategies.append(conservative_result)
     
     # Strategie 3: Original beibehalten (als letzter Fallback)
     if keyword not in strategies:
