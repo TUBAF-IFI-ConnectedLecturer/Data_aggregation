@@ -468,18 +468,27 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
                           'ai:author' not in existing_metadata or 
                           safe_is_empty(existing_metadata.get('ai:author')))
             
-            # Check if affiliation processing is needed
-            need_affiliation = (existing_metadata is None or 
-                               'ai:affilation' not in existing_metadata or 
-                               safe_is_empty(existing_metadata.get('ai:affilation')))
-            
             # Check if keywords_gen processing is needed
             need_keywords_gen = (existing_metadata is None or 
                                 'ai:keywords_gen' not in existing_metadata or 
                                 safe_is_empty(existing_metadata.get('ai:keywords_gen')))
 
-            if not (need_author or need_affiliation or need_keywords_gen):
-                continue
+            # NOTE: ai:affilation and ai:dewey are ALWAYS processed (force overwrite)
+            # So we only skip if NO conditional fields need processing
+            if not (need_author or need_keywords_gen):
+                # But still process if we're forcing affiliation/dewey updates
+                has_conditional_processing = False
+                
+                # Check other conditional fields
+                need_title = (existing_metadata is None or 'ai:title' not in existing_metadata or safe_is_empty(existing_metadata.get('ai:title')))
+                need_type = (existing_metadata is None or 'ai:type' not in existing_metadata or safe_is_empty(existing_metadata.get('ai:type')))
+                need_keywords_ext = (existing_metadata is None or 'ai:keywords_ext' not in existing_metadata or safe_is_empty(existing_metadata.get('ai:keywords_ext')))
+                need_keywords_dnb = (existing_metadata is None or 'ai:keywords_dnb' not in existing_metadata or safe_is_empty(existing_metadata.get('ai:keywords_dnb')))
+                
+                if not (need_title or need_type or need_keywords_ext or need_keywords_dnb):
+                    # Only skip if absolutely NO processing is needed
+                    # (ai:affilation and ai:dewey are always processed anyway)
+                    continue
 
             retriever_with_filter = vectorstore.as_retriever( 
                 search_kwargs={"filter":{"filename":file},
@@ -610,26 +619,30 @@ Gib nur den abgeleiteten Universitätsnamen zurück oder einen leeren String."""
                 metadata_list_sample['ai:keywords_gen'] = filtered(keywords2)
                 needs_processing = True
 
-            # Process other fields if they don't exist yet (keeping original behavior for these)
-            if existing_metadata is None or 'ai:title' not in existing_metadata or safe_is_empty(existing_metadata.get('ai:title')):
+            # Process other conditional fields (only if they don't exist yet)
+            need_title = (existing_metadata is None or 'ai:title' not in existing_metadata or safe_is_empty(existing_metadata.get('ai:title')))
+            if need_title:
                 title_query = self.prompts["title_query"].replace("{file}", file)
                 title = get_monitored_response(title_query, chain)
                 metadata_list_sample['ai:title'] = filtered(title)
                 needs_processing = True
 
-            if existing_metadata is None or 'ai:type' not in existing_metadata or safe_is_empty(existing_metadata.get('ai:type')):
+            need_type = (existing_metadata is None or 'ai:type' not in existing_metadata or safe_is_empty(existing_metadata.get('ai:type')))
+            if need_type:
                 document_type_query = self.prompts["document_type_query"].replace("{file}", file)
                 document_type = get_monitored_response(document_type_query, chain)
                 metadata_list_sample['ai:type'] = filtered(document_type)
                 needs_processing = True
 
-            if existing_metadata is None or 'ai:keywords_ext' not in existing_metadata or safe_is_empty(existing_metadata.get('ai:keywords_ext')):
+            need_keywords_ext = (existing_metadata is None or 'ai:keywords_ext' not in existing_metadata or safe_is_empty(existing_metadata.get('ai:keywords_ext')))
+            if need_keywords_ext:
                 keywords_ext_query = self.prompts["keywords_ext_query"].replace("{file}", file)
                 keywords = get_monitored_response(keywords_ext_query, chain)
                 metadata_list_sample['ai:keywords_ext'] = filtered(keywords)
                 needs_processing = True
 
-            if existing_metadata is None or 'ai:keywords_dnb' not in existing_metadata or safe_is_empty(existing_metadata.get('ai:keywords_dnb')):
+            need_keywords_dnb = (existing_metadata is None or 'ai:keywords_dnb' not in existing_metadata or safe_is_empty(existing_metadata.get('ai:keywords_dnb')))
+            if need_keywords_dnb:
                 keywords_dnb_query = self.prompts["keywords_dnb_query"].replace("{file}", file)
                 keywords3 = get_monitored_response(keywords_dnb_query, chain)
                 metadata_list_sample['ai:keywords_dnb'] = filtered(keywords3)
