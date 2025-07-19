@@ -202,6 +202,103 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
                     valid_notations.add(notation)
         return valid_notations
 
+    def _normalize_affiliation(self, affiliation):
+        """Normalize and clean up affiliation names"""
+        if not affiliation:
+            return ""
+        
+        # Common abbreviations and their full forms
+        university_mappings = {
+            # Technical Universities
+            'tu dresden': 'Technische Universität Dresden',
+            'tu berlin': 'Technische Universität Berlin', 
+            'tu münchen': 'Technische Universität München',
+            'tu darmstadt': 'Technische Universität Darmstadt',
+            'tu braunschweig': 'Technische Universität Braunschweig',
+            'tu clausthal': 'Technische Universität Clausthal',
+            'tu dortmund': 'Technische Universität Dortmund',
+            'tum': 'Technische Universität München',
+            'tud': 'Technische Universität Dresden',
+            'tub': 'Technische Universität Berlin',
+            
+            # Universities of Applied Sciences
+            'fh aachen': 'FH Aachen',
+            'fh köln': 'FH Köln',
+            'fh münchen': 'Hochschule München',
+            'hs münchen': 'Hochschule München',
+            
+            # Special cases
+            'rwth aachen': 'RWTH Aachen',
+            'kit karlsruhe': 'Karlsruher Institut für Technologie',
+            'lmu münchen': 'Ludwig-Maximilians-Universität München',
+            'uni hamburg': 'Universität Hamburg',
+            'uni köln': 'Universität zu Köln',
+            'uni frankfurt': 'Goethe-Universität Frankfurt am Main',
+            'uni heidelberg': 'Ruprecht-Karls-Universität Heidelberg',
+            'uni freiburg': 'Albert-Ludwigs-Universität Freiburg',
+            'uni würzburg': 'Julius-Maximilians-Universität Würzburg',
+            'uni göttingen': 'Georg-August-Universität Göttingen',
+            'uni bonn': 'Rheinische Friedrich-Wilhelms-Universität Bonn',
+            'uni mainz': 'Johannes Gutenberg-Universität Mainz',
+            'uni stuttgart': 'Universität Stuttgart',
+            'uni karlsruhe': 'Karlsruher Institut für Technologie',
+            
+            # International
+            'mit': 'Massachusetts Institute of Technology',
+            'stanford': 'Stanford University',
+            'harvard': 'Harvard University',
+            'oxford': 'University of Oxford',
+            'cambridge': 'University of Cambridge'
+        }
+        
+        # Clean the input
+        cleaned = affiliation.strip()
+        
+        # Remove common prefixes/suffixes that don't add value
+        remove_patterns = [
+            r'^an der\s+',
+            r'^von der\s+',
+            r'^der\s+',
+            r'^die\s+',
+            r'^das\s+',
+            r'\s*-\s*universität$',
+            r'\s*university$',
+            r'\s*institut$',
+            r'\s*institute$'
+        ]
+        
+        for pattern in remove_patterns:
+            cleaned = re.sub(pattern, '', cleaned, flags=re.IGNORECASE).strip()
+        
+        # Check for direct mappings
+        cleaned_lower = cleaned.lower()
+        for abbrev, full_name in university_mappings.items():
+            if abbrev in cleaned_lower:
+                return full_name
+        
+        # If no mapping found, clean up common patterns
+        # Capitalize first letters of words
+        words = cleaned.split()
+        capitalized_words = []
+        
+        for word in words:
+            # Keep certain abbreviations in uppercase
+            if word.upper() in ['TU', 'FH', 'TUM', 'TUD', 'TUB', 'RWTH', 'KIT', 'LMU', 'MIT']:
+                capitalized_words.append(word.upper())
+            elif word.lower() in ['universität', 'university', 'hochschule', 'institut', 'institute', 'college']:
+                capitalized_words.append(word.capitalize())
+            elif len(word) > 1:
+                capitalized_words.append(word.capitalize())
+            else:
+                capitalized_words.append(word)
+        
+        result = ' '.join(capitalized_words)
+        
+        # Final cleanup - ensure consistent naming
+        result = re.sub(r'\s+', ' ', result).strip()
+        
+        return result
+
     def _get_dewey_sample(self, thematic_areas=None):
         """Get a representative sample of Dewey classifications, optionally filtered by themes"""
         if not self.dewey_classifications:
@@ -402,25 +499,110 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
                 metadata_list_sample['ai:revisedAuthor'] = nc.get_all_names(authors)
                 needs_processing = True
 
-            # Process affiliation if needed
-            if need_affiliation:
+            # ALWAYS process affiliation (force overwrite for improved algorithm)
+            # Multi-step affiliation detection for better accuracy
+                # Multi-step affiliation detection for better accuracy
+                
+                # Step 1: Look for explicit affiliation mentions
                 affiliation_query = self.prompts["affiliation_query"].replace("{file}", file)
-                affilation = get_monitored_response(affiliation_query, chain)
+                affiliation_response = get_monitored_response(affiliation_query, chain)
+                
+                # Step 2: Enhanced affiliation search with common patterns
+                enhanced_affiliation_query = f"""Suche in dem Dokument {file} nach Hinweisen auf die Herkunftsinstitution des Autors.
+                
+Achte dabei besonders auf:
+- Universitätsnamen (vollständig oder abgekürzt)
+- Hochschulnamen (TU, FH, Universität, Hochschule)
+- Institutsnamen oder Fachbereiche
+- E-Mail-Adressen mit Universitätsdomains (.edu, .ac.*, universitätsspezifische Domains)
+- Adressen mit Universitätsbezug
+- Kopf- oder Fußzeilen mit Institutionsnamen
 
-                # Prüfe, ob die Affiliation im Text des Dokuments vorkommt.
-                filtered_affilation = filtered(affilation)
-                content = ""
-                if filtered_affilation:
-                    suchergebnisse = collection.get(
-                        where={"filename": {"$eq": file}},
-                        include=["documents"]
-                    )
-                    content = "".join(suchergebnisse['documents']).replace("\n", "")
-                if filtered_affilation in content:
-                    metadata_list_sample['ai:affilation'] = filtered_affilation
-                else:
-                    metadata_list_sample['ai:affilation'] = ""
-                needs_processing = True
+Beispiele für deutsche Universitäten:
+- TU Dresden, TU Berlin, TU München
+- Universität Hamburg, Uni Köln, LMU München
+- FH Aachen, Hochschule München
+- RWTH Aachen, KIT Karlsruhe
+
+Gib nur den Namen der Institution zurück. Falls mehrere gefunden werden, nimm die prominenteste.
+Falls nichts gefunden wird, gib einen leeren String zurück."""
+                
+                enhanced_affiliation = get_monitored_response(enhanced_affiliation_query, chain)
+                
+                # Step 3: Email domain analysis
+                email_domain_query = f"""Suche in dem Dokument {file} nach E-Mail-Adressen und analysiere die Domains.
+                
+Universitätsdomains können sein:
+- .edu (internationale Universitäten)
+- .ac.uk, .ac.at (akademische Domains)
+- tu-dresden.de, uni-hamburg.de, etc.
+- fh-aachen.de, hs-münchen.de, etc.
+
+Falls du eine E-Mail-Adresse mit einer Universitätsdomain findest, 
+leite daraus den Namen der Universität ab.
+
+Beispiele:
+- max.mustermann@tu-dresden.de → TU Dresden
+- anna.beispiel@uni-hamburg.de → Universität Hamburg
+- test@fh-aachen.de → FH Aachen
+
+Gib nur den abgeleiteten Universitätsnamen zurück oder einen leeren String."""
+                
+                email_affiliation = get_monitored_response(email_domain_query, chain)
+                
+                # Process all responses
+                affiliations = []
+                for response in [affiliation_response, enhanced_affiliation, email_affiliation]:
+                    filtered_response = filtered(response)
+                    if filtered_response and len(filtered_response.strip()) > 3:
+                        affiliations.append(filtered_response.strip())
+                
+                # Step 4: Validation and normalization
+                final_affiliation = ""
+                if affiliations:
+                    # Take the most detailed/longest response that seems valid
+                    valid_affiliations = []
+                    
+                    for affiliation in affiliations:
+                        # Check if affiliation contains university-related keywords
+                        university_keywords = [
+                            'universität', 'university', 'hochschule', 'institut', 'college',
+                            'tu ', 'fh ', 'uni ', 'rwth', 'kit', 'lmu', 'tum',
+                            'fachhochschule', 'technische universität', 'akademie'
+                        ]
+                        
+                        affiliation_lower = affiliation.lower()
+                        if any(keyword in affiliation_lower for keyword in university_keywords):
+                            # Verify the affiliation appears in the document
+                            suchergebnisse = collection.get(
+                                where={"filename": {"$eq": file}},
+                                include=["documents"]
+                            )
+                            content = " ".join(suchergebnisse['documents']).replace("\n", " ").lower()
+                            
+                            # More flexible matching - check for parts of the affiliation
+                            affiliation_words = affiliation_lower.split()
+                            if len(affiliation_words) >= 2:
+                                # Check if at least 2 significant words appear in content
+                                significant_words = [w for w in affiliation_words if len(w) > 3]
+                                matches = sum(1 for word in significant_words if word in content)
+                                if matches >= min(2, len(significant_words)):
+                                    valid_affiliations.append(affiliation)
+                            elif affiliation_lower in content:
+                                valid_affiliations.append(affiliation)
+                    
+                    # Select the best affiliation
+                    if valid_affiliations:
+                        # Prefer the longest/most detailed one
+                        final_affiliation = max(valid_affiliations, key=len)
+                        
+                        # Clean up the result
+                        final_affiliation = self._normalize_affiliation(final_affiliation)
+                
+                metadata_list_sample['ai:affilation'] = final_affiliation
+            
+            # Affiliation processing completed - always mark as needing processing
+            needs_processing = True
 
             # Process keywords_gen if needed
             if need_keywords_gen:
@@ -454,26 +636,26 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
                 metadata_list_sample['ai:keywords_dnb'] = filtered(keywords3)
                 needs_processing = True
 
-            if existing_metadata is None or 'ai:dewey' not in existing_metadata or safe_is_empty(existing_metadata.get('ai:dewey')):
-                # Two-step Dewey classification process
-                
-                # Step 1: Get thematic assessment from LLM
-                thematic_query = f"""Analysiere den Inhalt des Dokuments {file} und beschreibe die Hauptthemen.
+            # ALWAYS process Dewey classification (force overwrite for improved algorithm)
+            # Two-step Dewey classification process
+            
+            # Step 1: Get thematic assessment from LLM
+            thematic_query = f"""Analysiere den Inhalt des Dokuments {file} und beschreibe die Hauptthemen.
 
 Welche fachlichen Bereiche werden behandelt? 
 Nenne 3-5 Hauptthemen oder Fachbereiche in Stichworten (z.B. "Informatik", "Mathematik", "Pädagogik", "Geschichte", etc.).
 
 Antworte nur mit den Themenbereichen, getrennt durch Kommas."""
-                
-                thematic_areas = get_monitored_response(thematic_query, chain)
-                thematic_areas_filtered = filtered(thematic_areas)
-                
-                print(f"DEBUG - Step 1 - Thematic areas: {thematic_areas_filtered}")
-                
-                # Step 2: Map themes to official Dewey classifications
-                if thematic_areas_filtered:
-                    dewey_sample = self._get_dewey_sample(thematic_areas_filtered)
-                    mapping_query = f"""Basierend auf den identifizierten Themenbereichen: "{thematic_areas_filtered}"
+            
+            thematic_areas = get_monitored_response(thematic_query, chain)
+            thematic_areas_filtered = filtered(thematic_areas)
+            
+            print(f"DEBUG - Step 1 - Thematic areas: {thematic_areas_filtered}")
+            
+            # Step 2: Map themes to official Dewey classifications
+            if thematic_areas_filtered:
+                dewey_sample = self._get_dewey_sample(thematic_areas_filtered)
+                mapping_query = f"""Basierend auf den identifizierten Themenbereichen: "{thematic_areas_filtered}"
 
 Ordne diese Themen zu passenden Dewey-Dezimalklassifikationen zu.
 
@@ -486,50 +668,45 @@ Antworte NUR mit einem gültigen JSON-Array im Format:
 [{{"notation": "XXX", "label": "Beschreibung", "score": 0.X}}]
 
 Keine Erklärungen oder zusätzlicher Text."""
-                    
-                    dewey = get_monitored_response(mapping_query, chain)
-                else:
-                    # Fallback to original approach if step 1 fails
-                    dewey_query_base = self.prompts["dewey_query"].replace("{file}", file)
-                    if self.dewey_classifications:
-                        dewey_sample = self._get_dewey_sample()
-                        dewey = get_monitored_response(f"{dewey_query_base}\n\nVerfügbare Klassifikationen:\n{dewey_sample}", chain)
-                    else:
-                        dewey = get_monitored_response(dewey_query_base, chain)
                 
-                dewey_answer = filtered(dewey)
-                print(f"DEBUG - Step 2 - Raw Dewey response: {dewey_answer[:200]}...")
-                print("**************************************")
-
-                # Always initialize as empty list
-                metadata_list_sample['ai:dewey'] = []
-                
-                if dewey_answer != "":
-                    print(f"DEBUG - Filtered Dewey response: {dewey_answer}")
-                    
-                    # Try to clean and parse the response
-                    dewey_parsed = clean_and_parse_json_response(dewey_answer)
-                    print(f"DEBUG - Parsed JSON: {dewey_parsed}")
-                    
-                    if dewey_parsed is not None:
-                        valid_notations = self.get_valid_dewey_notations()
-                        print(f"DEBUG - Valid notations count: {len(valid_notations)}")
-                        
-                        if has_valid_dewey_classification(dewey_parsed, valid_notations):
-                            metadata_list_sample['ai:dewey'] = dewey_parsed
-                            print(f"DEBUG - Successfully assigned Dewey: {dewey_parsed}")
-                        else:
-                            print("DEBUG - No valid Dewey classification found")
-                    else:
-                        print("DEBUG - Failed to parse JSON response")
-                else:
-                    print("DEBUG - Empty Dewey response after filtering")
-                
-                needs_processing = True
+                dewey = get_monitored_response(mapping_query, chain)
             else:
-                # Ensure existing dewey is always a list
-                if 'ai:dewey' not in metadata_list_sample:
-                    metadata_list_sample['ai:dewey'] = []
+                # Fallback to original approach if step 1 fails
+                dewey_query_base = self.prompts["dewey_query"].replace("{file}", file)
+                if self.dewey_classifications:
+                    dewey_sample = self._get_dewey_sample()
+                    dewey = get_monitored_response(f"{dewey_query_base}\n\nVerfügbare Klassifikationen:\n{dewey_sample}", chain)
+                else:
+                    dewey = get_monitored_response(dewey_query_base, chain)
+            
+            dewey_answer = filtered(dewey)
+            print(f"DEBUG - Step 2 - Raw Dewey response: {dewey_answer[:200]}...")
+
+            # Always initialize as empty list
+            metadata_list_sample['ai:dewey'] = []
+            
+            if dewey_answer != "":
+                print(f"DEBUG - Filtered Dewey response: {dewey_answer}")
+                
+                # Try to clean and parse the response
+                dewey_parsed = clean_and_parse_json_response(dewey_answer)
+                print(f"DEBUG - Parsed JSON: {dewey_parsed}")
+                
+                if dewey_parsed is not None:
+                    valid_notations = self.get_valid_dewey_notations()
+                    print(f"DEBUG - Valid notations count: {len(valid_notations)}")
+                    
+                    if has_valid_dewey_classification(dewey_parsed, valid_notations):
+                        metadata_list_sample['ai:dewey'] = dewey_parsed
+                        print(f"DEBUG - Successfully assigned Dewey: {dewey_parsed}")
+                    else:
+                        print("DEBUG - No valid Dewey classification found")
+                else:
+                    print("DEBUG - Failed to parse JSON response")
+            else:
+                print("DEBUG - Empty Dewey response after filtering")
+            
+            needs_processing = True
 
             # Skip if no processing was needed
             if not needs_processing:
@@ -552,10 +729,11 @@ Keine Erklärungen oder zusätzlicher Text."""
                     author_text += f" / {existing_metadata['ai:revisedAuthor']}"
                 output_lines.append(author_text)
             
-            # Only show fields that were actually processed
-            if need_affiliation and 'ai:affilation' in metadata_list_sample:
+            # Always show affiliation (since we always process it now)
+            if 'ai:affilation' in metadata_list_sample:
                 output_lines.append(f"Affilation: {metadata_list_sample['ai:affilation']}")
             
+            # Only show fields that were actually processed conditionally
             if need_keywords_gen and 'ai:keywords_gen' in metadata_list_sample:
                 output_lines.append(f"Keywords2 : {metadata_list_sample['ai:keywords_gen']}")
             
@@ -572,7 +750,8 @@ Keine Erklärungen oder zusätzlicher Text."""
             if 'ai:keywords_dnb' in metadata_list_sample and (existing_metadata is None or 'ai:keywords_dnb' not in existing_metadata or safe_is_empty(existing_metadata.get('ai:keywords_dnb'))):
                 output_lines.append(f"Keywords3 : {metadata_list_sample['ai:keywords_dnb']}")
             
-            if 'ai:dewey' in metadata_list_sample and (existing_metadata is None or 'ai:dewey' not in existing_metadata or safe_is_empty(existing_metadata.get('ai:dewey'))):
+            # Always show Dewey classification (since we always process it now)
+            if 'ai:dewey' in metadata_list_sample:
                 output_lines.append(f"Dewey     : {metadata_list_sample['ai:dewey']}")
             
             # Print the formatted output
