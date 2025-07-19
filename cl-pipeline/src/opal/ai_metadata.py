@@ -501,14 +501,13 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
 
             # ALWAYS process affiliation (force overwrite for improved algorithm)
             # Multi-step affiliation detection for better accuracy
-                # Multi-step affiliation detection for better accuracy
-                
-                # Step 1: Look for explicit affiliation mentions
-                affiliation_query = self.prompts["affiliation_query"].replace("{file}", file)
-                affiliation_response = get_monitored_response(affiliation_query, chain)
-                
-                # Step 2: Enhanced affiliation search with common patterns
-                enhanced_affiliation_query = f"""Suche in dem Dokument {file} nach Hinweisen auf die Herkunftsinstitution des Autors.
+            
+            # Step 1: Look for explicit affiliation mentions
+            affiliation_query = self.prompts["affiliation_query"].replace("{file}", file)
+            affiliation_response = get_monitored_response(affiliation_query, chain)
+            
+            # Step 2: Enhanced affiliation search with common patterns
+            enhanced_affiliation_query = f"""Suche in dem Dokument {file} nach Hinweisen auf die Herkunftsinstitution des Autors.
                 
 Achte dabei besonders auf:
 - Universitätsnamen (vollständig oder abgekürzt)
@@ -526,11 +525,11 @@ Beispiele für deutsche Universitäten:
 
 Gib nur den Namen der Institution zurück. Falls mehrere gefunden werden, nimm die prominenteste.
 Falls nichts gefunden wird, gib einen leeren String zurück."""
-                
-                enhanced_affiliation = get_monitored_response(enhanced_affiliation_query, chain)
-                
-                # Step 3: Email domain analysis
-                email_domain_query = f"""Suche in dem Dokument {file} nach E-Mail-Adressen und analysiere die Domains.
+            
+            enhanced_affiliation = get_monitored_response(enhanced_affiliation_query, chain)
+            
+            # Step 3: Email domain analysis
+            email_domain_query = f"""Suche in dem Dokument {file} nach E-Mail-Adressen und analysiere die Domains.
                 
 Universitätsdomains können sein:
 - .edu (internationale Universitäten)
@@ -547,59 +546,59 @@ Beispiele:
 - test@fh-aachen.de → FH Aachen
 
 Gib nur den abgeleiteten Universitätsnamen zurück oder einen leeren String."""
+            
+            email_affiliation = get_monitored_response(email_domain_query, chain)
+            
+            # Process all responses
+            affiliations = []
+            for response in [affiliation_response, enhanced_affiliation, email_affiliation]:
+                filtered_response = filtered(response)
+                if filtered_response and len(filtered_response.strip()) > 3:
+                    affiliations.append(filtered_response.strip())
+            
+            # Step 4: Validation and normalization
+            final_affiliation = ""
+            if affiliations:
+                # Take the most detailed/longest response that seems valid
+                valid_affiliations = []
                 
-                email_affiliation = get_monitored_response(email_domain_query, chain)
-                
-                # Process all responses
-                affiliations = []
-                for response in [affiliation_response, enhanced_affiliation, email_affiliation]:
-                    filtered_response = filtered(response)
-                    if filtered_response and len(filtered_response.strip()) > 3:
-                        affiliations.append(filtered_response.strip())
-                
-                # Step 4: Validation and normalization
-                final_affiliation = ""
-                if affiliations:
-                    # Take the most detailed/longest response that seems valid
-                    valid_affiliations = []
+                for affiliation in affiliations:
+                    # Check if affiliation contains university-related keywords
+                    university_keywords = [
+                        'universität', 'university', 'hochschule', 'institut', 'college',
+                        'tu ', 'fh ', 'uni ', 'rwth', 'kit', 'lmu', 'tum',
+                        'fachhochschule', 'technische universität', 'akademie'
+                    ]
                     
-                    for affiliation in affiliations:
-                        # Check if affiliation contains university-related keywords
-                        university_keywords = [
-                            'universität', 'university', 'hochschule', 'institut', 'college',
-                            'tu ', 'fh ', 'uni ', 'rwth', 'kit', 'lmu', 'tum',
-                            'fachhochschule', 'technische universität', 'akademie'
-                        ]
+                    affiliation_lower = affiliation.lower()
+                    if any(keyword in affiliation_lower for keyword in university_keywords):
+                        # Verify the affiliation appears in the document
+                        suchergebnisse = collection.get(
+                            where={"filename": {"$eq": file}},
+                            include=["documents"]
+                        )
+                        content = " ".join(suchergebnisse['documents']).replace("\n", " ").lower()
                         
-                        affiliation_lower = affiliation.lower()
-                        if any(keyword in affiliation_lower for keyword in university_keywords):
-                            # Verify the affiliation appears in the document
-                            suchergebnisse = collection.get(
-                                where={"filename": {"$eq": file}},
-                                include=["documents"]
-                            )
-                            content = " ".join(suchergebnisse['documents']).replace("\n", " ").lower()
-                            
-                            # More flexible matching - check for parts of the affiliation
-                            affiliation_words = affiliation_lower.split()
-                            if len(affiliation_words) >= 2:
-                                # Check if at least 2 significant words appear in content
-                                significant_words = [w for w in affiliation_words if len(w) > 3]
-                                matches = sum(1 for word in significant_words if word in content)
-                                if matches >= min(2, len(significant_words)):
-                                    valid_affiliations.append(affiliation)
-                            elif affiliation_lower in content:
+                        # More flexible matching - check for parts of the affiliation
+                        affiliation_words = affiliation_lower.split()
+                        if len(affiliation_words) >= 2:
+                            # Check if at least 2 significant words appear in content
+                            significant_words = [w for w in affiliation_words if len(w) > 3]
+                            matches = sum(1 for word in significant_words if word in content)
+                            if matches >= min(2, len(significant_words)):
                                 valid_affiliations.append(affiliation)
-                    
-                    # Select the best affiliation
-                    if valid_affiliations:
-                        # Prefer the longest/most detailed one
-                        final_affiliation = max(valid_affiliations, key=len)
-                        
-                        # Clean up the result
-                        final_affiliation = self._normalize_affiliation(final_affiliation)
+                        elif affiliation_lower in content:
+                            valid_affiliations.append(affiliation)
                 
-                metadata_list_sample['ai:affilation'] = final_affiliation
+                # Select the best affiliation
+                if valid_affiliations:
+                    # Prefer the longest/most detailed one
+                    final_affiliation = max(valid_affiliations, key=len)
+                    
+                    # Clean up the result
+                    final_affiliation = self._normalize_affiliation(final_affiliation)
+            
+            metadata_list_sample['ai:affilation'] = final_affiliation
             
             # Affiliation processing completed - always mark as needing processing
             needs_processing = True
