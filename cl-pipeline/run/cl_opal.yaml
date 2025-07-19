@@ -1,7 +1,7 @@
 # Defining data folder stucture
 folder_structure:
-  #data_root_folder: &BASE ./data
-  data_root_folder: &BASE /home/crosslab/Desktop/Opal
+  #data_root_folder: &BASE /home/crosslab/Desktop/Opal
+  data_root_folder: &BASE /media/sz/Data/Connected_Lecturers/Opal3
   raw_data_folder: &RAW !join [*BASE, /raw]
   file_folder: &FILE_FOLDER !join [*RAW, /files]
   content_folder: &CONTENT_FOLDER !join [*RAW, /content]
@@ -88,11 +88,11 @@ stages:
     parameters: 
       file_file_name_input: *OPALSINGLEAIMETA
       file_file_name_output: &OPALKEYWORDS OPAL_checked_keywords.p
-      force_run: True
+      force_run: False
 
   - name: Determine similarity between files
     class: DocumentSimilarity
     parameters: 
       file_file_name_input: *OPALSINGLEFILESFILTERED
       file_file_name_output: &OPALAISIMILARITY OPAL_ai_similaritiy.p
-      force_run: True
+      force_run: False

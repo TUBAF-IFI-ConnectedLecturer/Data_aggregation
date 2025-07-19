@@ -52,9 +52,12 @@ def clean_and_parse_json_response(raw_response: str):
         print("Fehler beim Parsen:", e)
         return None
 
-def has_valid_dewey_classification(json_response: str) -> bool:
+def has_valid_dewey_classification(data) -> bool:
     try:
-        data = json.loads(json_response)
+        # Wenn data ein String ist, parse ihn als JSON
+        if isinstance(data, str):
+            data = json.loads(data)
+            
         if not isinstance(data, list) or len(data) == 0:
             return False
 
@@ -237,13 +240,10 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
             if dewey_answer != "":
                 dewey_answer = clean_and_parse_json_response(dewey_answer)
 
+            metadata_list_sample['ai:dewey'] = []
             if dewey_answer is not None:
                 if has_valid_dewey_classification(dewey_answer):
                     metadata_list_sample['ai:dewey'] = dewey_answer
-                else:
-                    metadata_list_sample['ai:dewey'] = ""
-            else:
-                metadata_list_sample['ai:dewey'] = ""
 
             print(f"""
             File      : {(row['pipe:ID'] + "." + row['pipe:file_type'])}
@@ -253,7 +253,7 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
             Typ       : {filtered(document_type)}
             Keywords  : {filtered(keywords)}
             Keywords3 : {filtered(keywords3)}
-            Dewey     : {dewey_answer} 
+            Dewey     : {metadata_list_sample['ai:dewey']} 
             """)
 
             # Teste ob alle dict einträge deren Keys in check_keys genannt sind leer sind
