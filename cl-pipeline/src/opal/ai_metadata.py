@@ -473,22 +473,23 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
                                 'ai:keywords_gen' not in existing_metadata or 
                                 safe_is_empty(existing_metadata.get('ai:keywords_gen')))
 
-            # NOTE: ai:affilation and ai:dewey are ALWAYS processed (force overwrite)
-            # So we only skip if NO conditional fields need processing
+            # NOTE: ai:affiliation and ai:dewey are ALWAYS processed (force overwrite)
+            # So we process the file if:
+            # 1. Any conditional fields need processing, OR
+            # 2. We're doing force processing (which we always do for affiliation/dewey)
+            
+            # Check conditional fields
             if not (need_author or need_keywords_gen):
-                # But still process if we're forcing affiliation/dewey updates
-                has_conditional_processing = False
-                
                 # Check other conditional fields
                 need_title = (existing_metadata is None or 'ai:title' not in existing_metadata or safe_is_empty(existing_metadata.get('ai:title')))
                 need_type = (existing_metadata is None or 'ai:type' not in existing_metadata or safe_is_empty(existing_metadata.get('ai:type')))
                 need_keywords_ext = (existing_metadata is None or 'ai:keywords_ext' not in existing_metadata or safe_is_empty(existing_metadata.get('ai:keywords_ext')))
                 need_keywords_dnb = (existing_metadata is None or 'ai:keywords_dnb' not in existing_metadata or safe_is_empty(existing_metadata.get('ai:keywords_dnb')))
                 
-                if not (need_title or need_type or need_keywords_ext or need_keywords_dnb):
-                    # Only skip if absolutely NO processing is needed
-                    # (ai:affilation and ai:dewey are always processed anyway)
-                    continue
+                # If NO conditional fields need processing, we could skip...
+                # BUT we always do force processing for affiliation and dewey, so never skip!
+                # Only skip if we explicitly disable force processing (which we don't)
+                pass  # Always process because of force processing for affiliation/dewey
 
             retriever_with_filter = vectorstore.as_retriever( 
                 search_kwargs={"filter":{"filename":file},
