@@ -79,6 +79,7 @@ stages:
       file_file_name_input: *OPALSINGLEFILESFILTERED
       file_file_name_output: &OPALSINGLEAIMETA OPAL_ai_meta.p
       prompts_file_name: prompts.json
+      dewey_classification_file: dewey_classification.txt
       model_name: llama3:70b
       force_run: True
       file_types: ['pptx', 'pdf', 'docx', 'xlsx', 'md']
