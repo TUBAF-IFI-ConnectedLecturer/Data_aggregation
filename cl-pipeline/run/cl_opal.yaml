@@ -1,7 +1,7 @@
 # Defining data folder stucture
 folder_structure:
-  #data_root_folder: &BASE /home/crosslab/Desktop/Opal
-  data_root_folder: &BASE /media/sz/Data/Connected_Lecturers/Opal3
+  data_root_folder: &BASE /home/crosslab/Desktop/Opal
+  #data_root_folder: &BASE /media/sz/Data/Connected_Lecturers/Opal3
   raw_data_folder: &RAW !join [*BASE, /raw]
   file_folder: &FILE_FOLDER !join [*RAW, /files]
   content_folder: &CONTENT_FOLDER !join [*RAW, /content]
@@ -80,7 +80,7 @@ stages:
       file_file_name_output: &OPALSINGLEAIMETA OPAL_ai_meta.p
       prompts_file_name: prompts.json
       model_name: llama3:70b
-      force_run: False
+      force_run: True
       file_types: ['pptx', 'pdf', 'docx', 'xlsx', 'md']
 
   - name: Check Keywords
