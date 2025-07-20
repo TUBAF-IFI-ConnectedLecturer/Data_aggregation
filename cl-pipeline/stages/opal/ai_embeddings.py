@@ -20,6 +20,11 @@ import re
 
 from pipeline.taskfactory import TaskWithInputFileMonitor
 
+# Import zentrale Logging-Konfiguration
+import sys
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'src'))
+from pipeline_logging import setup_stage_logging
+
 
 # Define a dictionary to map file extensions to their respective loaders
 loaders = {
@@ -91,37 +96,37 @@ def load_and_split_document(file_path, text_splitter):
 class AIEmbeddingsGeneration(TaskWithInputFileMonitor):
     def __init__(self, config_stage, config_global):
         super().__init__(config_stage, config_global)
+        
+        # Setup zentrale Logging-Konfiguration
+        self.logger_configurator = setup_stage_logging(config_global)
+        
         stage_param = config_stage['parameters']
-        self.file_file_name_inputs =  Path(config_global['raw_data_folder']) / stage_param['file_file_name_input']
-        self.file_file_name_output =  Path(config_global['raw_data_folder']) / stage_param['file_file_name_output']
+        self.file_name_inputs =  Path(config_global['raw_data_folder']) / stage_param['file_name_input']
+        self.file_name_output =  Path(config_global['raw_data_folder']) / stage_param['file_name_output']
         self.file_types = stage_param['file_types']
         self.file_folder = Path(config_global['file_folder'])
         self.content_folder = Path(config_global['content_folder'])
         self.processed_data_folder = config_global['processed_data_folder']
         self.chroma_file = Path(config_global['processed_data_folder']) / "chroma_db"
+        
+        # LLM configuration from config file
+        self.llm_config = stage_param.get('llm_config', {})
+        self.base_url = self.llm_config.get('base_url', 'http://localhost:11434')
+        self.embedding_model = self.llm_config.get('embedding_model', 'jina/jina-embeddings-v2-base-de')
+        self.collection_name = self.llm_config.get('collection_name', 'oer_connected_lecturer')
 
     def execute_task(self):
+        # Logging wird jetzt zentral konfiguriert - keine lokalen Einstellungen mehr nötig
 
-        # vgl. https://github.com/encode/httpcore/blob/master/httpcore/_sync/http11.py
-        logging.getLogger("httpcore.http11").setLevel(logging.CRITICAL)
-       
-        # https://github.com/langchain-ai/langchain/discussions/19256
-        logging.getLogger("langchain_text_splitters.base").setLevel(logging.ERROR)
-        logging.getLogger("urllib3.connectionpool").setLevel(logging.CRITICAL)
-        logging.getLogger("httpx").setLevel(logging.CRITICAL)
-        logging.getLogger("httpcore").setLevel(logging.CRITICAL)
-
-        df_files = pd.read_pickle(self.file_file_name_inputs)
+        df_files = pd.read_pickle(self.file_name_inputs)
 
         df_files = df_files[df_files['pipe:file_type'].isin(self.file_types)]
         #df_files = df_files.iloc[0:100]
         logging.info(f"Found {len(df_files)} files of type {self.file_types}")
 
         embeddings = OllamaEmbeddings(
-            base_url="http://localhost:11434",
-            #model="all-minilm",
-            model = "jina/jina-embeddings-v2-base-de"
-            #show_progress=True
+            base_url=self.base_url,
+            model=self.embedding_model
         )
 
         # Verbesserte Textsplitter-Konfiguration
@@ -140,7 +145,7 @@ class AIEmbeddingsGeneration(TaskWithInputFileMonitor):
         )
 
         chroma_client = chromadb.PersistentClient(path=str(self.chroma_file))
-        collection = chroma_client.get_or_create_collection(name="oer_connected_lecturer")
+        collection = chroma_client.get_or_create_collection(name=self.collection_name)
         result = collection.get()
         processed_files = set([x["filename"] for x in result['metadatas']])
         logging.info(f"{len(processed_files)} in database found")

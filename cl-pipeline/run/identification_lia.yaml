@@ -28,7 +28,7 @@ stages:
     parameters:
       repo_data_file_name_input: *REPOSITORIES_DF
       lia_files_name: &LIAFILES_DF LiaScript_files.p
-      force_run: False
+      force_run: True
 
   - name: Aggregate LiaScript commits
     class: AggregateLiaScriptCommits

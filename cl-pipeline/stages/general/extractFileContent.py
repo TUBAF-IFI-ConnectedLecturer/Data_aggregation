@@ -23,6 +23,11 @@ from langchain_community.document_loaders import (UnstructuredPowerPointLoader,
 from langdetect import detect_langs
 from pipeline.taskfactory import TaskWithInputFileMonitor
 
+# Import zentrale Logging-Konfiguration
+import sys
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'src'))
+from pipeline_logging import setup_stage_logging
+
 # Define a dictionary to map file extensions to their respective loaders
 loaders = {
     'pdf':  PyMuPDFLoader,
@@ -49,21 +54,24 @@ def provide_content(file_path, file_type):
 class ExtractFileContent(TaskWithInputFileMonitor):
     def __init__(self, config_stage, config_global):
         super().__init__(config_stage, config_global)
+        
+        # Setup zentrale Logging-Konfiguration
+        self.logger_configurator = setup_stage_logging(config_global)
+        
         stage_param = config_stage['parameters']
         self.json_file_folder = Path(config_global['raw_data_folder'])
-        self.file_file_name_inputs =  Path(config_global['raw_data_folder']) / stage_param['file_file_name_input']
-        self.file_file_name_output =  Path(config_global['raw_data_folder']) / stage_param['file_file_name_output']
+        self.file_name_inputs =  Path(config_global['raw_data_folder']) / stage_param['file_name_input']
+        self.file_name_output =  Path(config_global['raw_data_folder']) / stage_param['file_name_output']
         self.file_folder = Path(config_global['file_folder'])
         self.content_folder = Path(config_global['content_folder'])
         self.file_types = stage_param['file_types']
 
     def execute_task(self):
+        # Logging wird jetzt zentral konfiguriert
+        df_files = pd.read_pickle(self.file_name_inputs)
 
-        logging.getLogger().setLevel(logging.ERROR)
-        df_files = pd.read_pickle(self.file_file_name_inputs)
-
-        if Path(self.file_file_name_output).exists():
-            df_content = pd.read_pickle(self.file_file_name_output)
+        if Path(self.file_name_output).exists():
+            df_content = pd.read_pickle(self.file_name_output)
         else:
             df_content = pd.DataFrame()
 
@@ -125,11 +133,11 @@ class ExtractFileContent(TaskWithInputFileMonitor):
                     raise ValueError("Empty dataframe")
 
                 df_content = pd.concat([ df_content, df_aux])
-                df_content.to_pickle(self.file_file_name_output)
+                df_content.to_pickle(self.file_name_output)
                 # just for testing
-                df_content.to_csv(self.file_file_name_output.with_suffix('.csv'))
+                df_content.to_csv(self.file_name_output.with_suffix('.csv'))
 
         logging.info(f"Finished extracting content of {df_content.shape[0]} files")
         df_content.reset_index(drop=True, inplace=True)
-        df_content.to_pickle(self.file_file_name_output)
+        df_content.to_pickle(self.file_name_output)
         

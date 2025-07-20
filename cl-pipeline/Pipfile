@@ -8,7 +8,6 @@ langchain = "*"
 langchain-community = "*"
 sentence-transformers = "*"
 pymupdf = "*"
-faiss-cpu = "*"
 pyyaml = "*"
 pipeline = {editable = true, path = "./../pipeline"}
 pandas = "*"
@@ -24,6 +23,8 @@ unstructured = "*"
 wrapt-timeout-decorator = "*"
 chromadb = "*"
 langchain-ollama = "*"
+spacy = "*"
+numpy = "*"
 
 [dev-packages]
 
