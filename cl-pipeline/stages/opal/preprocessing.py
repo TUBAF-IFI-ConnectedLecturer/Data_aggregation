@@ -18,12 +18,12 @@ class Preprocessing(TaskWithInputFileMonitor):
     def __init__(self, config_stage, config_global):
         super().__init__(config_stage, config_global)
         stage_param = config_stage['parameters']
-        self.file_file_name_inputs =  Path(config_global['raw_data_folder']) / stage_param['file_file_name_input']
-        self.file_file_name_output =  Path(config_global['raw_data_folder']) / stage_param['file_file_name_output']
+        self.file_name_inputs =  Path(config_global['raw_data_folder']) / stage_param['file_name_input']
+        self.file_name_output =  Path(config_global['raw_data_folder']) / stage_param['file_name_output']
 
     def execute_task(self):
 
-        df_files = pd.read_pickle(self.file_file_name_inputs)
+        df_files = pd.read_pickle(self.file_name_inputs)
         # Extract unique ID
         df_files['pipe:ID'] = df_files['opal:oer_permalink'].apply(extractUniqueID)
        
@@ -33,4 +33,4 @@ class Preprocessing(TaskWithInputFileMonitor):
         
         #df_files = df_files[['ID', 'file_type', 'known_creator']]
 
-        df_files.to_pickle(self.file_file_name_output)
+        df_files.to_pickle(self.file_name_output)

@@ -63,7 +63,7 @@ Aus den Dateien der Typen `docx`, `pptx`, `xlsx` und `pdf` werden Metadaten extr
 | `description`    |                |                 |
 | `subject`        | `subject`      | `file:subject`  |
 | `identifier`     |                |                 |
-| `language`       |                |                 |
+| `language`       | `language`     | `file:language` |
 | `created`        | `creationDate` | `file:created`  |
 | `modified`       | `modDate`      | `file:modified` |
 | `lastModifiedBy` |                |                 |
@@ -76,7 +76,7 @@ Aus den Dateien der Typen `docx`, `pptx`, `xlsx` und `pdf` werden Metadaten extr
 |                  | `creator`      |                 |
 |                  | `producer`     |                 |
 |                  | `format`       |                 |
-|                  | `language`     | `file:language` |
+
 
 ## Metadaten extrahiert mit KI
 

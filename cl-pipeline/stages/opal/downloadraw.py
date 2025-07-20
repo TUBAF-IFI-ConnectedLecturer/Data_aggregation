@@ -8,6 +8,11 @@ from tqdm import tqdm
 
 from pipeline.taskfactory import Task, loggedExecution
 
+# Import zentrale Logging-Konfiguration
+import sys
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'src'))
+from pipeline_logging import setup_stage_logging
+
 import sys
 sys.path.append('../src/general/')
 from checkAuthorNames import NameChecker
@@ -15,9 +20,13 @@ from checkAuthorNames import NameChecker
 class CollectOPALOERdocuments(Task):
     def __init__(self, config_stage, config_global):
         super().__init__(config_stage, config_global)
+        
+        # Setup zentrale Logging-Konfiguration
+        self.logger_configurator = setup_stage_logging(config_global)
+        
         stage_param = config_stage['parameters']
         self.json_file =  Path(config_global['raw_data_folder']) / stage_param['json_file_name']
-        self.file_file =  Path(config_global['raw_data_folder']) / stage_param['file_file_name']
+        self.file_file =  Path(config_global['raw_data_folder']) / stage_param['file_name']
         self.repo_file_name =  Path(config_global['raw_data_folder']) / stage_param['repo_file_name']
         self.json_url = stage_param['json_url']
         self.force_run = stage_param['force_run']
@@ -63,11 +72,7 @@ class CollectOPALOERdocuments(Task):
 
         df_files = df_files[renaming_dict.values()]
 
-        # Evaluate author names
-        logging.getLogger('urllib3').setLevel(logging.CRITICAL)
-        logging.getLogger('requests').setLevel(logging.CRITICAL)
-        logging.getLogger('httpcore').setLevel(logging.CRITICAL)
-        logging.getLogger('httpx').setLevel(logging.CRITICAL)
+        # Evaluate author names - Logging wird jetzt zentral konfiguriert
 
         logging.debug("Running name AI based name checks.")
         nc = NameChecker()

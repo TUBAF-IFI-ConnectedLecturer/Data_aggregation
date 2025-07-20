@@ -13,13 +13,13 @@ class DownloadOERFromOPAL(TaskWithInputFileMonitor):
         stage_param = config_stage['parameters']
         self.file_folder = Path(config_global['file_folder'])
         self.raw_data_folder = Path(config_global['raw_data_folder'])
-        self.file_file_name_inputs =  self.raw_data_folder / stage_param['file_file_name_input']
-        self.file_file_name_output =  self.raw_data_folder / stage_param['file_file_name_output']
+        self.file_name_inputs =  self.raw_data_folder / stage_param['file_name_input']
+        self.file_name_output =  self.raw_data_folder / stage_param['file_name_output']
         self.file_types = stage_param['file_types']
 
     def execute_task(self):
 
-        df_files = pd.read_pickle(self.file_file_name_inputs)
+        df_files = pd.read_pickle(self.file_name_inputs)
 
         download_list = []
         for index, row in tqdm(df_files.iterrows(), total=df_files.shape[0]):
@@ -50,4 +50,4 @@ class DownloadOERFromOPAL(TaskWithInputFileMonitor):
             download_list.append(download_list_sample)
 
         df_download_list = pd.DataFrame(download_list)
-        df_download_list.to_pickle(self.file_file_name_output)
+        df_download_list.to_pickle(self.file_name_output)

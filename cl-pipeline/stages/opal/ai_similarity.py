@@ -18,25 +18,38 @@ from sentence_transformers import SentenceTransformer
 
 from pipeline.taskfactory import TaskWithInputFileMonitor
 
+# Import zentrale Logging-Konfiguration
+import sys
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'src'))
+from pipeline_logging import setup_stage_logging
+
 class DocumentSimilarity(TaskWithInputFileMonitor):
     def __init__(self, config_stage, config_global):
         super().__init__(config_stage, config_global)
+        
+        # Setup zentrale Logging-Konfiguration
+        self.logger_configurator = setup_stage_logging(config_global)
+        
         stage_param = config_stage['parameters']
-        self.file_file_name_inputs =  Path(config_global['raw_data_folder']) / stage_param['file_file_name_input']
-        self.file_file_name_output =  Path(config_global['processed_data_folder']) / stage_param['file_file_name_output']
+        self.file_name_inputs =  Path(config_global['raw_data_folder']) / stage_param['file_name_input']
+        self.file_name_output =  Path(config_global['processed_data_folder']) / stage_param['file_name_output']
         self.file_folder = Path(config_global['file_folder'])
         self.processed_data_folder = config_global['processed_data_folder']
         self.chroma_file = Path(config_global['processed_data_folder']) / "chroma_db"
+        
+        # LLM configuration from config file
+        self.llm_config = stage_param.get('llm_config', {})
+        self.collection_name = self.llm_config.get('collection_name', 'oer_connected_lecturer')
 
     def execute_task(self):
-        logging.getLogger("urllib3").propagate = False
+        # Logging wird jetzt zentral konfiguriert
 
-        df_files = pd.read_pickle(self.file_file_name_inputs)
+        df_files = pd.read_pickle(self.file_name_inputs)
 
         logging.info("Reading db files")
         chroma_client = chromadb.PersistentClient(path=str(self.chroma_file))
         collection = chroma_client.get_collection(
-            name="oer_connected_lecturer"
+            name=self.collection_name
         )       
         results = collection.get(include=["embeddings", "metadatas", "documents"])
         logging.info("Starting similarity analysis")
@@ -66,4 +79,4 @@ class DocumentSimilarity(TaskWithInputFileMonitor):
         similarity_matrix = cosine_similarity(emb_matrix)
         df_similarity = pd.DataFrame(similarity_matrix, index=filenames, columns=filenames)
 
-        df_similarity.to_pickle(self.file_file_name_output)
+        df_similarity.to_pickle(self.file_name_output)

@@ -13,14 +13,14 @@ class FilterFilesByContent(TaskWithInputFileMonitor):
         super().__init__(config_stage, config_global)
         stage_param = config_stage['parameters']
         self.json_file_folder = Path(config_global['raw_data_folder'])
-        self.file_file_name_inputs =  Path(config_global['raw_data_folder']) / stage_param['file_file_name_input']
-        self.file_file_content = Path(config_global['raw_data_folder']) / stage_param['file_file_content']
-        self.file_file_name_output =  Path(config_global['raw_data_folder']) / stage_param['file_file_name_output']
+        self.file_name_inputs =  Path(config_global['raw_data_folder']) / stage_param['file_name_input']
+        self.file_content = Path(config_global['raw_data_folder']) / stage_param['file_content']
+        self.file_name_output =  Path(config_global['raw_data_folder']) / stage_param['file_name_output']
 
     def execute_task(self):
 
-        df_files = pd.read_pickle(self.file_file_name_inputs)
-        df_content = pd.read_pickle(self.file_file_content)
+        df_files = pd.read_pickle(self.file_name_inputs)
+        df_content = pd.read_pickle(self.file_content)
 
         logging.info(f"Starting with {df_content.shape[0]} relevant files by content.")
         # eliminate duplicates
@@ -38,5 +38,5 @@ class FilterFilesByContent(TaskWithInputFileMonitor):
 
         logging.info(f"Filtered {df_files_filtered.shape[0]} relevant files by content.")
         df_files_filtered.reset_index(drop=True, inplace=True)
-        df_files_filtered.to_pickle(self.file_file_name_output)
+        df_files_filtered.to_pickle(self.file_name_output)
         
