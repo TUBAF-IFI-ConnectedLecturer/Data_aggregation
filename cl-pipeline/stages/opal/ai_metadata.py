@@ -30,6 +30,7 @@ from ai_metadata_core.processors.document_processor import DocumentProcessor
 from ai_metadata_core.processors.affiliation_processor import AffiliationProcessor
 from ai_metadata_core.processors.keyword_extractor import KeywordExtractor
 from ai_metadata_core.processors.dewey_classifier import DeweyClassifier
+from ai_metadata_core.processors.summary_processor import SummaryProcessor
 
 # Import zentrale Logging-Konfiguration
 import sys
@@ -104,6 +105,9 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
         # Dewey classification processor
         dewey_file = getattr(self, 'dewey_classification_file', 'dewey_classification.txt')
         self.dewey_classifier = DeweyClassifier(self.prompt_manager, self.llm_interface, dewey_file)
+        
+        # Summary processor
+        self.summary_processor = SummaryProcessor(self.prompt_manager, self.llm_interface)
     
     def _setup_logging(self):
         """Configure logging to reduce noise from dependencies"""
@@ -167,6 +171,8 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
                 return self.keyword_extractor.extract_controlled_vocabulary_keywords(file, chain)
             elif field_name == 'ai:dewey':
                 return self.dewey_classifier.process_dewey_classification(file, chain)
+            elif field_name == 'ai:summary':
+                return self.summary_processor.process_summary(file, chain)
             else:
                 logging.warning("Unknown field type: %s", field_name)
                 return {}
@@ -195,17 +201,33 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
             'ai:keywords_ext': 'Keywords',
             'ai:keywords_gen': 'Keywords2',
             'ai:keywords_dnb': 'Keywords3',
-            'ai:dewey': 'Dewey'
+            'ai:dewey': 'Dewey',
+            'ai:summary': 'Summary'
         }
         
-        for field_name, label in field_labels.items():
-            should_show, process_type = self.config_manager.should_process_field(field_name, existing_metadata)
-            
-            if field_name in metadata:
+        # Priority fields that should always be shown if available
+        priority_fields = ['ai:summary', 'ai:author', 'ai:title']
+        
+        # Show priority fields first (always display if available)
+        for field_name in priority_fields:
+            if field_name in metadata and metadata[field_name]:
+                label = field_labels[field_name]
                 value = metadata[field_name]
                 if field_name == 'ai:author' and 'ai:revisedAuthor' in metadata:
                     value += f" / {metadata['ai:revisedAuthor']}"
-                output_lines.append(f"{label:<12}: {value}")
+                # Special formatting for summary (add separator for better readability)
+                if field_name == 'ai:summary':
+                    output_lines.append(f"{label:<12}: {value}")
+                    output_lines.append("-" * 50)  # Visual separator after summary
+                else:
+                    output_lines.append(f"{label:<12}: {value}")
+        
+        # Show other fields only if they were processed
+        for field_name, label in field_labels.items():
+            if field_name not in priority_fields:  # Skip priority fields (already shown)
+                if field_name in metadata and metadata[field_name]:
+                    value = metadata[field_name]
+                    output_lines.append(f"{label:<12}: {value}")
         
         return "\n            ".join(output_lines)
     

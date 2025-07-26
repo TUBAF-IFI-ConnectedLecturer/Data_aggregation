@@ -14,7 +14,7 @@ class ProcessingConfigManager:
         self.processing_mode = processing_mode
         self.force_processing_fields = processing_mode.get('force_processing', ['ai:affiliation', 'ai:dewey'])
         self.conditional_processing_fields = processing_mode.get('conditional_processing', [
-            'ai:author', 'ai:keywords_gen', 'ai:title', 'ai:type', 'ai:keywords_ext', 'ai:keywords_dnb'
+            'ai:author', 'ai:keywords_gen', 'ai:title', 'ai:type', 'ai:keywords_ext', 'ai:keywords_dnb', 'ai:summary'
         ])
         self.allow_skip_when_all_conditional_filled = processing_mode.get('allow_skip_when_all_conditional_filled', False)
     

@@ -45,6 +45,11 @@ class PromptManager:
         template = self.prompts.get("keywords", {}).get(prompt_type, "")
         return template.replace("{file}", file)
     
+    def get_summary_prompt(self, prompt_type: str, file: str) -> str:
+        """Get summary-related prompt with file substitution"""
+        template = self.prompts.get("summary", {}).get(prompt_type, "")
+        return template.replace("{file}", file)
+    
     def get_classification_prompt(self, prompt_type: str, **kwargs) -> str:
         """Get classification-related prompt with variable substitution"""
         template = self.prompts.get("classification", {}).get(prompt_type, "")

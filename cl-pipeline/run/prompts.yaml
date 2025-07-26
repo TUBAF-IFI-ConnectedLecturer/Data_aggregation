@@ -29,6 +29,12 @@ keywords:
   
   controlled_vocabulary: "Assign 15 keywords from relevant controlled vocabularies or subject headings to the document {file}. If no specific controlled vocabulary keywords are available for certain concepts, use broader terms where possible, even if they are more general. Combine keywords into chains to specify specialized concepts more accurately, especially when only general terms are available. Return only a comma-separated list of the keywords — no introduction or explanation. The answer must be in German."
 
+# Document summarization
+summary:
+  generate: "Create a concise summary of the document {file} in exactly 3 sentences. The summary should capture the main content, purpose, and key information of the educational material. Focus on what learners would gain from this document. Do not include introductory phrases like 'This document' or 'The summary is'. Return only the 3-sentence summary in German, with clear and informative content."
+  
+  structured: "Summarize the document {file} by addressing these three aspects in 3 sentences: 1) What is the main topic or subject area? 2) What type of educational content is provided (exercises, theory, examples, etc.)? 3) Who is the target audience or what learning objectives are addressed? Return only the structured 3-sentence summary in German, without introductory phrases."
+
 # Classification system (Dewey Decimal Classification)
 classification:
   dewey_direct: "Assign the document {file} to up to three suitable Dewey Decimal Classifications (DDC), ranked by relevance. Return the result as a JSON array, where each entry includes: \"notation\": the DDC classification number (as a string), \"label\": the classification label in German, \"score\": a floating-point number between 0.0 and 1.0 representing relevance. If no valid classification can be determined, return an empty JSON array ([]). Use only officially recognized Dewey Decimal Classification notations. Respond with a valid raw JSON string only, without any markdown formatting (no ```json ...), explanations, or commentary."

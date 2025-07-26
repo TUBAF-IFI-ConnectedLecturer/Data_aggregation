@@ -1,3 +1,8 @@
+# SPECIAL CONFIGURATION: SUMMARY GENERATION ONLY
+# This configuration is designed to generate only AI summaries for educational materials.
+# All other AI metadata fields (author, title, keywords, etc.) are disabled.
+# Use this for adding summaries to existing datasets without reprocessing other metadata.
+
 # Defining data folder structure
 folder_structure:
   #data_root_folder: &BASE /home/crosslab/Desktop/Opal
@@ -127,27 +132,18 @@ stages:
       # LLM and Vector Store Configuration
       llm_config: *LLM_CONFIG
       
-      # Processing mode configuration
+      # Processing mode configuration - SUMMARY ONLY
       processing_mode:
         # Force processing: These fields are ALWAYS processed (overwrite existing data)
-        force_processing:    # [] Empty list = no force processing
-          - ai:affiliation
-          - ai:dewey
-          - ai:author     
+        force_processing: []  # Empty list = no force processing
         
-        # Conditional processing: These fields are only processed if empty/missing
+        # Conditional processing: Only process summary field
         conditional_processing:
-          - ai:author
-          - ai:keywords_gen
-          - ai:title
-          - ai:type
-          - ai:keywords_ext
-          - ai:keywords_dnb
-          - ai:summary     
+          - ai:summary     # ONLY summary generation, all other fields disabled
         
         # Skip configuration: Skip file if NO conditional fields need processing
         # AND force_processing is disabled (which it now is)
-        allow_skip_when_all_conditional_filled: false  # Enable skipping when all fields are filled
+        allow_skip_when_all_conditional_filled: true  # Enable skipping when all fields are filled
 
   - name: Check Keywords
     class: GNDKeywordCheck
