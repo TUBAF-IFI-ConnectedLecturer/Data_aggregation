@@ -23,9 +23,9 @@ affiliation:
 
 # Keywords extraction (grouped by type)
 keywords:
-  extract: "Extract at least 10 precise German keywords from the document {file}. The keywords should be suitable for library cataloging. Focus on specific and content-relevant terms — avoid generic words or phrases. Return a comma-separated list of keywords in German, with no introduction or explanation. Output only the list, in German."
+  extract: "Extract at least 15 precise German keywords from the document {file}. The keywords should be suitable for library cataloging. Focus on specific and content-relevant terms — avoid generic words or phrases. Return a comma-separated list of keywords in German, with no introduction or explanation. Output only the list, in German."
   
-  generate: "Generate at least 10 precise German keywords describing the content of the document {file}. The keywords should be suitable for library cataloging. Focus on specific and content-relevant terms — avoid generic words or phrases. Return a comma-separated list of keywords in German, with no introduction or explanation. Output only the list, in German."
+  generate: "Generate at least 15 precise German keywords describing the content of the document {file}. The keywords should be suitable for library cataloging. Focus on specific and content-relevant terms — avoid generic words or phrases. Return a comma-separated list of keywords in German, with no introduction or explanation. Output only the list, in German."
   
   controlled_vocabulary: "Assign 15 keywords from relevant controlled vocabularies or subject headings to the document {file}. If no specific controlled vocabulary keywords are available for certain concepts, use broader terms where possible, even if they are more general. Combine keywords into chains to specify specialized concepts more accurately, especially when only general terms are available. Return only a comma-separated list of the keywords — no introduction or explanation. The answer must be in German."
 

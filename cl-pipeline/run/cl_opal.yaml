@@ -1,7 +1,7 @@
 # Defining data folder structure
 folder_structure:
   #data_root_folder: &BASE /home/crosslab/Desktop/Opal
-  data_root_folder: &BASE /media/sz/Data/Connected_Lecturers/Opal3
+  data_root_folder: &BASE /media/sz/Data/Connected_Lecturers/Opal
   raw_data_folder: &RAW !join [*BASE, /raw]
   file_folder: &FILE_FOLDER !join [*RAW, /files]
   content_folder: &CONTENT_FOLDER !join [*RAW, /content]
@@ -121,7 +121,7 @@ stages:
       prompts_file_name: prompts.yaml
       dewey_classification_file: dewey_classification.txt
       model_name: llama3:70b
-      force_run: True
+      force_run: False
       file_types: ['pptx', 'pdf', 'docx', 'xlsx', 'md']
       
       # LLM and Vector Store Configuration
@@ -154,14 +154,18 @@ stages:
     parameters: 
       file_name_input: *OPALSINGLEAIMETA
       file_name_output: &OPALKEYWORDS OPAL_checked_keywords.p
-      force_run: False
+      force_run: True
+      use_llm: true         # KI-basierte Schlagwortauswahl aktivieren
+      llm_model: "gemma3:27b"  # Ollama-Modell für Schlagwortauswahl
+      use_full_keyword_context: true  # Alle Keywords eines Dokuments als Kontext verwenden
+      use_document_metadata: true     # Zusätzliche Dokumentmetadaten als Kontext einbeziehen
 
   - name: Determine similarity between files
     class: DocumentSimilarity
     parameters: 
       file_name_input: *OPALSINGLEFILESFILTERED
       file_name_output: &OPALAISIMILARITY OPAL_ai_similaritiy.p
-      force_run: False
+      force_run: True
       
       # Vector Store Configuration
       llm_config:
