@@ -6,6 +6,7 @@ import logging
 import json
 import re
 import sys
+import time
 
 # Logger konfigurieren
 logger = logging.getLogger(__name__)
@@ -42,7 +43,7 @@ def get_normalized_keyword(word):
     return word.lower().strip()
 
 
-def get_wikidata_entities(keyword, language="de", limit=10):
+def get_wikidata_entities(keyword, language="de", limit=10, rate_limit_delay=0.5):
     """
     Sucht nach Wikidata-Entitäten, die dem Keyword entsprechen.
     
@@ -54,6 +55,8 @@ def get_wikidata_entities(keyword, language="de", limit=10):
         Die Sprache für die Suche (Standard: "de")
     limit: int, optional
         Maximale Anzahl der zurückzugebenden Ergebnisse
+    rate_limit_delay: float, optional
+        Verzögerung in Sekunden zwischen API-Anfragen, um Rate Limits zu respektieren
         
     Returns:
     --------
@@ -73,15 +76,32 @@ def get_wikidata_entities(keyword, language="de", limit=10):
     }
     
     try:
+        # Kurze Verzögerung vor der Anfrage, um Rate Limits zu respektieren
+        time.sleep(rate_limit_delay)
+        
         response = requests.get(wikidata_api_url, params=params, timeout=10)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
         logger.error(f"Fehler bei der Wikidata API Anfrage für '{keyword}': {str(e)}")
+        
+        # Bei Rate-Limit-Fehlern längere Pause und erneuter Versuch
+        if hasattr(e, 'response') and e.response and e.response.status_code == 429:
+            wait_time = 5  # 5 Sekunden bei Rate-Limit-Fehler
+            logger.warning(f"Rate Limit erreicht. Warte {wait_time} Sekunden und versuche erneut...")
+            time.sleep(wait_time)
+            
+            try:
+                response = requests.get(wikidata_api_url, params=params, timeout=10)
+                response.raise_for_status()
+                return response.json()
+            except requests.exceptions.RequestException as retry_e:
+                logger.error(f"Erneuter Fehler bei der Wikidata API Anfrage: {str(retry_e)}")
+                
         return None
 
 
-def get_entity_details(entity_id, language="de"):
+def get_entity_details(entity_id, language="de", rate_limit_delay=0.5):
     """
     Ruft detaillierte Informationen zu einer Wikidata-Entität ab.
     
@@ -91,6 +111,8 @@ def get_entity_details(entity_id, language="de"):
         Die Wikidata-Entity-ID (z.B. "Q42")
     language: str, optional
         Die Sprache für die Ergebnisse (Standard: "de")
+    rate_limit_delay: float, optional
+        Verzögerung in Sekunden zwischen API-Anfragen, um Rate Limits zu respektieren
         
     Returns:
     --------
@@ -108,11 +130,28 @@ def get_entity_details(entity_id, language="de"):
     }
     
     try:
+        # Kurze Verzögerung vor der Anfrage, um Rate Limits zu respektieren
+        time.sleep(rate_limit_delay)
+        
         response = requests.get(wikidata_api_url, params=params, timeout=15)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
         logger.error(f"Fehler beim Abrufen von Wikidata-Entity '{entity_id}': {str(e)}")
+        
+        # Bei Rate-Limit-Fehlern längere Pause und erneuter Versuch
+        if hasattr(e, 'response') and e.response and e.response.status_code == 429:
+            wait_time = 5  # 5 Sekunden bei Rate-Limit-Fehler
+            logger.warning(f"Rate Limit erreicht. Warte {wait_time} Sekunden und versuche erneut...")
+            time.sleep(wait_time)
+            
+            try:
+                response = requests.get(wikidata_api_url, params=params, timeout=15)
+                response.raise_for_status()
+                return response.json()
+            except requests.exceptions.RequestException as retry_e:
+                logger.error(f"Erneuter Fehler bei der Wikidata API Anfrage: {str(retry_e)}")
+                
         return None
 
 
@@ -315,7 +354,7 @@ def enrich_keyword_with_wikidata(keyword, context=None, llm=None, other_keywords
     dict: Angereicherte Keyword-Informationen oder None bei Fehlern
     """
     # Suche nach Wikidata-Entitäten für das Keyword
-    search_result = get_wikidata_entities(keyword)
+    search_result = get_wikidata_entities(keyword, rate_limit_delay=1.0)
     if not search_result or "search" not in search_result or len(search_result["search"]) == 0:
         logger.info(f"⚠ Keine Wikidata-Entitäten für '{keyword}' gefunden")
         return None
@@ -350,7 +389,7 @@ def enrich_keyword_with_wikidata(keyword, context=None, llm=None, other_keywords
     logger.info(f"✓ KI-Auswahl für '{keyword}': \"{entity_label}\" (ID: {entity_id})")
     
     # Holen detaillierte Informationen zur ausgewählten Entität
-    entity_details = get_entity_details(entity_id)
+    entity_details = get_entity_details(entity_id, rate_limit_delay=1.0)
     
     # Extrahiere semantischen Kontext
     semantic_context = extract_semantic_context(entity_details)
@@ -406,6 +445,9 @@ class WikidataKeywordCheck(TaskWithInputFileMonitor):
         # Konfigurationsoptionen für das LLM
         self.use_llm = stage_param.get('use_llm', True)  # Standard: LLM verwenden wenn verfügbar
         self.llm_model = stage_param.get('llm_model', "gemma3:27b")  # Standard-Modell
+        
+        # Rate-Limit-Konfiguration für Wikidata API
+        self.rate_limit_delay = stage_param.get('rate_limit_delay', 1.0)  # Verzögerung in Sekunden zwischen API-Anfragen
 
     def execute_task(self):
         # Logging wird jetzt zentral konfiguriert - keine lokalen Einstellungen mehr nötig
