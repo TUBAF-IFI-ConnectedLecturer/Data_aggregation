@@ -500,7 +500,8 @@ class WikidataKeywordCheck(TaskWithInputFileMonitor):
                 wikidata_id = keyword_sample.get('wikidata_id')
                 
                 if df_keywords.shape[0] == 0:
-                    df_keywords = pd.DataFrame(keyword_sample, index=[0])
+                    # Verwende pd.DataFrame.from_dict mit orient='index' und transpose für ein einzelnes Dict
+                    df_keywords = pd.DataFrame.from_dict([keyword_sample])
                 else:
                     # Prüfen, ob ein identisches Keyword bereits existiert
                     is_duplicate = False
@@ -533,7 +534,7 @@ class WikidataKeywordCheck(TaskWithInputFileMonitor):
                             logger.info(f"✚ Neues einzigartiges Keyword: '{keyword}' mit Wikidata-Label '{wikidata_label}' wird zur Gesamtliste hinzugefügt")
                         else:
                             logger.info(f"✚ Neues einzigartiges Keyword: '{keyword}' wird zur Gesamtliste hinzugefügt")
-                        df_keywords = pd.concat([df_keywords, pd.DataFrame(keyword_sample, index=[0])], ignore_index=True)
+                        df_keywords = pd.concat([df_keywords, pd.DataFrame.from_dict([keyword_sample])], ignore_index=True)
                     else:
                         # Duplikat gefunden - Zähler erhöhen
                         existing_count = df_keywords.at[existing_idx, 'count']
