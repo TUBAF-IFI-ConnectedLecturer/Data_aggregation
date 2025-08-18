@@ -8,6 +8,10 @@ import re
 import sys
 import time
 
+# Für die Lemmafizierung
+import spacy
+from typing import List, Optional, Tuple, Union
+
 # Logger konfigurieren
 logger = logging.getLogger(__name__)
 
@@ -21,9 +25,90 @@ from pipeline.taskfactory import TaskWithInputFileMonitor
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'src'))
 from pipeline_logging import setup_stage_logging
 
+# Import Prompt-Manager
+sys.path.append(str(Path(__file__).parent.parent.parent / 'src'))
+from ai_metadata_core.utils.prompt_manager import PromptManager
+
+# Laden des spacy-Modells für Deutsch (wird lazy geladen, wenn benötigt)
+_nlp = None
+
+def get_spacy_model():
+    """
+    Lädt das deutsche spacy-Modell lazy (erst wenn benötigt)
+    
+    Returns:
+    --------
+    spacy.lang.de.German: Das geladene spacy-Modell für Deutsch
+    """
+    global _nlp
+    if _nlp is None:
+        try:
+            _nlp = spacy.load("de_core_news_sm")
+            logger.info("Deutsches spaCy-Modell erfolgreich geladen")
+        except Exception as e:
+            logger.error(f"Fehler beim Laden des spaCy-Modells: {str(e)}")
+            logger.warning("Die Lemmafizierung wird nicht verfügbar sein!")
+            _nlp = None
+    return _nlp
+
+_lemmatization_cache = {}  # Cache für bereits lemmafizierte Wörter
+
+def lemmatize_german_word(word: str) -> str:
+    """
+    Lemmafiziert ein deutsches Wort (Grundform-Ermittlung) mit Caching
+    
+    Parameters:
+    -----------
+    word: str
+        Das zu lemmafizierte Wort
+        
+    Returns:
+    --------
+    str: Die Grundform des Wortes oder das ursprüngliche Wort, falls keine Lemmafizierung möglich
+    """
+    global _lemmatization_cache
+    
+    # Cache-Lookup
+    if word in _lemmatization_cache:
+        return _lemmatization_cache[word]
+        
+    # Prüfe, ob das spaCy-Modell geladen werden kann
+    nlp = get_spacy_model()
+    if nlp is None:
+        _lemmatization_cache[word] = word
+        return word
+        
+    # Prüfe, ob wir ein einzelnes Wort haben (keine zusammengesetzten Begriffe)
+    if len(word.split()) > 1:
+        # Bei mehreren Worten keine Lemmafizierung durchführen
+        _lemmatization_cache[word] = word
+        return word
+        
+    try:
+        # Verarbeite das Wort mit spaCy
+        doc = nlp(word)
+        
+        # Wenn es nur ein Token gibt, verwenden wir dessen Lemma
+        if len(doc) == 1:
+            lemma = doc[0].lemma_
+            
+            # Prüfe, ob das Lemma sinnvoll ist (nicht leer und nicht identisch mit Eingabe)
+            if lemma and lemma != word:
+                logger.debug(f"Lemmafizierung: '{word}' → '{lemma}'")
+                _lemmatization_cache[word] = lemma
+                return lemma
+    except Exception as e:
+        logger.warning(f"Fehler bei der Lemmafizierung von '{word}': {str(e)}")
+    
+    # Fallback: Ursprüngliches Wort zurückgeben
+    _lemmatization_cache[word] = word
+    return word
+
+_normalization_cache = {}  # Cache für bereits normalisierte Keywords
+
 def get_normalized_keyword(word):
     """
-    Einfache Funktion, die ein Schlagwort normalisiert (für die Deduplizierung)
+    Normalisiert ein Schlagwort durch Kleinschreibung, Trimmen und optional Lemmafizierung
     
     Parameters:
     -----------
@@ -34,13 +119,28 @@ def get_normalized_keyword(word):
     --------
     str: Normalisierte Form des Keywords
     """
-    # Prüfen, ob es sich um ein str-Objekt handelt
+    global _normalization_cache
+    
+    # Bei nicht-String-Werten zunächst in String umwandeln
     if not isinstance(word, str):
-        # Konvertiere in String
         word = str(word)
     
+    # Cache-Lookup für die gesamte Normalisierungsfunktion
+    if word in _normalization_cache:
+        return _normalization_cache[word]
+        
     # Grundlegende Normalisierung: lowercase und Leerzeichen trimmen
-    return word.lower().strip()
+    normalized = word.lower().strip()
+    
+    # Lemmafizierung für einzelne Wörter durchführen
+    if len(normalized.split()) == 1:
+        lemma = lemmatize_german_word(normalized)
+        _normalization_cache[word] = lemma
+        return lemma
+    
+    # Bei mehreren Wörtern keine Lemmafizierung
+    _normalization_cache[word] = normalized
+    return normalized
 
 
 def get_wikidata_entities(keyword, language="de", limit=10, rate_limit_delay=0.5):
@@ -226,7 +326,7 @@ def extract_semantic_context(entity_details):
     return context
 
 
-def select_best_entity_ai(keyword, candidates, context=None, llm=None, other_keywords=None):
+def select_best_entity_ai(keyword, candidates, context=None, llm=None, other_keywords=None, prompt_manager=None):
     """
     Verwendet ein LLM, um die beste Wikidata-Entität für ein Keyword auszuwählen.
     
@@ -242,6 +342,8 @@ def select_best_entity_ai(keyword, candidates, context=None, llm=None, other_key
         Eine initialisierte LLM-Instanz
     other_keywords: list, optional
         Andere Keywords des Dokuments
+    prompt_manager: PromptManager, optional
+        Eine initialisierte PromptManager-Instanz
         
     Returns:
     --------
@@ -277,25 +379,14 @@ def select_best_entity_ai(keyword, candidates, context=None, llm=None, other_key
                 
         context_info = "\n".join(context_info)
         
-        # Prompt-Vorlage
-        template = """Du bist ein Experte für Wikimedia-Wissensgraphen und semantische Verknüpfungen.
-        
-Originales Keyword: \"{original_keyword}\"
-
-Kandidaten aus der Wikidata-Datenbank:
-{candidates}
-
-{context_info}
-
-Aufgabe: Wähle den Kandidaten aus, der semantisch am besten zum originalen Keyword passt.
-Beachte dabei folgende Kriterien:
-1. Semantische Bedeutung und Relevanz zum Thema des Dokuments
-2. Präzision und Spezifität des Konzepts
-3. Einordnung in den thematischen Kontext der anderen Keywords
-4. Bei mehrdeutigen Begriffen wähle die im Kontext wahrscheinlichste Bedeutung
-
-Gib nur die Nummer des besten Kandidaten zurück. Falls kein Kandidat gut passt, antworte mit \"0\".
-Antwort: """
+        # Verwende den PromptManager, wenn verfügbar
+        if prompt_manager:
+            # Hole das Template aus dem PromptManager
+            template = prompt_manager.prompts.get("wikimedia", {}).get("entity_selection", "")
+            
+            if not template:
+                logger.error("Kein 'wikimedia.entity_selection' Template im PromptManager gefunden!")
+                template = ("")
         
         # Erstelle das Prompt
         prompt = PromptTemplate(
@@ -334,7 +425,7 @@ Antwort: """
         return None
 
 
-def enrich_keyword_with_wikidata(keyword, context=None, llm=None, other_keywords=None):
+def enrich_keyword_with_wikidata(keyword, context=None, llm=None, other_keywords=None, prompt_manager=None):
     """
     Reichert ein Keyword mit Informationen aus Wikidata an.
     
@@ -348,21 +439,54 @@ def enrich_keyword_with_wikidata(keyword, context=None, llm=None, other_keywords
         Eine initialisierte LLM-Instanz
     other_keywords: list, optional
         Andere Keywords des Dokuments
+    prompt_manager: PromptManager, optional
+        Eine initialisierte PromptManager-Instanz
         
     Returns:
     --------
     dict: Angereicherte Keyword-Informationen oder None bei Fehlern
     """
-    # Suche nach Wikidata-Entitäten für das Keyword
-    search_result = get_wikidata_entities(keyword, rate_limit_delay=1.0)
-    if not search_result or "search" not in search_result or len(search_result["search"]) == 0:
-        logger.info(f"⚠ Keine Wikidata-Entitäten für '{keyword}' gefunden")
+    # Normalisiere das Keyword und prüfe auf Lemmafizierung
+    original_keyword = keyword
+    normalized_keyword = get_normalized_keyword(keyword)
+    
+    # Effizientere Prüfung der Lemmafizierung
+    basic_normalized = keyword.lower().strip()
+    lemmatized = normalized_keyword != basic_normalized and len(normalized_keyword.split()) == 1
+    
+    # Die Lemmafizierung wird nur für bessere Suchbarkeit verwendet
+    # Wir speichern sie, ohne sie direkt mit Wikidata-Entitäten zu verknüpfen
+    search_options = []
+    
+    # Immer primär mit dem Original-Keyword suchen
+    search_options.append((keyword, "Original"))
+    
+    # Wenn lemmafiziert, als alternative Suchform anbieten
+    if lemmatized:
+        search_options.append((normalized_keyword, "Lemmatisiert"))
+        logger.info(f"ℹ Lemmafizierung angewendet: '{keyword}' → '{normalized_keyword}'")
+    
+    # Versuche alle Such-Optionen nacheinander
+    found_results = False
+    used_search_term = None
+    
+    for search_term, search_type in search_options:
+        logger.info(f"Frage Wikidata mit {search_type}-Form ab: '{search_term}'")
+        search_result = get_wikidata_entities(search_term, rate_limit_delay=1.0)
+        
+        if search_result and "search" in search_result and len(search_result["search"]) > 0:
+            found_results = True
+            used_search_term = search_term
+            break
+    
+    if not found_results:
+        logger.info(f"⚠ Keine Wikidata-Entitäten für Keyword '{keyword}' gefunden")
         return None
     
     # Extrahiere die gefundenen Entitäten
     entities = search_result["search"]
     total = len(entities)
-    logger.info(f"ℹ Wikidata API: {total} Treffer für '{keyword}' gefunden")
+    logger.info(f"ℹ Wikidata API: {total} Treffer für '{used_search_term}' gefunden")
     
     # Zeige die ersten Kandidaten zur besseren Nachvollziehbarkeit
     for i, entity in enumerate(entities[:3]):  # Zeige maximal 3 Beispiele
@@ -373,9 +497,9 @@ def enrich_keyword_with_wikidata(keyword, context=None, llm=None, other_keywords
     if len(entities) > 3:
         logger.info(f"   ... und {len(entities)-3} weitere Kandidaten")
     
-    # Wähle die beste Entität mit KI aus
+    # Wähle die beste Entität mit KI aus - nutze das Original-Keyword für KI-Kontext
     logger.info(f"ℹ Starte KI-Auswahl für '{keyword}' mit {len(entities)} Kandidaten...")
-    best_entity = select_best_entity_ai(keyword, entities, context, llm, other_keywords)
+    best_entity = select_best_entity_ai(keyword, entities, context, llm, other_keywords, prompt_manager)
     
     if not best_entity:
         logger.info(f"⚠ KI hat keine passende Entität für '{keyword}' gefunden")
@@ -395,9 +519,13 @@ def enrich_keyword_with_wikidata(keyword, context=None, llm=None, other_keywords
     semantic_context = extract_semantic_context(entity_details)
     
     # Erstelle ein erweitertes Keyword-Sample
+    # Hier trennen wir klar die sprachliche Normalisierung (lemmafizierung)
+    # von der kontextabhängigen Zuordnung zu Wikidata
     keyword_sample = {
-        'raw_keyword': keyword,
-        'normalized_keyword': get_normalized_keyword(keyword),
+        'raw_keyword': original_keyword,
+        'normalized_keyword': normalized_keyword,
+        'lemmatized': lemmatized,
+        'lemmatized_form': normalized_keyword if lemmatized else None,
         'is_wikidata': True,
         'wikidata_id': entity_id,
         'wikidata_label': entity_label,
@@ -406,7 +534,8 @@ def enrich_keyword_with_wikidata(keyword, context=None, llm=None, other_keywords
         'subclass_of': semantic_context["subclass_of"],
         'related_entities': semantic_context["related_entities"],
         'wikipedia_url': semantic_context["wikipedia_url"],
-        'query_term': keyword  # Speichern, mit welchem Begriff wir gesucht haben
+        'query_term': used_search_term,  # Term, mit dem gesucht wurde
+        'document_context_id': context.split('\n')[0] if context and '\n' in context else None  # Speichere Dokument-ID
     }
     
     # Logge erweiterte Informationen
@@ -425,6 +554,17 @@ class WikidataKeywordCheck(TaskWithInputFileMonitor):
         
         # Setup zentrale Logging-Konfiguration
         self.logger_configurator = setup_stage_logging(config_global)
+        
+        # Initialisiere spaCy für die Lemmafizierung (lazy loading)
+        # Dies lädt das Modell noch nicht, sondern bereitet nur vor
+        try:
+            # Lade das deutsche spaCy-Modell, wenn es vorhanden ist
+            # Nur ein Test, ob es funktioniert - wird später lazy geladen
+            if get_spacy_model() is not None:
+                logger.info("SpaCy für Lemmafizierung ist verfügbar")
+        except Exception as e:
+            logger.error(f"Fehler bei der Initialisierung von spaCy: {str(e)}")
+            logger.warning("Die Lemmafizierung wird nicht verfügbar sein!")
         
         # Initialisiere Ollama LLM für KI-basierte Entitätsauswahl
         try:
@@ -448,6 +588,17 @@ class WikidataKeywordCheck(TaskWithInputFileMonitor):
         
         # Rate-Limit-Konfiguration für Wikidata API
         self.rate_limit_delay = stage_param.get('rate_limit_delay', 1.0)  # Verzögerung in Sekunden zwischen API-Anfragen
+        
+        # Initialisiere PromptManager, falls prompts_file_name konfiguriert ist
+        self.prompt_manager = None
+        if 'prompts_file_name' in stage_param:
+            try:
+                prompts_path = stage_param['prompts_file_name']
+                self.prompt_manager = PromptManager(prompts_path)
+                logger.info(f"PromptManager erfolgreich mit {prompts_path} initialisiert")
+            except Exception as e:
+                logger.error(f"Fehler bei der Initialisierung des PromptManager: {str(e)}")
+                logger.warning("Verwende Standard-Templates für Entitätsauswahl")
 
     def execute_task(self):
         # Logging wird jetzt zentral konfiguriert - keine lokalen Einstellungen mehr nötig
@@ -456,24 +607,83 @@ class WikidataKeywordCheck(TaskWithInputFileMonitor):
         keyword_columns = [col for col in df_metadata.columns if 'keyword' in col]
         keyword_columns = ['ai:keywords_ext', 'ai:keywords_gen', 'ai:keywords_dnb']
 
+        # Lade vorhandene Keyword-Dateien, falls vorhanden
         if Path(self.file_name_output).exists():
             df_checkedKeywords = pd.read_pickle(self.file_name_output)
+            logger.info(f"Vorhandene Keyword-Daten geladen: {len(df_checkedKeywords)} Einträge")
         else:
             # Erstelle einen leeren DataFrame mit denselben Indizes wie df_metadata
             df_checkedKeywords = pd.DataFrame(index=df_metadata.index)
+            logger.info("Keine vorhandenen Keyword-Daten gefunden, beginne mit leerer Liste")
 
         if Path(self.keyword_list_path.with_suffix('.p')).exists():
             df_keywords = pd.read_pickle(self.keyword_list_path.with_suffix('.p'))
+            logger.info(f"Vorhandene Keyword-Liste geladen: {len(df_keywords)} einzigartige Keywords")
         else:
             df_keywords = pd.DataFrame()
+            logger.info("Keine vorhandene Keyword-Liste gefunden, beginne mit leerer Liste")
+            
+        # Bestimme, welche Indizes bereits verarbeitet wurden und übersprungen werden können
+        already_processed_indices = []
+        if 'pipe:ID' in df_checkedKeywords.columns and 'keywords' in df_checkedKeywords.columns:
+            # Sichere Überprüfung für komplexe Objekte wie Listen/Arrays
+            already_processed_indices = []
+            for idx, row in df_checkedKeywords.iterrows():
+                # Überprüfe jede Zeile einzeln mit try/except, um Fehler zu vermeiden
+                try:
+                    pipe_id = row.get('pipe:ID')
+                    keywords = row.get('keywords')
+                    # Prüfen, ob valide Werte vorhanden sind
+                    if (pipe_id is not None and keywords is not None and 
+                        not pd.isna(pipe_id) and isinstance(keywords, list) and len(keywords) > 0):
+                        already_processed_indices.append(idx)
+                except Exception as e:
+                    logger.warning(f"Fehler beim Prüfen von Index {idx}: {str(e)}")
+                    
+            if already_processed_indices:
+                logger.info(f"Gefunden: {len(already_processed_indices)} bereits verarbeitete Datensätze, die übersprungen werden")
+                logger.info(f"Beispiel für verarbeitete Indizes: {already_processed_indices[:5]}" 
+                           f"{' ...' if len(already_processed_indices) > 5 else ''}")
 
-        # Verarbeite jede Zeile in den Metadaten
+        # Speichere den Fortschritt in einer Status-Datei
+        progress_file = Path(self.processed_data_folder) / "wikimedia_processing_progress.json"
+        
+        # Verarbeite jede Zeile in den Metadaten, überspringe bereits verarbeitete
         for index, row in tqdm(df_metadata.iterrows(), desc="Enriching keywords with Wikidata"):
+            # Überspringe bereits verarbeitete Datensätze, wenn sie in der df_checkedKeywords sind
+            # und einen gültigen keywords-Eintrag haben
+            if index in already_processed_indices:
+                logger.info(f"Überspringe bereits verarbeiteten Datensatz: ID={row.get('pipe:ID', 'unbekannt')}, Index={index}")
+                continue
+                
             all_keywords_list = []
             
             # Log für Datensatz-Start
-            logger.info(f"========== Verarbeite Datensatz: ID={row.get('pipe:ID', 'unbekannt')} ==========")
+            logger.info(f"========== Verarbeite Datensatz: ID={row.get('pipe:ID', 'unbekannt')}, Index={index} ==========")
             
+            # Speichere aktuellen Fortschritt
+            try:
+                # Sicherstellen, dass index serialisierbar ist
+                index_value = int(index) if isinstance(index, (int, float, str)) else str(index)
+                
+                # Erstelle ein sauberes Dictionary für JSON
+                progress_data = {
+                    "last_processed_index": index_value,
+                    "last_processed_id": str(row.get('pipe:ID', 'unbekannt')),
+                    "timestamp": str(pd.Timestamp.now()),
+                    "total_records": len(df_metadata),
+                    "processed_records": len(already_processed_indices) + 1,  # +1 für den aktuellen
+                    "remaining_records": len(df_metadata) - len(already_processed_indices) - 1
+                }
+                
+                with open(progress_file, 'w', encoding='utf-8') as f:
+                    json.dump(progress_data, f, ensure_ascii=False, indent=2)
+                    
+                logger.info(f"Fortschritt gespeichert: {progress_data['processed_records']}/{progress_data['total_records']} "
+                           f"({progress_data['processed_records']/progress_data['total_records']*100:.1f}%)")
+            except Exception as e:
+                logger.error(f"Fehler beim Speichern des Fortschritts: {str(e)}")
+                
             # Sammle alle Keywords aus den verschiedenen Spalten
             for col in keyword_columns:
                 if col in row and row[col] is not None:
@@ -522,7 +732,8 @@ class WikidataKeywordCheck(TaskWithInputFileMonitor):
                     keyword, 
                     document_context, 
                     self.llm if self.use_llm else None,
-                    other_keywords
+                    other_keywords,
+                    self.prompt_manager
                 )
                 
                 # Wenn keine Ergebnisse, speichere trotzdem Basisinformationen
@@ -549,44 +760,135 @@ class WikidataKeywordCheck(TaskWithInputFileMonitor):
                     is_duplicate = False
                     existing_idx = None
                     
-                    # Erstelle eine Liste der normalisierten Formen
-                    existing_normalized_forms = [get_normalized_keyword(kw) for kw in df_keywords['raw_keyword'].values]
-                    
-                    # Finde potentielle Duplikate basierend auf normalisiertem Keyword
-                    potential_duplicates = [i for i, form in enumerate(existing_normalized_forms) if form == normalized_keyword]
-                    
-                    if potential_duplicates:
-                        # Bei Wikidata-Entitäten auch die Wikidata-ID vergleichen
-                        if wikidata_id:
-                            for idx in potential_duplicates:
-                                if 'wikidata_id' in df_keywords.columns and df_keywords.iloc[idx].get('wikidata_id') == wikidata_id:
-                                    # Exaktes Duplikat (gleiche normalisierte Form UND gleiche Wikidata-ID)
+                    if wikidata_id:
+                        # Bei Wikidata-Entitäten speichern wir alle kontextspezifischen Zuordnungen
+                        # Wir prüfen nur, ob dieses Keyword mit exakt derselben Wikidata-ID bereits existiert
+                        found_exact_duplicate = False
+                        
+                        if 'wikidata_id' in df_keywords.columns and 'raw_keyword' in df_keywords.columns:
+                            # Suche nach identischen (Keyword, Wikidata-ID)-Paaren
+                            for idx, (raw_kw, entity_id) in enumerate(zip(df_keywords['raw_keyword'].values, df_keywords['wikidata_id'].values)):
+                                if raw_kw == keyword and entity_id == wikidata_id:
+                                    # Exakt dasselbe Keyword mit derselben Wikidata-ID
                                     is_duplicate = True
                                     existing_idx = idx
+                                    found_exact_duplicate = True
+                                    logger.debug(f"Exaktes Duplikat gefunden: '{keyword}' mit Wikidata-ID {wikidata_id}")
                                     break
-                        else:
-                            # Bei Nicht-Wikidata-Keywords reicht die normalisierte Form
-                            is_duplicate = True
-                            existing_idx = potential_duplicates[0]
+                            
+                        # Wenn kein exaktes Duplikat gefunden wurde, behandeln wir dies als neuen Eintrag
+                        # So können wir kontextbezogene Zuordnungen für dasselbe Keyword speichern
+                        if not found_exact_duplicate:
+                            # Prüfen, ob das normalisierte Keyword bereits mit anderen Wikidata-IDs existiert
+                            # (nur für Informationszwecke, wir fügen trotzdem einen neuen Eintrag hinzu)
+                            if 'normalized_keyword' in df_keywords.columns and 'wikidata_id' in df_keywords.columns:
+                                similar_forms = []
+                                for idx, (norm_kw, entity_id) in enumerate(zip(df_keywords['normalized_keyword'].values, df_keywords['wikidata_id'].values)):
+                                    if norm_kw == normalized_keyword and entity_id != wikidata_id:
+                                        wikidata_label = df_keywords.iloc[idx].get('wikidata_label', 'unbekannt')
+                                        similar_forms.append((entity_id, wikidata_label))
+                                
+                                if similar_forms:
+                                    current_label = keyword_sample.get('wikidata_label', 'unbekannt')
+                                    logger.info(f"ℹ Hinweis: Das Keyword '{keyword}' (normalisiert: '{normalized_keyword}') hat bereits andere kontextabhängige Bedeutungen:")
+                                    for other_id, other_label in similar_forms:
+                                        logger.info(f"   → Alternative Bedeutung: '{other_label}' (ID: {other_id})")
+                                    logger.info(f"   → Im aktuellen Kontext: '{current_label}' (ID: {wikidata_id})")
+                                    logger.info(f"   → Alle Bedeutungsvarianten werden beibehalten, da sie kontextabhängig sind")
+                    else:
+                        # Bei Nicht-Wikidata-Keywords: Prüfe, ob das exakte Keyword bereits existiert
+                        # Wir nutzen die normalisierte Form, um ähnliche Keywords zu identifizieren
+                        if 'raw_keyword' in df_keywords.columns:
+                            # Prüfe auf exakte Übereinstimmungen
+                            exact_matches = [i for i, kw in enumerate(df_keywords['raw_keyword'].values) if kw == keyword]
+                            if exact_matches:
+                                is_duplicate = True
+                                existing_idx = exact_matches[0]
+                                logger.debug(f"Exaktes Keyword-Duplikat gefunden: '{keyword}'")
+                        
+                        # Wenn kein exaktes Match gefunden wurde, suche nach normalisierten Formen
+                        if not is_duplicate:
+                            # Verwende die bereits gespeicherten normalisierten Formen, wenn vorhanden
+                            if 'normalized_keyword' in df_keywords.columns:
+                                existing_normalized_forms = df_keywords['normalized_keyword'].values
+                            else:
+                                # Fallback: Berechne normalisierte Formen
+                                existing_normalized_forms = [get_normalized_keyword(kw) for kw in df_keywords['raw_keyword'].values]
+                                
+                            similar_matches = [i for i, form in enumerate(existing_normalized_forms) if form == normalized_keyword]
+                            
+                            if similar_matches:
+                                # Bei ähnlichen Formen (z.B. durch Lemmafizierung) können wir diese als Duplikate behandeln
+                                is_duplicate = True
+                                existing_idx = similar_matches[0]
+                                matched_keyword = df_keywords.iloc[existing_idx]['raw_keyword']
+                                logger.info(f"Ähnliches Keyword gefunden: '{keyword}' ähnelt '{matched_keyword}' (beide normalisiert zu '{normalized_keyword}')")
+                                # Wenn durch Lemmafizierung ähnlich, speichern wir die Verbindung
                     
                     if not is_duplicate:
-                        # Kein Duplikat gefunden - neues einzigartiges Keyword
+                        # Kein Duplikat gefunden - füge das neue Keyword hinzu
                         if wikidata_id:
                             wikidata_label = keyword_sample.get('wikidata_label', '')
-                            logger.info(f"✚ Neues einzigartiges Keyword: '{keyword}' mit Wikidata-Label '{wikidata_label}' wird zur Gesamtliste hinzugefügt")
+                            # Wir speichern kontextabhängige Zuordnungen separat
+                            logger.info(f"✚ Neues Keyword: '{keyword}' mit kontextspezifischer Wikidata-Zuordnung '{wikidata_label}' (ID: {wikidata_id})")
+                            
+                            logger.info(f"   Die Zuordnung basiert auf dem aktuellen Dokumentkontext")
+                            
+                            # Wir prüfen trotzdem auf ähnliche lemmafizierte Formen (nur zur Information)
+                            if 'normalized_keyword' in df_keywords.columns and 'raw_keyword' in df_keywords.columns:
+                                similar_words = []
+                                for idx, (norm_kw, raw_kw) in enumerate(zip(df_keywords['normalized_keyword'].values, df_keywords['raw_keyword'].values)):
+                                    if norm_kw == normalized_keyword and raw_kw != keyword:
+                                        similar_words.append(raw_kw)
+                                
+                                if similar_words:
+                                    logger.info(f"   Hinweis: Ähnliche Wortformen existieren bereits (durch Lemmafizierung): {', '.join(similar_words)}")
+                                    logger.info(f"   Diese werden durch Lemmafizierung als verwandt erkannt")
+                                    
+                                # Prüfe auf andere semantische Bedeutungen (andere Wikidata-IDs)
+                                other_meanings = []
+                                for idx, (norm_kw, entity_id) in enumerate(zip(df_keywords['normalized_keyword'].values, df_keywords['wikidata_id'].values)):
+                                    if norm_kw == normalized_keyword and entity_id != wikidata_id:
+                                        other_label = df_keywords.iloc[idx].get('wikidata_label', 'unbekannt')
+                                        other_meanings.append((entity_id, other_label))
+                                        
+                                if other_meanings:
+                                    logger.info(f"   Hinweis: Das Keyword hat in anderen Kontexten andere Bedeutungen:")
+                                    for other_id, other_label in other_meanings:
+                                        logger.info(f"   → Alternative Bedeutung: '{other_label}' (ID: {other_id})")
                         else:
-                            logger.info(f"✚ Neues einzigartiges Keyword: '{keyword}' wird zur Gesamtliste hinzugefügt")
+                            logger.info(f"✚ Neues Keyword: '{keyword}' (ohne Wikidata-Verknüpfung) wird zur Liste hinzugefügt")
+                            
+                        # Füge das neue Keyword/semantische Konzept hinzu
                         df_keywords = pd.concat([df_keywords, pd.DataFrame.from_dict([keyword_sample])], ignore_index=True)
                     else:
-                        # Duplikat gefunden - Zähler erhöhen
+                        # Exaktes Duplikat gefunden - Zähler erhöhen
                         existing_count = df_keywords.at[existing_idx, 'count']
                         df_keywords.at[existing_idx, 'count'] += 1
                         existing_original = df_keywords.iloc[existing_idx]['raw_keyword']
+                        
                         if wikidata_id:
                             wikidata_label = df_keywords.iloc[existing_idx].get('wikidata_label', '')
-                            logger.info(f"⟳ Duplikat gefunden: '{keyword}' → '{wikidata_label}' entspricht '{existing_original}' (bereits {existing_count}x gezählt)")
+                            logger.info(f"⟳ Semantisches Duplikat gefunden: '{keyword}' → '{wikidata_label}' (ID: {wikidata_id}) entspricht '{existing_original}' (bereits {existing_count}x gezählt)")
                         else:
-                            logger.info(f"⟳ Duplikat gefunden: '{keyword}' entspricht '{existing_original}' (bereits {existing_count}x gezählt)")
+                            logger.info(f"⟳ Textduplikat gefunden: '{keyword}' entspricht '{existing_original}' (bereits {existing_count}x gezählt)")
+                            
+                        # Speichere das aktuelle Dokument als Referenz, wo dieses Keyword verwendet wird
+                        # Dies erweitert die Kontextinformationen für spätere Analysen
+                        if 'context_references' not in df_keywords.columns:
+                            df_keywords['context_references'] = None
+                            for i in range(len(df_keywords)):
+                                df_keywords.at[i, 'context_references'] = []
+                                
+                        current_refs = df_keywords.at[existing_idx, 'context_references']
+                        if current_refs is None:
+                            current_refs = []
+                        
+                        # Füge aktuelle Dokument-ID hinzu, wenn noch nicht vorhanden
+                        doc_id = row.get('pipe:ID', 'unbekannt')
+                        if doc_id not in current_refs:
+                            current_refs.append(doc_id)
+                            df_keywords.at[existing_idx, 'context_references'] = current_refs
 
                 keyword_list.append(keyword_sample)
                 
@@ -606,12 +908,61 @@ class WikidataKeywordCheck(TaskWithInputFileMonitor):
             wikidata_keywords = [k for k in keyword_list if k.get('is_wikidata', False)]
             non_wikidata_keywords = [k for k in keyword_list if not k.get('is_wikidata', False)]
             
+            # Analyse semantischer Mehrdeutigkeiten
+            ambiguous_keywords = []
+            for k in wikidata_keywords:
+                raw_kw = k['raw_keyword']
+                # Verwende die bereits berechnete normalisierte Form, wenn verfügbar
+                norm_kw = k.get('normalized_keyword', get_normalized_keyword(raw_kw))
+                current_id = k.get('wikidata_id')
+                
+                # Prüfe, ob dieses normalisierte Keyword mit anderen Wikidata-IDs existiert
+                if 'wikidata_id' in df_keywords.columns:
+                    matching_rows = df_keywords[
+                        df_keywords.apply(
+                            lambda row: get_normalized_keyword(row['raw_keyword']) == norm_kw and 
+                                        row.get('wikidata_id') != current_id and 
+                                        row.get('wikidata_id') is not None,
+                            axis=1
+                        )
+                    ]
+                    
+                    if not matching_rows.empty:
+                        # Fand alternative semantische Bedeutungen für dieses Keyword
+                        ambiguous_info = {
+                            'raw_keyword': raw_kw,
+                            'current_meaning': {
+                                'id': current_id,
+                                'label': k.get('wikidata_label', 'unbekannt')
+                            },
+                            'alternative_meanings': []
+                        }
+                        
+                        for _, row in matching_rows.iterrows():
+                            ambiguous_info['alternative_meanings'].append({
+                                'id': row.get('wikidata_id'),
+                                'label': row.get('wikidata_label', 'unbekannt')
+                            })
+                        
+                        ambiguous_keywords.append(ambiguous_info)
+            
             logger.info(f"========== Zusammenfassung für Datensatz ID={row.get('pipe:ID', 'unbekannt')} ==========")
             logger.info(f"Insgesamt {len(keyword_list)} Keywords verarbeitet:")
             logger.info(f"✓ {len(wikidata_keywords)} Keywords erfolgreich mit Wikidata verknüpft")
             logger.info(f"✗ {len(non_wikidata_keywords)} Keywords ohne Wikidata-Verknüpfung")
+            
             if non_wikidata_keywords:
                 logger.info(f"Nicht verknüpfte Keywords: {', '.join([k['raw_keyword'] for k in non_wikidata_keywords])}")
+                
+            # Ausgabe semantisch mehrdeutiger Keywords
+            if ambiguous_keywords:
+                logger.info(f"⚠ {len(ambiguous_keywords)} semantisch mehrdeutige Keywords gefunden:")
+                for amb in ambiguous_keywords:
+                    current = amb['current_meaning']
+                    logger.info(f"   • '{amb['raw_keyword']}': In diesem Kontext → '{current['label']}' (ID: {current['id']})")
+                    for alt in amb['alternative_meanings']:
+                        logger.info(f"     Alternativ auch → '{alt['label']}' (ID: {alt['id']})")
+                        
             logger.info(f"===============================================================")
 
             # Speichere die Ergebnisse
@@ -620,7 +971,11 @@ class WikidataKeywordCheck(TaskWithInputFileMonitor):
             df_keywords.to_csv(self.keyword_list_path.with_suffix('.csv'), sep=';')
             
             # Visualisieren der semantischen Beziehungen als JSON-Datei für spätere Graphvisualisierung
-            semantic_relations_path = Path(self.processed_data_folder) / "wikimedia_semantic_relations"
+            # Erstelle Unterordner für Wikimedia-Relationen, falls noch nicht vorhanden
+            wikimedia_relations_dir = Path(self.processed_data_folder) / "Wikimedia_relations"
+            wikimedia_relations_dir.mkdir(exist_ok=True, parents=True)
+            
+            semantic_relations_path = wikimedia_relations_dir / "semantic_relation"
             semantic_data = {
                 "document_id": row.get('pipe:ID', 'unbekannt'),
                 "keywords": [],
@@ -661,5 +1016,8 @@ class WikidataKeywordCheck(TaskWithInputFileMonitor):
                         })
             
             # Speichere die semantischen Beziehungen
-            with open(f"{semantic_relations_path}_{row.get('pipe:ID', 'unknown')}.json", 'w', encoding='utf-8') as f:
+            json_file_path = f"{semantic_relations_path}_{row.get('pipe:ID', 'unknown')}.json"
+            with open(json_file_path, 'w', encoding='utf-8') as f:
                 json.dump(semantic_data, f, ensure_ascii=False, indent=2)
+            
+            logger.info(f"Semantische Relationen gespeichert unter: {json_file_path}")

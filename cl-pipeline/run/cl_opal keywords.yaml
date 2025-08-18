@@ -157,6 +157,7 @@ stages:
       force_run: True
       use_llm: True
       llm_model: "gemma3:27b"
+      prompts_file_name: prompts.yaml  # Prompts aus der zentralen Datei verwenden
       rate_limit_delay: 1.5  # 1,5 Sekunden Pause zwischen Wikidata API-Anfragen
 
   - name: Determine similarity between files

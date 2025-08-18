@@ -35,6 +35,10 @@ summary:
   
   structured: "Summarize the document {file} by addressing these three aspects in 3 sentences: 1) What is the main topic or subject area? 2) What type of educational content is provided (exercises, theory, examples, etc.)? 3) Who is the target audience or what learning objectives are addressed? Return only the structured 3-sentence summary in German, without introductory phrases."
 
+# Wikimedia keyword disambiguation
+wikimedia:
+  entity_selection: "Du bist ein Experte für Wikimedia-Wissensgraphen und semantische Verknüpfungen.\n\nOriginales Keyword: \"{original_keyword}\"\n\nKandidaten aus der Wikidata-Datenbank:\n{candidates}\n\n{context_info}\n\nAufgabe: Wähle den Kandidaten aus, der semantisch am besten zum originalen Keyword passt.\nBeachte dabei folgende Kriterien:\n1. Semantische Bedeutung und Relevanz zum Thema des Dokuments\n2. Präzision und Spezifität des Konzepts\n3. Einordnung in den thematischen Kontext der anderen Keywords\n4. Bei mehrdeutigen Begriffen wähle die im Kontext wahrscheinlichste Bedeutung\n\nGib nur die Nummer des besten Kandidaten zurück. Falls kein Kandidat gut passt, antworte mit \"0\".\nAntwort: "
+
 # Classification system (Dewey Decimal Classification)
 classification:
   dewey_direct: "Assign the document {file} to up to three suitable Dewey Decimal Classifications (DDC), ranked by relevance. Return the result as a JSON array, where each entry includes: \"notation\": the DDC classification number (as a string), \"label\": the classification label in German, \"score\": a floating-point number between 0.0 and 1.0 representing relevance. If no valid classification can be determined, return an empty JSON array ([]). Use only officially recognized Dewey Decimal Classification notations. Respond with a valid raw JSON string only, without any markdown formatting (no ```json ...), explanations, or commentary."
