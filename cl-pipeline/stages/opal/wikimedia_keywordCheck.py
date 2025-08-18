@@ -7,6 +7,7 @@ import json
 import re
 import sys
 import time
+import numpy as np
 
 # Für die Lemmafizierung
 import spacy
@@ -535,7 +536,7 @@ def enrich_keyword_with_wikidata(keyword, context=None, llm=None, other_keywords
         'related_entities': semantic_context["related_entities"],
         'wikipedia_url': semantic_context["wikipedia_url"],
         'query_term': used_search_term,  # Term, mit dem gesucht wurde
-        'document_context_id': context.split('\n')[0] if context and '\n' in context else None  # Speichere Dokument-ID
+        'document_context_id': context.split('\n')[0] if context and isinstance(context, str) and '\n' in context else None  # Speichere Dokument-ID
     }
     
     # Logge erweiterte Informationen
@@ -768,6 +769,9 @@ class WikidataKeywordCheck(TaskWithInputFileMonitor):
                         if 'wikidata_id' in df_keywords.columns and 'raw_keyword' in df_keywords.columns:
                             # Suche nach identischen (Keyword, Wikidata-ID)-Paaren
                             for idx, (raw_kw, entity_id) in enumerate(zip(df_keywords['raw_keyword'].values, df_keywords['wikidata_id'].values)):
+                                # Sicherstellen, dass raw_kw und entity_id keine NaN-Werte sind
+                                if pd.isna(raw_kw) or pd.isna(entity_id):
+                                    continue
                                 if raw_kw == keyword and entity_id == wikidata_id:
                                     # Exakt dasselbe Keyword mit derselben Wikidata-ID
                                     is_duplicate = True
@@ -784,6 +788,9 @@ class WikidataKeywordCheck(TaskWithInputFileMonitor):
                             if 'normalized_keyword' in df_keywords.columns and 'wikidata_id' in df_keywords.columns:
                                 similar_forms = []
                                 for idx, (norm_kw, entity_id) in enumerate(zip(df_keywords['normalized_keyword'].values, df_keywords['wikidata_id'].values)):
+                                    # Sicherstellen, dass norm_kw und entity_id keine NaN-Werte sind
+                                    if pd.isna(norm_kw) or pd.isna(entity_id):
+                                        continue
                                     if norm_kw == normalized_keyword and entity_id != wikidata_id:
                                         wikidata_label = df_keywords.iloc[idx].get('wikidata_label', 'unbekannt')
                                         similar_forms.append((entity_id, wikidata_label))
@@ -838,6 +845,9 @@ class WikidataKeywordCheck(TaskWithInputFileMonitor):
                             if 'normalized_keyword' in df_keywords.columns and 'raw_keyword' in df_keywords.columns:
                                 similar_words = []
                                 for idx, (norm_kw, raw_kw) in enumerate(zip(df_keywords['normalized_keyword'].values, df_keywords['raw_keyword'].values)):
+                                    # Sicherstellen, dass keine NaN-Werte vorhanden sind
+                                    if pd.isna(norm_kw) or pd.isna(raw_kw):
+                                        continue
                                     if norm_kw == normalized_keyword and raw_kw != keyword:
                                         similar_words.append(raw_kw)
                                 
@@ -881,11 +891,17 @@ class WikidataKeywordCheck(TaskWithInputFileMonitor):
                                 df_keywords.at[i, 'context_references'] = []
                                 
                         current_refs = df_keywords.at[existing_idx, 'context_references']
-                        if current_refs is None:
+                        # Sicherstellen, dass current_refs eine Liste ist (nicht None oder NaN)
+                        if current_refs is None or (isinstance(current_refs, (float, np.ndarray)) and (pd.isna(current_refs).any() if isinstance(current_refs, np.ndarray) else pd.isna(current_refs))) or not isinstance(current_refs, list):
                             current_refs = []
                         
                         # Füge aktuelle Dokument-ID hinzu, wenn noch nicht vorhanden
                         doc_id = row.get('pipe:ID', 'unbekannt')
+                        # Stellen wir sicher, dass doc_id kein NaN ist
+                        if pd.isna(doc_id):
+                            doc_id = "unbekannt"
+                            
+                        # Jetzt ist current_refs garantiert eine Liste
                         if doc_id not in current_refs:
                             current_refs.append(doc_id)
                             df_keywords.at[existing_idx, 'context_references'] = current_refs
