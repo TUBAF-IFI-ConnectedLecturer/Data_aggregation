@@ -149,12 +149,14 @@ stages:
         # AND force_processing is disabled (which it now is)
         allow_skip_when_all_conditional_filled: false  # Enable skipping when all fields are filled
 
-  - name: Check Keywords
-    class: GNDKeywordCheck
+  - name: Check Keywords with Wikimedia Knowledge Base
+    class: WikidataKeywordCheck
     parameters: 
       file_name_input: *OPALSINGLEAIMETA
       file_name_output: &OPALKEYWORDS OPAL_checked_keywords.p
       force_run: True
+      use_llm: True
+      llm_model: "gemma3:27b"
 
   - name: Determine similarity between files
     class: DocumentSimilarity
