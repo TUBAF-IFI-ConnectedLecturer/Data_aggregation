@@ -484,24 +484,51 @@ class GNDKeywordCheck(TaskWithInputFileMonitor):
                 keyword_sample['count'] = 0
                 # Normalisierte Form für Deduplizierung nutzen
                 normalized_keyword = get_normalized_keyword(keyword)
+                gnd_name = keyword_sample.get('gnd_preferred_name', None)
                 
                 if df_keywords.shape[0] == 0:
                     df_keywords = pd.DataFrame(keyword_sample, index=[0])
                 else:
-                    # Prüfen, ob ein Keyword mit der gleichen normalisierten Form bereits existiert
+                    # Prüfen, ob ein identisches Keyword (normalisiert + GND-Name) bereits existiert
+                    is_duplicate = False
+                    existing_idx = None
+                    
+                    # Erstelle eine Liste der normalisierten Formen
                     existing_normalized_forms = [get_normalized_keyword(kw) for kw in df_keywords['raw_keyword'].values]
                     
-                    # Prüfen, ob die normalisierte Form bereits existiert - das ist der Schlüssel zur Vermeidung von Duplikaten
-                    if normalized_keyword not in existing_normalized_forms:
-                        logger.info(f"✚ Neues einzigartiges Keyword: '{keyword}' wird zur Gesamtliste hinzugefügt")
+                    # Finde potentielle Duplikate basierend auf normalisiertem Keyword
+                    potential_duplicates = [i for i, form in enumerate(existing_normalized_forms) if form == normalized_keyword]
+                    
+                    if potential_duplicates:
+                        # Bei GND-Schlagworten auch den GND-Namen vergleichen
+                        if gnd_name:
+                            for idx in potential_duplicates:
+                                if 'gnd_preferred_name' in df_keywords.columns and df_keywords.iloc[idx].get('gnd_preferred_name') == gnd_name:
+                                    # Exaktes Duplikat (gleiche normalisierte Form UND gleicher GND-Name)
+                                    is_duplicate = True
+                                    existing_idx = idx
+                                    break
+                        else:
+                            # Bei Nicht-GND-Keywords reicht die normalisierte Form
+                            is_duplicate = True
+                            existing_idx = potential_duplicates[0]
+                    
+                    if not is_duplicate:
+                        # Kein Duplikat gefunden - neues einzigartiges Keyword
+                        if gnd_name:
+                            logger.info(f"✚ Neues einzigartiges Keyword: '{keyword}' mit GND-Name '{gnd_name}' wird zur Gesamtliste hinzugefügt")
+                        else:
+                            logger.info(f"✚ Neues einzigartiges Keyword: '{keyword}' wird zur Gesamtliste hinzugefügt")
                         df_keywords = pd.concat([df_keywords, pd.DataFrame(keyword_sample, index=[0])], ignore_index=True)
                     else:
-                        # Wenn bereits vorhanden, den Zähler erhöhen
-                        existing_idx = [i for i, form in enumerate(existing_normalized_forms) if form == normalized_keyword][0]
+                        # Duplikat gefunden - Zähler erhöhen
                         existing_count = df_keywords.at[existing_idx, 'count']
                         df_keywords.at[existing_idx, 'count'] += 1
                         existing_original = df_keywords.iloc[existing_idx]['raw_keyword']
-                        logger.info(f"⟳ Duplikat gefunden: '{keyword}' entspricht '{existing_original}' (bereits {existing_count}x gezählt)")
+                        if gnd_name:
+                            logger.info(f"⟳ Duplikat gefunden: '{keyword}' → '{gnd_name}' entspricht '{existing_original}' (bereits {existing_count}x gezählt)")
+                        else:
+                            logger.info(f"⟳ Duplikat gefunden: '{keyword}' entspricht '{existing_original}' (bereits {existing_count}x gezählt)")
 
                 keyword_list.append(keyword_sample)
                 
