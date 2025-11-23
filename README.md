@@ -54,7 +54,7 @@ stages:
 flowchart
 %%{init:{'flowchart':{'nodeSpacing': 10, 'rankSpacing': 25}}}%%
 
-    classDef green fill:#5bd21c
+    classDef green fill:#d7f7c6
     classDef yellow fill:#ffd966
     classDef gray fill:#bcbcbc
 
@@ -116,7 +116,7 @@ flowchart
 flowchart 
 %%{init:{'flowchart':{'nodeSpacing': 25, 'rankSpacing': 15}}}%%
 
-    classDef green fill:#5bd21c
+    classDef green fill:#d7f7c6
     classDef yellow fill:#ffd966
     classDef gray fill:#bcbcbc
     classDef white fill:#ffffff,stroke:#ffffff
