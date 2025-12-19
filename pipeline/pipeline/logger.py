@@ -130,7 +130,17 @@ class BraceFormatStyleFormatter(logging.Formatter):
         return formatted
 
 
-def setup_logger():
+def setup_logger(log_file_path=None):
+    """
+    Setup logging with console and file handlers.
+
+    Args:
+        log_file_path: Optional path to log file. If None, uses 'app.log' in current directory.
+                      Can be absolute or relative path. Parent directory will be created if needed.
+    """
+    import os
+    from datetime import datetime
+
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.DEBUG)
 
@@ -142,12 +152,36 @@ def setup_logger():
     console_handler.setFormatter(colored_formatter)
     root_logger.addHandler(console_handler)
 
-    file_handler = logging.FileHandler("app.log")
+    # Determine log file path
+    if log_file_path is None:
+        log_file_path = "app.log"
+
+    # Create log directory if it doesn't exist
+    log_dir = os.path.dirname(log_file_path)
+    if log_dir and not os.path.exists(log_dir):
+        os.makedirs(log_dir, exist_ok=True)
+
+    # Add timestamp to filename for better organization
+    if log_file_path != "app.log":  # Don't modify default app.log name
+        base_name, ext = os.path.splitext(log_file_path)
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        log_file_path = f"{base_name}_{timestamp}{ext}"
+
+    # Use RotatingFileHandler for automatic log rotation
+    # maxBytes=10MB, keep 5 backup files
+    file_handler = logging.handlers.RotatingFileHandler(
+        log_file_path,
+        maxBytes=10*1024*1024,  # 10 MB
+        backupCount=5
+    )
     file_level = "DEBUG"
     file_handler.setLevel(file_level)
     file_format = "%(asctime)s - %(name)s (%(lineno)s) - %(levelname)-8s - %(threadName)-12s - %(message)s"
     file_handler.setFormatter(BraceFormatStyleFormatter(file_format))
     root_logger.addHandler(file_handler)
+
+    # Log where we're writing to
+    logging.info(f"Logging to: {os.path.abspath(log_file_path)}")
 
 
 if __name__ == '__main__':

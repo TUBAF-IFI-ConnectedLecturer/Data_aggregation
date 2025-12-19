@@ -41,6 +41,16 @@ class pdfMetaExtractor:
         created_date = self.get_creation_date(metadata['creationDate'])
         if created_date is None:
             created_date = pd.NaT
+
+        # Get file size
+        try:
+            file_size = Path(self.path).stat().st_size
+        except:
+            file_size = None
+
+        # Extract language from XMP metadata if available
+        language = self._extract_language_from_xmp(document)
+
         metadata_dict = {
             'file:author': metadata['author'],
             'file:keywords': metadata['keywords'],
@@ -48,11 +58,33 @@ class pdfMetaExtractor:
             'file:title': metadata['title'],
             'file:created': created_date,
             'file:modified': modifided_date,
-            #'file:creator': metadata['creator'],
-            #'file:producer': metadata['producer'],
-            #'file:format': metadata['format'],
+            'file:creator': metadata.get('creator', ''),
+            'file:producer': metadata.get('producer', ''),
+            'file:format': metadata.get('format', ''),
+            'file:page_count': document.page_count,
+            'file:size': file_size,
+            'file:language': language,
         }
         return metadata_dict
+
+    def _extract_language_from_xmp(self, document):
+        """Extract language from XMP metadata if available"""
+        try:
+            xmp = document.get_xml_metadata()
+            if xmp:
+                # Try to extract language from XMP (common patterns)
+                import re
+                # Pattern for Dublin Core language: <dc:language>
+                lang_match = re.search(r'<dc:language[^>]*>([^<]+)</dc:language>', xmp)
+                if lang_match:
+                    return lang_match.group(1).strip()
+                # Pattern for xml:lang attribute
+                lang_match = re.search(r'xml:lang=["\']([^"\']+)["\']', xmp)
+                if lang_match:
+                    return lang_match.group(1).strip()
+        except:
+            pass
+        return None
 
     def get_creation_date(self, x):
         x = x.replace("'","")
@@ -78,6 +110,7 @@ class pdfMetaExtractor:
 class officeMetaExtractor:
     def __init__(self, path, file_type):
         self.path = path
+        self.file_type = file_type
         self.valid_file=False
         if file_type == 'docx':
             try:
@@ -100,18 +133,38 @@ class officeMetaExtractor:
         except Exception as e:
             print(f"Error extracting metadata from {self.path}: {e}")
             return None
-        
-        metadata_dict = { 
+
+        # Get file size
+        try:
+            file_size = Path(self.path).stat().st_size
+        except:
+            file_size = None
+
+        # Get page/slide count
+        page_count = None
+        if self.file_type == 'pptx':
+            try:
+                page_count = len(self.document.slides)
+            except:
+                pass
+        elif self.file_type == 'docx':
+            # Note: Word doesn't have a reliable page count without rendering
+            # We could count paragraphs as a proxy, but it's not accurate
+            pass
+
+        metadata_dict = {
             'file:author': metadata.author,
             'file:keywords': metadata.keywords,
             'file:subject': metadata.subject,
             'file:title': metadata.title,
             'file:created': metadata.created,
             'file:modified': metadata.modified,
+            'file:language': metadata.language,
+            'file:size': file_size,
+            'file:page_count': page_count,
             #'file:last_modified_by': metadata.last_modified_by,
             #'file:category': metadata.category,
             #'file:content_status': metadata.content_status,
-            'file:language': metadata.language,
             #'file:version': metadata.version,
             #'file:revision': metadata.revision,
         }
@@ -136,7 +189,16 @@ class xlsxMetaExtractor:
         except Exception as e:
             print(f"Error extracting metadata from {self.path}: {e}")
             return None
-        
+
+        # Get file size
+        try:
+            file_size = Path(self.path).stat().st_size
+        except:
+            file_size = None
+
+        # Count sheets
+        sheet_count = len(self.document.sheetnames)
+
         # <openpyxl.packaging.core.DocumentProperties object>
         # Parameters:
         # creator=u'User', title=None, description=None, subject=None, identifier=None,
@@ -145,13 +207,16 @@ class xlsxMetaExtractor:
         # category=None, contentStatus=None, version=None, revision=None, keywords=None,
         # lastPrinted=None
 
-        metadata_dict = { 
+        metadata_dict = {
             'file:author': metadata.creator,
             'file:keywords': metadata.keywords,
             'file:subject': metadata.subject,
             'file:title': metadata.title,
             'file:created': metadata.created,
             'file:modified': metadata.modified,
+            'file:language': metadata.language,
+            'file:size': file_size,
+            'file:page_count': sheet_count,  # For Excel, use sheet count as "page" count
         }
         return metadata_dict
 
@@ -175,11 +240,12 @@ class mdMetaExtractor:
             # Extract YAML front matter if it exists
             yaml_front_matter = self._extract_yaml_front_matter()
             
-            # Get file system dates as fallback
+            # Get file system dates and size
             file_stats = Path(self.path).stat()
             created_date = datetime.fromtimestamp(file_stats.st_ctime)
             modified_date = datetime.fromtimestamp(file_stats.st_mtime)
-            
+            file_size = file_stats.st_size
+
             # Initialize metadata dict with file system dates
             metadata_dict = {
                 'file:author': None,
@@ -188,6 +254,9 @@ class mdMetaExtractor:
                 'file:title': None,
                 'file:created': created_date,
                 'file:modified': modified_date,
+                'file:language': None,
+                'file:size': file_size,
+                'file:page_count': None,
             }
             
             # Override with YAML front matter if available

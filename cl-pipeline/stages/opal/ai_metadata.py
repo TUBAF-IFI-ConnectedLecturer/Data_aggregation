@@ -78,6 +78,14 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
         self.embedding_model = self.llm_config.get('embedding_model', 'jina/jina-embeddings-v2-base-de')
         self.collection_name = self.llm_config.get('collection_name', 'oer_connected_lecturer')
         self.timeout_seconds = self.llm_config.get('timeout_seconds', 240)
+
+        # Optional: Limit number of chunks retrieved for LLM context
+        # Default: None (use all available chunks for backwards compatibility)
+        self.max_retrieval_chunks = stage_param.get('max_retrieval_chunks', None)
+
+        # Optional: Retrieval strategy for selecting relevant chunks
+        # Options: "all" (default), "first_and_last_pages", "first_pages_only"
+        self.retrieval_strategy = stage_param.get('retrieval_strategy', 'all')
     
     def _initialize_core_components(self, stage_param):
         """Initialize core utility components"""
@@ -132,29 +140,185 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
         collection = chroma_client.get_or_create_collection(name=self.collection_name)
         
         return vectorstore, collection
-    
-    def _create_retrieval_chain(self, vectorstore, file, pages):
-        """Create LangChain retrieval chain for a specific file"""
-        retriever_with_filter = vectorstore.as_retriever(
-            search_kwargs={"filter": {"filename": file}, "k": pages}
-        )
-        
+
+    def _apply_retrieval_strategy(self, file, available_chunks, field_name=None):
+        """
+        Apply retrieval strategy to select which chunks to use.
+
+        Args:
+            file: Filename being processed
+            available_chunks: Total number of chunks available
+            field_name: Optional field name for field-specific strategies
+
+        Returns:
+            tuple: (k_chunks, page_filter)
+                - k_chunks: Maximum number of chunks to retrieve
+                - page_filter: Optional list of page filters for ChromaDB query
+        """
+        # Field-specific strategy override: author and title should only use first pages
+        if field_name in ['ai:author', 'ai:title', 'ai:affiliation']:
+            # Authors, titles, and affiliations are almost always on first 1-2 pages
+            page_filter = [
+                {"page": 0},
+                {"page": 1},
+            ]
+            k_chunks = 5  # Limit to 5 chunks from first pages
+            return k_chunks, page_filter
+
+        # Strategy: all (default - backwards compatible)
+        if self.retrieval_strategy == "all":
+            k_chunks = min(available_chunks, self.max_retrieval_chunks) if self.max_retrieval_chunks else available_chunks
+            return k_chunks, None
+
+        # Strategy: first_and_last_pages (for metadata extraction)
+        elif self.retrieval_strategy == "first_and_last_pages":
+            # Get chunks from page 0 (first) and last page
+            # We don't know total pages here, so we'll use collection query
+            page_filter = [
+                {"page": 0},  # First page
+                {"page": 1},  # Second page (for overflow)
+            ]
+            # Also try to get last pages - we'll rely on k_chunks limit
+            k_chunks = self.max_retrieval_chunks if self.max_retrieval_chunks else 10
+            return k_chunks, None  # For now, just limit chunks
+
+        # Strategy: first_pages_only (for metadata extraction)
+        elif self.retrieval_strategy == "first_pages_only":
+            page_filter = [
+                {"page": 0},
+                {"page": 1},
+            ]
+            k_chunks = self.max_retrieval_chunks if self.max_retrieval_chunks else 5
+            return k_chunks, None  # For now, just limit chunks
+
+        # Fallback to all
+        else:
+            k_chunks = min(available_chunks, self.max_retrieval_chunks) if self.max_retrieval_chunks else available_chunks
+            return k_chunks, None
+
+    def _create_retrieval_chain(self, vectorstore, file, pages, field_name=None):
+        """
+        Create LangChain retrieval chain for a specific file and field.
+
+        Args:
+            vectorstore: ChromaDB vector store
+            file: Filename being processed
+            pages: Total number of pages/chunks
+            field_name: Optional field name for field-specific retrieval strategies
+
+        Returns:
+            RetrievalQA chain
+        """
+        # Apply retrieval strategy with intelligent chunk selection
+        k_chunks, page_filter = self._apply_retrieval_strategy(file, pages, field_name)
+
+        # Build search filter - ChromaDB doesn't support $or operator
+        # For page filtering, we need to use a different approach
+        search_filter = {"filename": file}
+
+        # If we need page filtering for specific fields (author, title, affiliation),
+        # we use a custom retriever that filters by page after retrieval
+        if page_filter and field_name in ['ai:author', 'ai:title', 'ai:affiliation']:
+            # Use custom document retriever with page filtering
+            retriever_with_filter = self._create_page_filtered_retriever(
+                vectorstore, file, k_chunks, page_filter
+            )
+        else:
+            # Standard retriever without page filtering
+            retriever_with_filter = vectorstore.as_retriever(
+                search_kwargs={"filter": search_filter, "k": k_chunks}
+            )
+
         prompt = PromptTemplate.from_template(self.prompt_manager.get_system_template())
-        
+
         return self.llm_interface.create_qa_chain(
             retriever_with_filter,
             OllamaLLM(model=self.llm_model, temperature=0),
             prompt
         )
+
+    def _create_page_filtered_retriever(self, vectorstore, file, k_chunks, page_filter):
+        """
+        Create a custom retriever that filters documents by page numbers.
+
+        Args:
+            vectorstore: ChromaDB vector store
+            file: Filename to filter
+            k_chunks: Number of chunks to retrieve
+            page_filter: List of page dictionaries (e.g., [{"page": 0}, {"page": 1}])
+
+        Returns:
+            Custom retriever that only returns chunks from specified pages
+        """
+        from langchain_core.retrievers import BaseRetriever
+        from langchain_core.callbacks import CallbackManagerForRetrieverRun
+        from langchain_core.documents import Document
+        from typing import List
+
+        class PageFilteredRetriever(BaseRetriever):
+            """Custom retriever that filters by page numbers"""
+
+            def __init__(self, vectorstore, filename: str, k: int, pages: list):
+                """Initialize the retriever with explicit storage of parameters"""
+                super().__init__()
+                # Store parameters without using Pydantic fields
+                object.__setattr__(self, '_vectorstore', vectorstore)
+                object.__setattr__(self, '_filename', filename)
+                object.__setattr__(self, '_k', k)
+                object.__setattr__(self, '_allowed_pages', set(p["page"] for p in pages))
+
+            def _get_relevant_documents(
+                self,
+                query: str,
+                *,
+                run_manager: CallbackManagerForRetrieverRun = None
+            ) -> List[Document]:
+                """Retrieve documents and filter by page number"""
+                # Get more documents than needed, then filter
+                search_filter = {"filename": self._filename}
+                # Request more documents to account for filtering
+                retriever = self._vectorstore.as_retriever(
+                    search_kwargs={"filter": search_filter, "k": self._k * 3}
+                )
+
+                all_docs = retriever.get_relevant_documents(query)
+
+                # Filter by page number
+                filtered_docs = []
+                for doc in all_docs:
+                    if "page" in doc.metadata and doc.metadata["page"] in self._allowed_pages:
+                        filtered_docs.append(doc)
+                        if len(filtered_docs) >= self._k:
+                            break
+
+                return filtered_docs[:self._k]
+
+        return PageFilteredRetriever(vectorstore, file, k_chunks, page_filter)
     
-    def _process_single_field(self, field_name, file, chain, collection, existing_metadata):
-        """Process a single metadata field using appropriate processor"""
+    def _process_single_field(self, field_name, file, vectorstore, pages, collection, existing_metadata):
+        """
+        Process a single metadata field using appropriate processor.
+
+        Args:
+            field_name: Name of the field to process
+            file: Filename being processed
+            vectorstore: ChromaDB vector store
+            pages: Total number of pages/chunks
+            collection: ChromaDB collection
+            existing_metadata: Existing metadata for the file
+
+        Returns:
+            Dictionary with processed field data
+        """
         should_process, process_type = self.config_manager.should_process_field(field_name, existing_metadata)
-        
+
         if not should_process:
             return {}
-        
+
         try:
+            # Create field-specific retrieval chain
+            chain = self._create_retrieval_chain(vectorstore, file, pages, field_name)
+
             if field_name == 'ai:author':
                 return self.document_processor.process_author(file, chain)
             elif field_name == 'ai:title':
@@ -176,7 +340,7 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
             else:
                 logging.warning("Unknown field type: %s", field_name)
                 return {}
-        
+
         except Exception as e:
             logging.error("Error processing field %s for file %s: %s", field_name, file, e)
             return {}
@@ -231,18 +395,64 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
         
         return "\n            ".join(output_lines)
     
+    def _safe_load_pickle(self, file_path):
+        """Safely load pickle file, handling missing module errors"""
+        import pickle
+        import sys
+        from io import BytesIO
+
+        class SafeUnpickler(pickle.Unpickler):
+            """Custom unpickler that handles missing modules gracefully"""
+            def find_class(self, module, name):
+                try:
+                    return super().find_class(module, name)
+                except (ModuleNotFoundError, AttributeError):
+                    # If module not found, return a dummy class
+                    logging.warning(f"Module {module}.{name} not found during unpickling, using placeholder")
+                    return type(name, (), {})
+
+        try:
+            with open(file_path, 'rb') as f:
+                return SafeUnpickler(f).load()
+        except Exception as e:
+            logging.error(f"Error loading pickle file: {e}")
+            raise
+
     def execute_task(self):
         """Main execution method - orchestrates the entire process"""
         self._setup_logging()
-        
+
         # Load input data
         df_files = pd.read_pickle(self.file_name_inputs)
         df_files = df_files[df_files['pipe:file_type'].isin(self.file_types)]
-        
+
         # Load existing metadata
         if Path(self.file_name_output).exists():
-            df_metadata = pd.read_pickle(self.file_name_output)
+            try:
+                print(f"\n{'='*70}")
+                print(f"CHECKPOINT: Loading existing metadata from:")
+                print(f"  {self.file_name_output}")
+                df_metadata = self._safe_load_pickle(self.file_name_output)
+                print(f"✓ Successfully loaded: {len(df_metadata)} documents already processed")
+
+                # Show sample of what was loaded
+                if len(df_metadata) > 0:
+                    ai_cols = [col for col in df_metadata.columns if col.startswith('ai:')]
+                    print(f"  Columns found: {', '.join(ai_cols)}")
+                print(f"{'='*70}\n")
+            except Exception as e:
+                print(f"\n{'='*70}")
+                print(f"✗ ERROR: Could not load existing metadata file!")
+                print(f"  Error: {e}")
+                print(f"  Starting with empty metadata - all documents will be processed")
+                print(f"{'='*70}\n")
+                df_metadata = pd.DataFrame()
         else:
+            print(f"\n{'='*70}")
+            print(f"INFO: No existing metadata file found")
+            print(f"  Path: {self.file_name_output}")
+            print(f"  Starting with empty metadata")
+            print(f"{'='*70}\n")
             df_metadata = pd.DataFrame()
         
         # Setup vector store
@@ -255,26 +465,35 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
         
         # Process each file
         processing_fields = self._get_processing_fields()
-        
+
+        # Statistics for debugging
+        total_files = 0
+        skipped_files = 0
+        processed_files = 0
+
         for _, row in tqdm(df_files.iterrows(), total=df_files.shape[0]):
             if row['pipe:file_type'] not in self.file_types:
                 continue
-            
+
             file = f"{row['pipe:ID']}.{row['pipe:file_type']}"
             pages = chunk_counter.get(file, 0)
-            
+
             if pages == 0:
                 continue
-            
+
+            total_files += 1
+
             # Check existing metadata
             existing_metadata = None
             if df_metadata.shape[0] > 0:
                 existing_rows = df_metadata[df_metadata['pipe:ID'] == row['pipe:ID']]
                 if existing_rows.shape[0] > 0:
                     existing_metadata = existing_rows.iloc[0]
-            
+
             # Check if file should be skipped
-            if self.config_manager.should_skip_file(existing_metadata):
+            should_skip = self.config_manager.should_skip_file(existing_metadata)
+            if should_skip:
+                skipped_files += 1
                 continue
             
             # Initialize metadata structure
@@ -288,15 +507,12 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
                 for key in existing_metadata.index:
                     if key.startswith('ai:'):
                         metadata[key] = existing_metadata[key]
-            
-            # Create retrieval chain
-            chain = self._create_retrieval_chain(vectorstore, file, pages)
-            
-            # Process each field
+
+            # Process each field (chain is now created per-field with field-specific strategies)
             needs_processing = False
             for field_name in processing_fields:
                 field_result = self._process_single_field(
-                    field_name, file, chain, collection, existing_metadata
+                    field_name, file, vectorstore, pages, collection, existing_metadata
                 )
                 if field_result:
                     metadata.update(field_result)
@@ -305,7 +521,9 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
             # Skip if no processing was needed
             if not needs_processing:
                 continue
-            
+
+            processed_files += 1
+
             # Display results
             output = self._format_output(file, metadata, existing_metadata)
             print(f"\n{output}\n")
@@ -325,3 +543,12 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
         # Final save
         df_metadata.reset_index(drop=True, inplace=True)
         df_metadata.to_pickle(self.file_name_output)
+
+        # Print statistics
+        print(f"\n{'='*70}")
+        print(f"=== PROCESSING STATISTICS ===")
+        print(f"Total files checked: {total_files}")
+        print(f"Files skipped (complete): {skipped_files}")
+        print(f"Files processed: {processed_files}")
+        print(f"Final metadata count: {len(df_metadata)}")
+        print(f"{'='*70}\n")

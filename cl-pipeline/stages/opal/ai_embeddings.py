@@ -1,5 +1,8 @@
 from langchain_community.llms import Ollama
-from langchain_community.embeddings import OllamaEmbeddings
+try:
+    from langchain_ollama import OllamaEmbeddings
+except ImportError:
+    from langchain_community.embeddings import OllamaEmbeddings
 from langchain_community.document_loaders import (UnstructuredPowerPointLoader, 
                                                   UnstructuredExcelLoader,
                                                   UnstructuredMarkdownLoader,

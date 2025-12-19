@@ -1,0 +1,153 @@
+2025-12-16 20:21:52,931 - root (184) - INFO     - MainThread   - Logging to: /media/sz/Data/Veits_pdfs/Data_aggregation/cl-pipeline/run/pipelines/arbeitsbasis/logs/full_2025-12-16_20-21-52.log
+2025-12-16 20:21:52,931 - root (53) - INFO     - MainThread   - Starting pipeline
+2025-12-16 20:21:52,931 - root (54) - INFO     - MainThread   - Config file: pipelines/arbeitsbasis/config/full.yaml
+2025-12-16 20:21:53,445 - root (156) - DEBUG    - MainThread   - Import BaseModel to globals()
+2025-12-16 20:21:53,445 - root (156) - DEBUG    - MainThread   - Import Name to globals()
+2025-12-16 20:21:53,445 - root (156) - DEBUG    - MainThread   - Import NameChecker to globals()
+2025-12-16 20:21:53,445 - root (156) - DEBUG    - MainThread   - Import OllamaLLM to globals()
+2025-12-16 20:21:53,445 - root (156) - DEBUG    - MainThread   - Import PromptTemplate to globals()
+2025-12-16 20:21:53,446 - root (156) - DEBUG    - MainThread   - Import ProvideDataFolders to globals()
+2025-12-16 20:21:53,699 - root (156) - DEBUG    - MainThread   - Import Document to globals()
+2025-12-16 20:21:53,699 - root (156) - DEBUG    - MainThread   - Import ExtractFileContent to globals()
+2025-12-16 20:21:53,699 - root (156) - DEBUG    - MainThread   - Import PyMuPDFLoader to globals()
+2025-12-16 20:21:53,699 - root (156) - DEBUG    - MainThread   - Import UnstructuredExcelLoader to globals()
+2025-12-16 20:21:53,699 - root (156) - DEBUG    - MainThread   - Import UnstructuredMarkdownLoader to globals()
+2025-12-16 20:21:53,699 - root (156) - DEBUG    - MainThread   - Import UnstructuredPowerPointLoader to globals()
+2025-12-16 20:21:53,699 - root (156) - DEBUG    - MainThread   - Import UnstructuredWordDocumentLoader to globals()
+2025-12-16 20:21:53,699 - root (156) - DEBUG    - MainThread   - Import tqdm to globals()
+2025-12-16 20:21:53,700 - root (156) - DEBUG    - MainThread   - Import FilterFilesByContent to globals()
+2025-12-16 20:21:53,921 - root (156) - DEBUG    - MainThread   - Import MetaDataExtraction to globals()
+2025-12-16 20:21:53,921 - root (156) - DEBUG    - MainThread   - Import datetime to globals()
+2025-12-16 20:21:53,921 - root (156) - DEBUG    - MainThread   - Import mdMetaExtractor to globals()
+2025-12-16 20:21:53,921 - root (156) - DEBUG    - MainThread   - Import officeMetaExtractor to globals()
+2025-12-16 20:21:53,921 - root (156) - DEBUG    - MainThread   - Import pdfMetaExtractor to globals()
+2025-12-16 20:21:53,921 - root (156) - DEBUG    - MainThread   - Import xlsxMetaExtractor to globals()
+2025-12-16 20:21:55,245 - root (156) - DEBUG    - MainThread   - Import GNDKeywordCheck to globals()
+2025-12-16 20:21:55,259 - root (156) - DEBUG    - MainThread   - Import PromptManager to globals()
+2025-12-16 20:21:55,259 - root (156) - DEBUG    - MainThread   - Import WikidataKeywordCheck to globals()
+2025-12-16 20:21:57,412 - root (156) - DEBUG    - MainThread   - Import Counter to globals()
+2025-12-16 20:21:57,412 - root (156) - DEBUG    - MainThread   - Import DocumentSimilarity to globals()
+2025-12-16 20:21:57,412 - root (156) - DEBUG    - MainThread   - Import OllamaEmbeddings to globals()
+2025-12-16 20:21:57,412 - root (156) - DEBUG    - MainThread   - Import SentenceTransformer to globals()
+2025-12-16 20:21:57,502 - root (156) - DEBUG    - MainThread   - Import AIEmbeddingsGeneration to globals()
+2025-12-16 20:21:57,502 - root (156) - DEBUG    - MainThread   - Import DirectoryLoader to globals()
+2025-12-16 20:21:57,502 - root (156) - DEBUG    - MainThread   - Import HuggingFaceEmbeddings to globals()
+2025-12-16 20:21:57,502 - root (156) - DEBUG    - MainThread   - Import Ollama to globals()
+2025-12-16 20:21:57,502 - root (156) - DEBUG    - MainThread   - Import RecursiveCharacterTextSplitter to globals()
+2025-12-16 20:21:57,503 - root (156) - DEBUG    - MainThread   - Import CollectOPALOERdocuments to globals()
+2025-12-16 20:21:57,503 - root (156) - DEBUG    - MainThread   - Import DownloadOERFromOPAL to globals()
+2025-12-16 20:21:57,507 - root (156) - DEBUG    - MainThread   - Import AIMetaDataExtraction to globals()
+2025-12-16 20:21:57,507 - root (156) - DEBUG    - MainThread   - Import AffiliationProcessor to globals()
+2025-12-16 20:21:57,507 - root (156) - DEBUG    - MainThread   - Import Chroma to globals()
+2025-12-16 20:21:57,507 - root (156) - DEBUG    - MainThread   - Import DeweyClassifier to globals()
+2025-12-16 20:21:57,507 - root (156) - DEBUG    - MainThread   - Import DocumentProcessor to globals()
+2025-12-16 20:21:57,507 - root (156) - DEBUG    - MainThread   - Import KeywordExtractor to globals()
+2025-12-16 20:21:57,507 - root (156) - DEBUG    - MainThread   - Import LLMInterface to globals()
+2025-12-16 20:21:57,507 - root (156) - DEBUG    - MainThread   - Import ProcessingConfigManager to globals()
+2025-12-16 20:21:57,508 - root (156) - DEBUG    - MainThread   - Import SummaryProcessor to globals()
+2025-12-16 20:21:57,508 - root (156) - DEBUG    - MainThread   - Import Preprocessing to globals()
+2025-12-16 20:22:02,183 - lobid_keywordCheck (361) - INFO     - MainThread   - ✓ Ollama LLM (gemma3:27b) für Schlagwortauswahl erfolgreich initialisiert und getestet
+2025-12-16 20:22:02,184 - root (26) - INFO     - MainThread   - Stage Extract PDF metadata from files (MetaDataExtraction) started
+2025-12-16 20:22:02,184 - root (70) - DEBUG    - MainThread   - Input file at /media/sz/Data/Veits_pdfs/data_pipeline/arbeitsbasis/raw/LOCAL_files_base.p exists.
+2025-12-16 20:22:02,196 - root (109) - INFO     - MainThread   - Input files are present but have not changed.
+2025-12-16 20:22:02,197 - root (28) - INFO     - MainThread   - Stage Extract PDF metadata from files (MetaDataExtraction) finished
+2025-12-16 20:22:02,197 - root (26) - INFO     - MainThread   - Stage Extract content from local PDFs (ExtractFileContent) started
+2025-12-16 20:22:02,197 - root (70) - DEBUG    - MainThread   - Input file at /media/sz/Data/Veits_pdfs/data_pipeline/arbeitsbasis/raw/LOCAL_files_base.p exists.
+2025-12-16 20:22:02,207 - root (109) - INFO     - MainThread   - Input files are present but have not changed.
+2025-12-16 20:22:02,208 - root (28) - INFO     - MainThread   - Stage Extract content from local PDFs (ExtractFileContent) finished
+2025-12-16 20:22:02,208 - root (26) - INFO     - MainThread   - Stage Filter file list by content data (FilterFilesByContent) started
+2025-12-16 20:22:02,208 - root (70) - DEBUG    - MainThread   - Input file at /media/sz/Data/Veits_pdfs/data_pipeline/arbeitsbasis/raw/LOCAL_files_base.p exists.
+2025-12-16 20:22:02,217 - root (109) - INFO     - MainThread   - Input files are present but have not changed.
+2025-12-16 20:22:02,217 - root (28) - INFO     - MainThread   - Stage Filter file list by content data (FilterFilesByContent) finished
+2025-12-16 20:22:02,217 - root (26) - INFO     - MainThread   - Stage Generate embeddings (AIEmbeddingsGeneration) started
+2025-12-16 20:22:02,217 - root (70) - DEBUG    - MainThread   - Input file at /media/sz/Data/Veits_pdfs/data_pipeline/arbeitsbasis/raw/LOCAL_files_filtered.p exists.
+2025-12-16 20:22:02,222 - root (109) - INFO     - MainThread   - Input files are present but have not changed.
+2025-12-16 20:22:02,223 - root (28) - INFO     - MainThread   - Stage Generate embeddings (AIEmbeddingsGeneration) finished
+2025-12-16 20:22:02,223 - root (26) - INFO     - MainThread   - Stage Extract metadata with AI (AIMetaDataExtraction) started
+2025-12-16 20:22:02,223 - root (70) - DEBUG    - MainThread   - Input file at /media/sz/Data/Veits_pdfs/data_pipeline/arbeitsbasis/raw/LOCAL_files_filtered.p exists.
+2025-12-16 20:22:02,227 - root (105) - INFO     - MainThread   - Forcing task to run.
+2025-12-16 20:22:02,227 - root (106) - INFO     - MainThread   - Input files for task have changed. Running task.
+2025-12-16 20:22:02,300 - chromadb.telemetry.product.posthog (22) - INFO     - MainThread   - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2025-12-16 20:22:02,347 - chromadb.config (359) - DEBUG    - MainThread   - Starting component System
+2025-12-16 20:22:02,347 - chromadb.config (359) - DEBUG    - MainThread   - Starting component Posthog
+2025-12-16 20:24:14,316 - root (157) - DEBUG    - MainThread   - Thematic areas identified: Bibliothekswesen, Informationswissenschaft, Bibliothekarinnen und Bibliothekare
+2025-12-16 20:24:24,502 - root (190) - DEBUG    - MainThread   - Successfully assigned Dewey classification: [{'notation': '000', 'label': 'Informatik, Information & Wissen, allgemeine Werke', 'score': 0.8}, {'notation': '021', 'label': 'Beziehungen von Bibliotheken', 'score': 0.9}, {'notation': '378', 'label': 'Hochschulbildung', 'score': 0.7}]
+2025-12-16 20:25:25,783 - root (157) - DEBUG    - MainThread   - Thematic areas identified: Informatik, Bibliothekswesen, Naturwissenschaften
+2025-12-16 20:25:34,333 - root (190) - DEBUG    - MainThread   - Successfully assigned Dewey classification: [{'notation': '000', 'label': 'Informatik, Information & Wissen, allgemeine Werke', 'score': 0.8}, {'notation': '004', 'label': 'Informatik', 'score': 0.7}, {'notation': '020', 'label': 'Bibliothekswesen', 'score': 0.9}]
+2025-12-16 20:26:42,046 - root (157) - DEBUG    - MainThread   - Thematic areas identified: Bibliothekswesen, Wissenschaftsfreiheit, Datenschutz
+2025-12-16 20:26:51,689 - root (190) - DEBUG    - MainThread   - Successfully assigned Dewey classification: [{'notation': '021', 'label': 'Beziehungen von Bibliotheken', 'score': 0.9}, {'notation': '361', 'label': 'Soziale Probleme und Sozialhilfe im Allgemeinen', 'score': 0.7}, {'notation': '004', 'label': 'Informatik', 'score': 0.8}]
+2025-12-16 20:28:21,892 - root (157) - DEBUG    - MainThread   - Thematic areas identified: Bibliothekswesen, Informationskompetenz, Hochschulbildung
+2025-12-16 20:28:31,038 - root (190) - DEBUG    - MainThread   - Successfully assigned Dewey classification: [{'notation': '000', 'label': 'Informatik, Information & Wissen, allgemeine Werke', 'score': 0.8}, {'notation': '378', 'label': 'Hochschulbildung', 'score': 0.9}, {'notation': '371', 'label': 'Schulen, schulische Tätigkeiten; Sonderpädagogik', 'score': 0.7}]
+2025-12-16 20:29:31,228 - root (157) - DEBUG    - MainThread   - Thematic areas identified: Geisteswissenschaften, Bibliothekswesen, Citizen Science
+2025-12-16 20:29:40,747 - root (190) - DEBUG    - MainThread   - Successfully assigned Dewey classification: [{'notation': '000', 'label': 'Informatik, Information & Wissen, allgemeine Werke', 'score': 0.8}, {'notation': '021', 'label': 'Beziehungen von Bibliotheken', 'score': 0.9}, {'notation': '410', 'label': 'Linguistik', 'score': 0.7}]
+2025-12-16 20:30:39,169 - root (157) - DEBUG    - MainThread   - Thematic areas identified: Bibliothekswesen, Wissenschaftliches Publizieren, Open Access
+2025-12-16 20:30:48,083 - root (190) - DEBUG    - MainThread   - Successfully assigned Dewey classification: [{'notation': '021', 'label': 'Beziehungen von Bibliotheken', 'score': 0.9}, {'notation': '378', 'label': 'Hochschulbildung', 'score': 0.8}, {'notation': '004', 'label': 'Informatik', 'score': 0.7}]
+2025-12-16 20:31:46,177 - root (157) - DEBUG    - MainThread   - Thematic areas identified: Bibliothekswissenschaft, Erziehungswissenschaft, Informatik
+2025-12-16 20:31:54,195 - root (190) - DEBUG    - MainThread   - Successfully assigned Dewey classification: [{'notation': '004', 'label': 'Informatik', 'score': 0.8}, {'notation': '370', 'label': 'Bildung und Erziehung', 'score': 0.6}, {'notation': '000', 'label': 'Informatik, Information & Wissen, allgemeine Werke', 'score': 0.4}]
+2025-12-16 20:32:47,027 - root (157) - DEBUG    - MainThread   - Thematic areas identified: Bibliothekswissenschaft, Informationswissenschaft, Erziehungswissenschaft
+2025-12-16 20:32:56,110 - root (190) - DEBUG    - MainThread   - Successfully assigned Dewey classification: [{'notation': '000', 'label': 'Informatik, Information & Wissen, allgemeine Werke', 'score': 0.8}, {'notation': '370', 'label': 'Bildung und Erziehung', 'score': 0.7}, {'notation': '371', 'label': 'Schulen, schulische Tätigkeiten; Sonderpädagogik', 'score': 0.6}]
+2025-12-16 20:33:59,948 - root (157) - DEBUG    - MainThread   - Thematic areas identified: Bibliometrie, Wissenschaftsforschung, Open-Access-Publikationssysteme
+2025-12-16 20:34:08,834 - root (190) - DEBUG    - MainThread   - Successfully assigned Dewey classification: [{'notation': '500', 'label': 'Naturwissenschaften und Mathematik', 'score': 0.8}, {'notation': '004', 'label': 'Informatik', 'score': 0.6}, {'notation': '378', 'label': 'Hochschulbildung', 'score': 0.4}]
+2025-12-16 20:35:04,661 - root (157) - DEBUG    - MainThread   - Thematic areas identified: Bibliothekswesen, Informatik, Wissenschaftliches Publizieren
+2025-12-16 20:35:12,851 - root (190) - DEBUG    - MainThread   - Successfully assigned Dewey classification: [{'notation': '000', 'label': 'Informatik, Information & Wissen, allgemeine Werke', 'score': 0.8}, {'notation': '004', 'label': 'Informatik', 'score': 0.6}, {'notation': '005', 'label': 'Computerprogrammierung, Computerprogramme & Daten', 'score': 0.4}]
+2025-12-16 20:36:17,183 - root (157) - DEBUG    - MainThread   - Thematic areas identified: Bibliothekswesen, Wissenschaftliches Publizieren, Scholarly Communications
+2025-12-16 20:36:25,955 - root (190) - DEBUG    - MainThread   - Successfully assigned Dewey classification: [{'notation': '021', 'label': 'Beziehungen von Bibliotheken', 'score': 0.9}, {'notation': '378', 'label': 'Hochschulbildung', 'score': 0.8}, {'notation': '004', 'label': 'Informatik', 'score': 0.7}]
+2025-12-16 20:37:30,732 - root (157) - DEBUG    - MainThread   - Thematic areas identified: Informatik, Bibliothekswesen, Forschungsdatenmanagement
+2025-12-16 20:37:39,093 - root (190) - DEBUG    - MainThread   - Successfully assigned Dewey classification: [{'notation': '000', 'label': 'Informatik, Information & Wissen, allgemeine Werke', 'score': 0.8}, {'notation': '004', 'label': 'Informatik', 'score': 0.7}, {'notation': '005', 'label': 'Computerprogrammierung, Computerprogramme & Daten', 'score': 0.6}]
+2025-12-16 20:38:54,846 - root (157) - DEBUG    - MainThread   - Thematic areas identified: Bibliothekswesen, Wissenschaftliches Publizieren, Fachreferatsarbeit
+2025-12-16 20:39:03,156 - root (190) - DEBUG    - MainThread   - Successfully assigned Dewey classification: [{'notation': '021', 'label': 'Beziehungen von Bibliotheken', 'score': 0.9}, {'notation': '378', 'label': 'Hochschulbildung', 'score': 0.8}, {'notation': '004', 'label': 'Informatik', 'score': 0.7}]
+2025-12-16 20:39:58,075 - root (157) - DEBUG    - MainThread   - Thematic areas identified: Informatik, Digital Humanities, Forschungsdatenmanagement
+2025-12-16 20:40:06,888 - root (190) - DEBUG    - MainThread   - Successfully assigned Dewey classification: [{'notation': '000', 'label': 'Informatik, Information & Wissen, allgemeine Werke', 'score': 0.8}, {'notation': '004', 'label': 'Informatik', 'score': 0.7}, {'notation': '005', 'label': 'Computerprogrammierung, Computerprogramme & Daten', 'score': 0.5}]
+2025-12-16 20:41:16,525 - root (157) - DEBUG    - MainThread   - Thematic areas identified: Bibliothekswesen, Informationswissenschaft, Erziehungswissenschaft
+2025-12-16 20:41:25,833 - root (190) - DEBUG    - MainThread   - Successfully assigned Dewey classification: [{'notation': '000', 'label': 'Informatik, Information & Wissen, allgemeine Werke', 'score': 0.8}, {'notation': '370', 'label': 'Bildung und Erziehung', 'score': 0.7}, {'notation': '371', 'label': 'Schulen, schulische Tätigkeiten; Sonderpädagogik', 'score': 0.6}]
+2025-12-16 20:42:37,875 - root (157) - DEBUG    - MainThread   - Thematic areas identified: Bibliothekswesen, Erziehungswissenschaft, Geschichtswissenschaft, Ethnologie, Philosophie, Theologie, Klassische Philologie, Pharmazie, Politikwissenschaft, Soziologie
+2025-12-16 20:43:05,834 - root (190) - DEBUG    - MainThread   - Successfully assigned Dewey classification: [{'notation': '370', 'label': 'Bildung und Erziehung', 'score': 0.9}, {'notation': '301', 'label': 'Soziologie, Anthropologie', 'score': 0.8}, {'notation': '320', 'label': 'Politikwissenschaft', 'score': 0.7}]
+2025-12-16 20:44:12,909 - root (157) - DEBUG    - MainThread   - Thematic areas identified: Informatik, Forschungsdatenmanagement, Ethik
+2025-12-16 20:44:21,115 - root (190) - DEBUG    - MainThread   - Successfully assigned Dewey classification: [{'notation': '000', 'label': 'Informatik, Information & Wissen, allgemeine Werke', 'score': 0.8}, {'notation': '005', 'label': 'Computerprogrammierung, Computerprogramme & Daten', 'score': 0.6}, {'notation': '004', 'label': 'Informatik', 'score': 0.4}]
+2025-12-16 20:45:44,229 - root (157) - DEBUG    - MainThread   - Thematic areas identified: Informatik, Bibliothekswissenschaft, Ökonomie
+2025-12-16 20:45:52,613 - root (190) - DEBUG    - MainThread   - Successfully assigned Dewey classification: [{'notation': '000', 'label': 'Informatik, Information & Wissen, allgemeine Werke', 'score': 0.8}, {'notation': '004', 'label': 'Informatik', 'score': 0.7}, {'notation': '005', 'label': 'Computerprogrammierung, Computerprogramme & Daten', 'score': 0.5}]
+2025-12-16 20:46:59,053 - root (157) - DEBUG    - MainThread   - Thematic areas identified: Bibliothekswissenschaft, Geschichte, Kulturwissenschaften
+2025-12-16 20:47:07,565 - root (190) - DEBUG    - MainThread   - Successfully assigned Dewey classification: [{'notation': '020', 'label': 'Bibliothekswesen, Dokumentation', 'score': 0.8}, {'notation': '940', 'label': 'Geschichte Europas', 'score': 0.6}, {'notation': '900', 'label': 'Geschichte und Geografie', 'score': 0.4}]
+2025-12-16 20:48:04,116 - root (157) - DEBUG    - MainThread   - Thematic areas identified: Informatik, Bibliothekswesen, Sprachwissenschaft
+2025-12-16 20:48:12,453 - root (190) - DEBUG    - MainThread   - Successfully assigned Dewey classification: [{'notation': '000', 'label': 'Informatik, Information & Wissen, allgemeine Werke', 'score': 0.8}, {'notation': '004', 'label': 'Informatik', 'score': 0.6}, {'notation': '005', 'label': 'Computerprogrammierung, Computerprogramme & Daten', 'score': 0.4}]
+2025-12-16 20:49:04,527 - root (157) - DEBUG    - MainThread   - Thematic areas identified: Bibliothekswesen, Informationswissenschaft, Wissenschaftsmanagement
+2025-12-16 20:49:12,684 - root (190) - DEBUG    - MainThread   - Successfully assigned Dewey classification: [{'notation': '021', 'label': 'Beziehungen von Bibliotheken', 'score': 0.8}, {'notation': '378', 'label': 'Hochschulbildung', 'score': 0.6}, {'notation': '000', 'label': 'Informatik, Information & Wissen, allgemeine Werke', 'score': 0.4}]
+2025-12-16 20:50:16,145 - root (157) - DEBUG    - MainThread   - Thematic areas identified: Bibliothekswesen, Informationswissenschaft, Wissenschaftsforschung
+2025-12-16 20:50:25,551 - root (190) - DEBUG    - MainThread   - Successfully assigned Dewey classification: [{'notation': '021', 'label': 'Beziehungen von Bibliotheken', 'score': 0.9}, {'notation': '004', 'label': 'Informatik', 'score': 0.8}, {'notation': '000', 'label': 'Informatik, Information & Wissen, allgemeine Werke', 'score': 0.7}]
+2025-12-16 20:51:22,442 - root (157) - DEBUG    - MainThread   - Thematic areas identified: Informatik, Kulturwissenschaft, Bibliothekswesen
+2025-12-16 20:51:31,316 - root (190) - DEBUG    - MainThread   - Successfully assigned Dewey classification: [{'notation': '000', 'label': 'Informatik, Information & Wissen, allgemeine Werke', 'score': 0.8}, {'notation': '004', 'label': 'Informatik', 'score': 0.7}, {'notation': '005', 'label': 'Computerprogrammierung, Computerprogramme & Daten', 'score': 0.6}]
+2025-12-16 20:52:32,263 - root (157) - DEBUG    - MainThread   - Thematic areas identified: Bibliothekswesen, Informatik, Datenmanagement
+2025-12-16 20:52:40,700 - root (190) - DEBUG    - MainThread   - Successfully assigned Dewey classification: [{'notation': '000', 'label': 'Informatik, Information & Wissen, allgemeine Werke', 'score': 0.8}, {'notation': '004', 'label': 'Informatik', 'score': 0.6}, {'notation': '005', 'label': 'Computerprogrammierung, Computerprogramme & Daten', 'score': 0.4}]
+2025-12-16 20:53:41,337 - root (157) - DEBUG    - MainThread   - Thematic areas identified: Bibliothekswissenschaft, Kommunikationswissenschaft, Medienwissenschaft
+2025-12-16 20:53:50,203 - root (190) - DEBUG    - MainThread   - Successfully assigned Dewey classification: [{'notation': '021', 'label': 'Beziehungen von Bibliotheken', 'score': 0.8}, {'notation': '410', 'label': 'Linguistik', 'score': 0.6}, {'notation': '794', 'label': '(Optionale Notation)', 'score': 0.4}]
+2025-12-16 20:55:39,592 - root (157) - DEBUG    - MainThread   - Thematic areas identified: Bibliothekswissenschaft, Informationswissenschaft, Erziehungswissenschaft
+2025-12-16 20:55:47,411 - root (190) - DEBUG    - MainThread   - Successfully assigned Dewey classification: [{'notation': '000', 'label': 'Informatik, Information & Wissen, allgemeine Werke', 'score': 0.8}, {'notation': '370', 'label': 'Bildung und Erziehung', 'score': 0.7}, {'notation': '378', 'label': 'Hochschulbildung', 'score': 0.6}]
+2025-12-16 20:56:53,773 - root (157) - DEBUG    - MainThread   - Thematic areas identified: Forschungspraxis, Wissenschaftskommunikation, Informationskompetenz
+2025-12-16 20:57:02,878 - root (190) - DEBUG    - MainThread   - Successfully assigned Dewey classification: [{'notation': '004', 'label': 'Informatik', 'score': 0.8}, {'notation': '378', 'label': 'Hochschulbildung', 'score': 0.6}, {'notation': '581', 'label': 'Einzelne Themen in der Naturgeschichte', 'score': 0.4}]
+2025-12-16 20:57:59,251 - root (157) - DEBUG    - MainThread   - Thematic areas identified: Bibliothekswesen, Informatik, Philosophie
+2025-12-16 20:58:07,807 - root (190) - DEBUG    - MainThread   - Successfully assigned Dewey classification: [{'notation': '000', 'label': 'Informatik, Information & Wissen, allgemeine Werke', 'score': 0.8}, {'notation': '100', 'label': 'Philosophie und Psychologie', 'score': 0.7}, {'notation': '004', 'label': 'Informatik', 'score': 0.6}]
+2025-12-16 20:59:09,807 - root (157) - DEBUG    - MainThread   - Thematic areas identified: Bibliothekswesen, Wissenschaftliches Publizieren, Informationswissenschaft
+2025-12-16 20:59:19,349 - root (190) - DEBUG    - MainThread   - Successfully assigned Dewey classification: [{'notation': '021', 'label': 'Beziehungen von Bibliotheken', 'score': 0.9}, {'notation': '004', 'label': 'Informatik', 'score': 0.8}, {'notation': '000', 'label': 'Informatik, Information & Wissen, allgemeine Werke', 'score': 0.7}]
+2025-12-16 21:00:10,620 - root (157) - DEBUG    - MainThread   - Thematic areas identified: Bibliothekswissenschaft, Informationswissenschaft, Bibliotheksmanagement
+2025-12-16 21:00:17,540 - root (190) - DEBUG    - MainThread   - Successfully assigned Dewey classification: [{'notation': '000', 'label': 'Informatik, Information & Wissen, allgemeine Werke', 'score': 0.8}, {'notation': '021', 'label': 'Beziehungen von Bibliotheken', 'score': 0.9}, {'notation': '378', 'label': 'Hochschulbildung', 'score': 0.7}]
+2025-12-16 21:01:24,248 - root (157) - DEBUG    - MainThread   - Thematic areas identified: Bibliothekswesen, Informationswissenschaft, Urheberrecht
+2025-12-16 21:01:33,353 - root (190) - DEBUG    - MainThread   - Successfully assigned Dewey classification: [{'notation': '000', 'label': 'Informatik, Information & Wissen, allgemeine Werke', 'score': 0.8}, {'notation': '346', 'label': 'Privatrecht', 'score': 0.6}, {'notation': '348', 'label': 'Gesetze, Verordnungen, Rechtsfälle', 'score': 0.4}]
+2025-12-16 21:02:33,445 - root (157) - DEBUG    - MainThread   - Thematic areas identified: Bibliothekswesen, Open Access, Forschungsmanagement
+2025-12-16 21:02:42,476 - root (190) - DEBUG    - MainThread   - Successfully assigned Dewey classification: [{'notation': '021', 'label': 'Beziehungen von Bibliotheken', 'score': 0.9}, {'notation': '378', 'label': 'Hochschulbildung', 'score': 0.8}, {'notation': '004', 'label': 'Informatik', 'score': 0.7}]
+2025-12-16 21:03:53,596 - root (157) - DEBUG    - MainThread   - Thematic areas identified: Informatik, Digitale Wissenschaft, Forschungsdateninfrastruktur
+2025-12-16 21:04:02,200 - root (190) - DEBUG    - MainThread   - Successfully assigned Dewey classification: [{'notation': '000', 'label': 'Informatik, Information & Wissen, allgemeine Werke', 'score': 0.8}, {'notation': '004', 'label': 'Informatik', 'score': 0.9}, {'notation': '005', 'label': 'Computerprogrammierung, Computerprogramme & Daten', 'score': 0.7}]
+2025-12-16 21:05:01,008 - root (157) - DEBUG    - MainThread   - Thematic areas identified: Bibliothekswissenschaft, Informationswissenschaft, Erziehungswissenschaft
+2025-12-16 21:05:09,679 - root (190) - DEBUG    - MainThread   - Successfully assigned Dewey classification: [{'notation': '000', 'label': 'Informatik, Information & Wissen, allgemeine Werke', 'score': 0.8}, {'notation': '370', 'label': 'Bildung und Erziehung', 'score': 0.6}, {'notation': '378', 'label': 'Hochschulbildung', 'score': 0.4}]
+2025-12-16 21:06:05,869 - root (157) - DEBUG    - MainThread   - Thematic areas identified: Informatik, Bibliothekswesen, Digitalisierung, Wissenschaftliches Publizieren
+2025-12-16 21:06:14,171 - root (190) - DEBUG    - MainThread   - Successfully assigned Dewey classification: [{'notation': '000', 'label': 'Informatik, Information & Wissen, allgemeine Werke', 'score': 0.8}, {'notation': '004', 'label': 'Informatik', 'score': 0.6}, {'notation': '005', 'label': 'Computerprogrammierung, Computerprogramme & Daten', 'score': 0.4}]
+2025-12-16 21:06:59,487 - root (157) - DEBUG    - MainThread   - Thematic areas identified: Bibliothekswesen, Open-Access-Publizieren, Wissenschaftliche Kommunikation
+2025-12-16 21:07:07,551 - root (190) - DEBUG    - MainThread   - Successfully assigned Dewey classification: [{'notation': '021', 'label': 'Beziehungen von Bibliotheken', 'score': 0.9}, {'notation': '378', 'label': 'Hochschulbildung', 'score': 0.7}, {'notation': '000', 'label': 'Informatik, Information & Wissen, allgemeine Werke', 'score': 0.6}]
+2025-12-16 21:08:09,420 - root (157) - DEBUG    - MainThread   - Thematic areas identified: Bibliothekswesen, Informatik, Wissenschaftliches Publizieren
+2025-12-16 21:08:18,283 - root (190) - DEBUG    - MainThread   - Successfully assigned Dewey classification: [{'notation': '000', 'label': 'Informatik, Information & Wissen, allgemeine Werke', 'score': 0.8}, {'notation': '004', 'label': 'Informatik', 'score': 0.6}, {'notation': '005', 'label': 'Computerprogrammierung, Computerprogramme & Daten', 'score': 0.4}]
+2025-12-16 21:09:24,137 - root (157) - DEBUG    - MainThread   - Thematic areas identified: Bibliothekswissenschaft, Informationskompetenz, Pädagogik
+2025-12-16 21:09:32,719 - root (190) - DEBUG    - MainThread   - Successfully assigned Dewey classification: [{'notation': '000', 'label': 'Informatik, Information & Wissen, allgemeine Werke', 'score': 0.8}, {'notation': '370', 'label': 'Bildung und Erziehung', 'score': 0.9}, {'notation': '378', 'label': 'Hochschulbildung', 'score': 0.7}]
+2025-12-16 21:09:32,927 - root (28) - INFO     - MainThread   - Stage Extract metadata with AI (AIMetaDataExtraction) finished
+2025-12-16 21:09:32,927 - root (26) - INFO     - MainThread   - Stage Check and enrich keywords with GND (GNDKeywordCheck) started
+2025-12-16 21:09:32,928 - root (70) - DEBUG    - MainThread   - Input file at /media/sz/Data/Veits_pdfs/data_pipeline/arbeitsbasis/raw/LOCAL_ai_meta.p exists.
+2025-12-16 21:09:32,933 - root (105) - INFO     - MainThread   - Forcing task to run.
+2025-12-16 21:09:32,933 - root (106) - INFO     - MainThread   - Input files for task have changed. Running task.

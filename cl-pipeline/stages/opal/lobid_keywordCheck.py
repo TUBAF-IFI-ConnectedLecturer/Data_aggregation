@@ -7,6 +7,7 @@ import json
 import spacy
 import re
 import sys
+import pickle
 
 # Logger konfigurieren
 logger = logging.getLogger(__name__)
@@ -254,9 +255,9 @@ def receive_lobid_keywords(word, context=None, llm=None, other_keywords=None):
     # Keine automatische Institution-Erkennung mehr, wird in einem neuen Anlauf besser implementiert
     response = get_lobid_response(word)
     if not response:
-        logger.info(f"⚠ Keine Antwort von Lobid API für '{word}'")
+        logger.debug(f"⚠ Keine Antwort von Lobid API für '{word}'")
         return None
-        
+
     try:
         data = response.json()
     except ValueError as e:
@@ -267,31 +268,31 @@ def receive_lobid_keywords(word, context=None, llm=None, other_keywords=None):
         # Alle Mitglieder sammeln für KI-Auswahl
         candidates = data['member']
         total = data.get('totalItems', 0)
-        logger.info(f"ℹ Lobid API: {total} Treffer für '{word}' gefunden")
-        
+        logger.debug(f"ℹ Lobid API: {total} Treffer für '{word}' gefunden")
+
         # Zeige die ersten Kandidaten zur besseren Nachvollziehbarkeit
         for i, candidate in enumerate(candidates[:3]):  # Zeige maximal 3 Beispiele
             preferred_name = candidate.get('preferredName', 'Kein Name')
             types = candidate.get('type', [])
             type_info = ", ".join(types) if types else "Unbekannt"
-            logger.info(f"   Kandidat {i+1}: {preferred_name} (Typ: {type_info})")
-            
+            logger.debug(f"   Kandidat {i+1}: {preferred_name} (Typ: {type_info})")
+
         if len(candidates) > 3:
-            logger.info(f"   ... und {len(candidates)-3} weitere Kandidaten")
-        
-        logger.info(f"ℹ Starte KI-Auswahl für '{word}' mit {len(candidates)} Kandidaten...")
-        
+            logger.debug(f"   ... und {len(candidates)-3} weitere Kandidaten")
+
+        logger.debug(f"ℹ Starte KI-Auswahl für '{word}' mit {len(candidates)} Kandidaten...")
+
         # Bestes Schlagwort mit KI auswählen (mit Kontext und anderen Keywords, falls vorhanden)
         best_match = select_best_keyword_match_ai(word, candidates, context, llm, other_keywords)
-        
+
         if not best_match:
-            logger.info(f"⚠ KI hat keinen passenden Kandidaten für '{word}' gefunden")
+            logger.debug(f"⚠ KI hat keinen passenden Kandidaten für '{word}' gefunden")
             return None
-        
+
         # Mit dem ausgewählten Schlagwort fortfahren
         preferred_name = best_match.get('preferredName', 'unbekannt')
         gnd_id = best_match.get('id', '')
-        logger.info(f"✓ KI-Auswahl für '{word}': \"{preferred_name}\" (ID: {gnd_id})")
+        logger.debug(f"✓ KI-Auswahl für '{word}': \"{preferred_name}\" (ID: {gnd_id})")
             
         lobid = {
             'totalItems': data.get('totalItems', 0),
@@ -310,31 +311,31 @@ def receive_lobid_keywords(word, context=None, llm=None, other_keywords=None):
                 # Format: ddc_2, ddc_3 (kurze Bezeichner für bessere DataFrame-Handhabung)
                 short_level = f"ddc_{dewey_level[-1]}"
                 lobid[short_level] = ddc_id
-                logger.info(f"DDC {dewey_level[-1]}: {ddc_id}")
-        
+                logger.debug(f"DDC {dewey_level[-1]}: {ddc_id}")
+
         # Alle bevorzugten Namen speichern
-        preferred_names = [entry.get('preferredName', '') for entry in data['member'] 
+        preferred_names = [entry.get('preferredName', '') for entry in data['member']
                           if 'preferredName' in entry and entry['preferredName'] != "None"]
         if preferred_names:
             lobid['preferredNames'] = str(preferred_names)
-        
+
         # Informationen zum ausgewählten Schlagwort für Debugging und zum Speichern im DataFrame
         if 'preferredName' in best_match:
             lobid['selected_name'] = best_match['preferredName']
-            logger.info(f"GND-konformes Schlagwort: {best_match['preferredName']}")
-            
+            logger.debug(f"GND-konformes Schlagwort: {best_match['preferredName']}")
+
         return lobid
     else:
-        logger.info(f"⚠ Keine Ergebnisse von Lobid für Schlagwort '{word}'")
-        
+        logger.debug(f"⚠ Keine Ergebnisse von Lobid für Schlagwort '{word}'")
+
         # Bei langen Keywords versuchen wir, den Grund zu analysieren
         if len(word) > 50:
-            logger.info(f"  Hinweis: Keyword ist sehr lang ({len(word)} Zeichen), eventuell handelt es sich um mehrere kombinierte Keywords")
+            logger.debug(f"  Hinweis: Keyword ist sehr lang ({len(word)} Zeichen), eventuell handelt es sich um mehrere kombinierte Keywords")
             # Optional: Versuch, das lange Keyword aufzuteilen
             if ',' in word:
                 parts = [p.strip() for p in word.split(',')]
-                logger.info(f"  Das Keyword könnte in {len(parts)} Teile aufgeteilt werden: {', '.join(parts[:3])}...")
-                logger.info(f"  Tipp: Diese Keywords sollten separat in die Datenquelle eingetragen werden")
+                logger.debug(f"  Das Keyword könnte in {len(parts)} Teile aufgeteilt werden: {', '.join(parts[:3])}...")
+                logger.debug(f"  Tipp: Diese Keywords sollten separat in die Datenquelle eingetragen werden")
         return None
 
 
@@ -344,26 +345,36 @@ class GNDKeywordCheck(TaskWithInputFileMonitor):
         
         # Setup zentrale Logging-Konfiguration
         self.logger_configurator = setup_stage_logging(config_global)
-        
-        # Initialisiere Ollama LLM für KI-basierte Schlagwortauswahl
-        try:
-            self.llm = OllamaLLM(model="gemma3:27b", temperature=0.0)
-            logger.info("Ollama LLM für Schlagwortauswahl erfolgreich initialisiert")
-        except Exception as e:
-            logger.error(f"Fehler bei der Initialisierung des Ollama LLM: {str(e)}")
-            logger.warning("Fallback auf String-Matching-Methode für Schlagwortauswahl")
-            self.llm = None
-        
+
         stage_param = config_stage['parameters']
+
+        # Konfiguriere LLM-Nutzung
+        self.use_llm = stage_param.get('use_llm', True)
+        self.llm_model = stage_param.get('llm_model', 'gemma3:27b')
+
+        # Initialisiere Ollama LLM für KI-basierte Schlagwortauswahl
+        self.llm = None
+        if self.use_llm:
+            try:
+                self.llm = OllamaLLM(model=self.llm_model, temperature=0.0)
+                # Test ob das Modell wirklich erreichbar ist
+                test_response = self.llm.invoke("Test")
+                logger.info(f"✓ Ollama LLM ({self.llm_model}) für Schlagwortauswahl erfolgreich initialisiert und getestet")
+            except Exception as e:
+                logger.error(f"✗ FEHLER: Ollama LLM ({self.llm_model}) nicht erreichbar!")
+                logger.error(f"   Details: {str(e)}")
+                logger.error(f"   Bitte stellen Sie sicher, dass:")
+                logger.error(f"   1. Ollama läuft (ollama serve)")
+                logger.error(f"   2. Das Modell '{self.llm_model}' installiert ist (ollama pull {self.llm_model})")
+                logger.error(f"   3. Das Modell erreichbar ist (ollama run {self.llm_model})")
+                logger.error("")
+                logger.error("   Pipeline wird ABGEBROCHEN, da use_llm=True in der Konfiguration gesetzt ist.")
+                raise RuntimeError(f"Ollama LLM ({self.llm_model}) ist nicht erreichbar. Pipeline abgebrochen.") from e
         self.file_name_inputs =  Path(config_global['raw_data_folder']) / stage_param['file_name_input']
         self.file_name_output =  Path(config_global['raw_data_folder']) / stage_param['file_name_output']
         self.file_folder = Path(config_global['file_folder'])
         self.processed_data_folder = config_global['processed_data_folder']
         self.keyword_list_path = Path(config_global['processed_data_folder']) / "keyword_list"
-        
-        # Konfigurationsoptionen für das LLM
-        self.use_llm = stage_param.get('use_llm', True)  # Standard: LLM verwenden wenn verfügbar
-        self.llm_model = stage_param.get('llm_model', "gemma3:27b")  # Standard-Modell
 
     def execute_task(self):
         # Logging wird jetzt zentral konfiguriert - keine lokalen Einstellungen mehr nötig
@@ -373,7 +384,18 @@ class GNDKeywordCheck(TaskWithInputFileMonitor):
         keyword_columns = ['ai:keywords_ext', 'ai:keywords_gen', 'ai:keywords_dnb']
 
         if Path(self.file_name_output).exists():
-            df_checkedKeywords = pd.read_pickle(self.file_name_output)
+            try:
+                df_checkedKeywords = pd.read_pickle(self.file_name_output)
+                logger.info(f"Loaded existing keyword checks: {len(df_checkedKeywords)} records")
+            except (EOFError, pickle.UnpicklingError, Exception) as e:
+                logger.warning(f"Could not load existing keyword checks (corrupted file): {e}")
+                logger.warning("Starting with empty keyword checks - all documents will be processed")
+                # Backup corrupted file
+                import shutil
+                backup_path = self.file_name_output.with_suffix('.p.corrupted')
+                shutil.move(str(self.file_name_output), str(backup_path))
+                logger.info(f"Corrupted file moved to: {backup_path}")
+                df_checkedKeywords = pd.DataFrame(index=df_metadata.index)
         else:
             # Erstelle einen leeren DataFrame mit denselben Indizes wie df_metadata
             df_checkedKeywords = pd.DataFrame(index=df_metadata.index)
@@ -389,87 +411,118 @@ class GNDKeywordCheck(TaskWithInputFileMonitor):
             
             # Log für Datensatz-Start
             logger.info(f"========== Verarbeite Datensatz: ID={row.get('pipe:ID', 'unbekannt')} ==========")
-            
+
             # Sammle alle Keywords aus den verschiedenen Spalten
             for col in keyword_columns:
                 if col in row and row[col] is not None:
                     if isinstance(row[col], list):
-                        logger.info(f"Gefundene Keywords in Spalte '{col}' (als Liste): {', '.join(str(k) for k in row[col])}")
+                        logger.debug(f"Gefundene Keywords in Spalte '{col}' (als Liste): {', '.join(str(k) for k in row[col])}")
                         all_keywords_list.extend(row[col])
                     elif isinstance(row[col], str) and row[col].strip():
                         # Prüfen, ob der String mehrere durch Komma getrennte Keywords enthält
                         if ',' in row[col]:
                             # Kommagetrennter String - teile auf und bereinige
                             split_keywords = [k.strip() for k in row[col].split(',') if k.strip()]
-                            logger.info(f"Gefundene kommagetrennte Keywords in Spalte '{col}': {', '.join(split_keywords)}")
+                            logger.debug(f"Gefundene kommagetrennte Keywords in Spalte '{col}': {', '.join(split_keywords)}")
                             all_keywords_list.extend(split_keywords)
                         else:
                             # Einzelnes Keyword
-                            logger.info(f"Gefundenes einzelnes Keyword in Spalte '{col}': {row[col].strip()}")
+                            logger.debug(f"Gefundenes einzelnes Keyword in Spalte '{col}': {row[col].strip()}")
                             all_keywords_list.append(row[col].strip())
 
-            logger.info(f"Insgesamt {len(all_keywords_list)} Keywords für Datensatz gefunden")
-            
+            logger.debug(f"Insgesamt {len(all_keywords_list)} Keywords für Datensatz gefunden")
+
             keyword_list = []
-            
+
             # Erstelle eine Liste aller anderen Keywords als Kontext für KI-Entscheidungen
             all_other_keywords = all_keywords_list.copy()
-            
+
             for keyword in all_keywords_list:
-                logger.info(f"------ Verarbeite Keyword: '{keyword}' ------")
-                
+                logger.debug(f"------ Verarbeite Keyword: '{keyword}' ------")
+
                 keyword_sample = {}
                 keyword_sample['raw_keyword'] = keyword
 
-                # Kontext für bessere KI-Entscheidungen sammeln
-                document_context = f"Document ID: {row['pipe:ID']}"
-                
-                # Füge weitere Metadaten als Kontext hinzu, falls verfügbar
-                context_fields = ['title', 'description', 'abstract', 'subject']
-                for field in context_fields:
-                    if field in row and isinstance(row[field], str) and row[field]:
-                        document_context += f"\n{field.capitalize()}: {row[field]}"
-                
-                # Alle anderen Keywords des Dokuments als Kontext für bessere KI-Auswahl hinzufügen
-                other_keywords = [kw for kw in all_keywords_list if kw != keyword]
-                if other_keywords:
-                    logger.info(f"Verwende {len(other_keywords)} andere Keywords des Dokuments als Kontext für KI-Auswahl")
-                
-                # Direkte Abfrage mit dem Original-Keyword
-                logger.info(f"Frage Lobid für Original-Keyword '{keyword}' ab...")
-                lobid = receive_lobid_keywords(keyword, document_context, self.llm if self.use_llm else None, other_keywords)
-                
-                # Wenn keine Ergebnisse, versuche mit normalisierter Form
-                if not lobid:
-                    normalized = get_normalized_keyword(keyword)
-                    if normalized != keyword:
-                        logger.info(f"Keine Treffer für Original-Keyword. Versuche mit normalisierter Form: '{normalized}'")
-                        lobid = receive_lobid_keywords(normalized, document_context, self.llm if self.use_llm else None)
-                        if lobid:
-                            # Logging wenn die normalisierte Form erfolgreich war
-                            selected_name = lobid.get('selected_name', 'unknown')
-                            logger.info(f"✓ Erfolg mit normalisierter Form: '{keyword}' -> '{normalized}' -> gewählt: '{selected_name}'")
-                
-                # Speichere das Original oder normalisierte Keyword
-                keyword_sample['normalized_keyword'] = get_normalized_keyword(keyword)
-                
+                # Normalisiere das Keyword für Cache-Lookup
+                normalized = get_normalized_keyword(keyword)
+                keyword_sample['normalized_keyword'] = normalized
+
+                # CACHE-LOOKUP: Prüfe, ob das Keyword bereits verarbeitet wurde
+                lobid = None
+                if not df_keywords.empty:
+                    cached_entries = df_keywords[df_keywords['normalized_keyword'] == normalized]
+                    if not cached_entries.empty:
+                        # Keyword im Cache gefunden!
+                        cached_entry = cached_entries.iloc[0]
+                        logger.debug(f"✓ Keyword '{keyword}' aus Cache geladen (spart Lobid-API + LLM-Call)")
+
+                        # Rekonstruiere lobid-Dictionary aus Cache
+                        if cached_entry.get('is_gnd', False):
+                            lobid = {
+                                'selected_name': cached_entry.get('gnd_preferred_name'),
+                                'gnd_link': cached_entry.get('gnd_link'),
+                                'totalItems': cached_entry.get('totalItems', 0)
+                            }
+                            # Optionale Felder
+                            for key in ['sameAs_link', 'ddc_2', 'ddc_3', 'preferredNames']:
+                                if key in cached_entry and pd.notna(cached_entry[key]):
+                                    lobid[key] = cached_entry[key]
+
+                            logger.debug(f"   → Cache-Hit: '{cached_entry.get('gnd_preferred_name')}' (ID: {cached_entry.get('gnd_link')})")
+                        else:
+                            # Im Cache, aber kein GND-Treffer gefunden
+                            logger.debug(f"   → Cache-Hit: Kein GND-Eintrag für '{keyword}' (bereits geprüft)")
+                            lobid = None  # Explizit None, um anzuzeigen "bereits versucht, kein Treffer"
+
+                # Nur wenn NICHT im Cache: Lobid abfragen
+                if lobid is None and (df_keywords.empty or cached_entries.empty):
+                    # Kontext für bessere KI-Entscheidungen sammeln
+                    document_context = f"Document ID: {row['pipe:ID']}"
+
+                    # Füge weitere Metadaten als Kontext hinzu, falls verfügbar
+                    context_fields = ['title', 'description', 'abstract', 'subject']
+                    for field in context_fields:
+                        if field in row and isinstance(row[field], str) and row[field]:
+                            document_context += f"\n{field.capitalize()}: {row[field]}"
+
+                    # Alle anderen Keywords des Dokuments als Kontext für bessere KI-Auswahl hinzufügen
+                    other_keywords = [kw for kw in all_keywords_list if kw != keyword]
+                    if other_keywords:
+                        logger.debug(f"Verwende {len(other_keywords)} andere Keywords des Dokuments als Kontext für KI-Auswahl")
+
+                    # Direkte Abfrage mit dem Original-Keyword
+                    logger.debug(f"Frage Lobid für Original-Keyword '{keyword}' ab...")
+                    lobid = receive_lobid_keywords(keyword, document_context, self.llm if self.use_llm else None, other_keywords)
+
+                    # Wenn keine Ergebnisse, versuche mit normalisierter Form
+                    if not lobid:
+                        if normalized != keyword:
+                            logger.debug(f"Keine Treffer für Original-Keyword. Versuche mit normalisierter Form: '{normalized}'")
+                            lobid = receive_lobid_keywords(normalized, document_context, self.llm if self.use_llm else None)
+                            if lobid:
+                                # Logging wenn die normalisierte Form erfolgreich war
+                                selected_name = lobid.get('selected_name', 'unknown')
+                                logger.debug(f"✓ Erfolg mit normalisierter Form: '{keyword}' -> '{normalized}' -> gewählt: '{selected_name}'")
+
+                # keyword_sample['normalized_keyword'] ist bereits oben gesetzt (Zeile 426)
+
                 if lobid:
                     keyword_sample['is_gnd'] = True
                     selected_name = lobid.get('selected_name', 'unbekannt')
                     gnd_link = lobid.get('gnd_link', 'keine ID')
-                    logger.info(f"✓ Erfolgreich GND-Eintrag gefunden: '{selected_name}' (ID: {gnd_link})")
-                    
+                    logger.debug(f"✓ Erfolgreich GND-Eintrag gefunden: '{selected_name}' (ID: {gnd_link})")
+
                     # GND-konforme Schlagworte speichern
                     if 'selected_name' in lobid:
                         keyword_sample['gnd_preferred_name'] = lobid['selected_name']
-                        logger.info(f"   + GND-konformes Schlagwort: {lobid['selected_name']}")
-                    
+                        logger.debug(f"   + GND-konformes Schlagwort: {lobid['selected_name']}")
+
                     # DDC-URLs speichern
                     for dewey_level in ['ddc_2', 'ddc_3']:
                         if dewey_level in lobid:
                             keyword_sample[f'ddc_{dewey_level[-1]}_url'] = lobid[dewey_level]
-                            logger.info(f"   + DDC-{dewey_level[-1]}-URL: {lobid[dewey_level]}")
-                    
+                            logger.debug(f"   + DDC-{dewey_level[-1]}-URL: {lobid[dewey_level]}")
+
                     lobbid_keys = ['gnd_link', 'sameAs_link', 'ddc_2', 'ddc_3', 'preferredNames', 'totalItems']
                     for key in lobbid_keys:
                         if key in lobid.keys():
@@ -478,9 +531,9 @@ class GNDKeywordCheck(TaskWithInputFileMonitor):
                                 logger.debug(f"   + Zusatzinfo: {key}={lobid[key]}")
                 else:
                     keyword_sample['is_gnd'] = False
-                    logger.info(f"✗ Kein passender GND-Eintrag gefunden für '{keyword}'")
-                    
-                logger.info(f"------ Ende Keyword '{keyword}' ------")
+                    logger.debug(f"✗ Kein passender GND-Eintrag gefunden für '{keyword}'")
+
+                logger.debug(f"------ Ende Keyword '{keyword}' ------")
                 keyword_sample['count'] = 0
                 # Normalisierte Form für Deduplizierung nutzen
                 normalized_keyword = get_normalized_keyword(keyword)
@@ -516,9 +569,9 @@ class GNDKeywordCheck(TaskWithInputFileMonitor):
                     if not is_duplicate:
                         # Kein Duplikat gefunden - neues einzigartiges Keyword
                         if gnd_name:
-                            logger.info(f"✚ Neues einzigartiges Keyword: '{keyword}' mit GND-Name '{gnd_name}' wird zur Gesamtliste hinzugefügt")
+                            logger.debug(f"✚ Neues einzigartiges Keyword: '{keyword}' mit GND-Name '{gnd_name}' wird zur Gesamtliste hinzugefügt")
                         else:
-                            logger.info(f"✚ Neues einzigartiges Keyword: '{keyword}' wird zur Gesamtliste hinzugefügt")
+                            logger.debug(f"✚ Neues einzigartiges Keyword: '{keyword}' wird zur Gesamtliste hinzugefügt")
                         df_keywords = pd.concat([df_keywords, pd.DataFrame(keyword_sample, index=[0])], ignore_index=True)
                     else:
                         # Duplikat gefunden - Zähler erhöhen
@@ -526,9 +579,9 @@ class GNDKeywordCheck(TaskWithInputFileMonitor):
                         df_keywords.at[existing_idx, 'count'] += 1
                         existing_original = df_keywords.iloc[existing_idx]['raw_keyword']
                         if gnd_name:
-                            logger.info(f"⟳ Duplikat gefunden: '{keyword}' → '{gnd_name}' entspricht '{existing_original}' (bereits {existing_count}x gezählt)")
+                            logger.debug(f"⟳ Duplikat gefunden: '{keyword}' → '{gnd_name}' entspricht '{existing_original}' (bereits {existing_count}x gezählt)")
                         else:
-                            logger.info(f"⟳ Duplikat gefunden: '{keyword}' entspricht '{existing_original}' (bereits {existing_count}x gezählt)")
+                            logger.debug(f"⟳ Duplikat gefunden: '{keyword}' entspricht '{existing_original}' (bereits {existing_count}x gezählt)")
 
                 keyword_list.append(keyword_sample)
                 

@@ -1,0 +1,50 @@
+# AI Metadata Extraction Prompts for Scientific Papers
+# Optimized for academic research papers with structured metadata
+
+# System configuration
+system:
+  template: "Context: {context}\n\nTask: {question}\n\nReturn ONLY the requested data. NO explanations. NO polite phrases. NO introductions.\n\nData:"
+
+# Basic document metadata
+document:
+  author: "Extract ONLY the document authors (NOT cited authors, references, or bibliography entries). Look specifically in: title page, document header, author block directly below the title. IGNORE: reference lists, citations in text, bibliography sections, footnotes, acknowledgments, 'References', 'Literaturverzeichnis'. If you see reference markers like [1], (2023), or 'et al.', those are NOT document authors. Format: Lastname, Firstname (comma-separated for multiple authors). If no clear document authors found on the first pages, return empty string."
+
+  title: "Extract ONLY the MAIN document title from the FIRST page. Rules: 1) Look for the LARGEST, most prominent text at the TOP of page 1. 2) This is usually above or near the author names. 3) IGNORE: section headings ('Einleitung', 'Abstract'), referenced titles in lists/agendas, figure captions, headers/footers, institution names. 4) Return ONLY ONE title as plain text. 5) NO lists like '1. Title A 2. Title B'. 6) NO prefix like 'Document title:'. 7) If title spans multiple lines, combine them. Example good output: 'Wissenschaftsgeleitetes Open-Access-Publizieren in Deutschland'. Example bad output: 'document titles: 1. Title A 2. Title B'."
+
+  type: "What type of document is this? Answer with ONE of: Zeitschriftenartikel, Konferenzbeitrag, Forschungsbericht, Dissertation, Buchkapitel, Whitepaper, Technischer Bericht"
+
+# Affiliation detection - optimized for structured paper format
+affiliation:
+  structured: "Extract institutional affiliations from {file}. Look on first page for affiliations below author names or in footnotes. Affiliations have markers (¹, ², *, †, a, b). Return ONLY institution names as comma-separated list. Format: 'Department, University, City'. NO introductory text. NO explanations. If no affiliations found, return empty string."
+
+# Keywords extraction - papers often have author-provided keywords
+keywords:
+  # Used by KeywordExtractor.extract_keywords() -> ai:keywords_ext
+  extract: "Look for 'Keywords', 'Schlüsselwörter', or 'Schlagwörter' section in the document. If found, extract ALL listed keywords. Otherwise, extract 10-15 key technical terms from the abstract and introduction. Focus on: domain terminology, methods, concepts. Avoid generic words. Return as comma-separated list."
+
+  # Used by KeywordExtractor.generate_keywords() -> ai:keywords_gen
+  generate: "Generate 15 German keywords for library cataloging. Include: research field, main topics, methods, key concepts. Return as comma-separated list."
+
+  # Used by KeywordExtractor.extract_controlled_vocabulary_keywords() -> ai:keywords_dnb
+  controlled_vocabulary: "Assign 10-15 controlled vocabulary keywords from library classification systems (GND, DDC concepts). Use broader, standardized terms suitable for bibliographic catalogs. Return as comma-separated list."
+
+# Document summarization - adapted for research papers
+summary:
+  # Main summary used by processor
+  generate: "Summarize the document in maximum 3 sentences. Focus on: main topic, key findings or arguments. Write in German."
+
+  # Structured research summary
+  structured: "Summarize the research in 3 sentences: 1) Research question 2) Methods 3) Key findings."
+
+# Wikimedia keyword disambiguation (same as original)
+wikimedia:
+  entity_selection: "Du bist ein Experte für Wikimedia-Wissensgraphen und semantische Verknüpfungen.\n\nOriginales Keyword: \"{original_keyword}\"\n\nKandidaten aus der Wikidata-Datenbank:\n{candidates}\n\n{context_info}\n\nAufgabe: Wähle den Kandidaten aus, der semantisch am besten zum originalen Keyword passt.\nBeachte dabei folgende Kriterien:\n1. Semantische Bedeutung und Relevanz zum Thema des Dokuments\n2. Präzision und Spezifität des Konzepts\n3. Einordnung in den thematischen Kontext der anderen Keywords\n4. Bei mehrdeutigen Begriffen wähle die im Kontext wahrscheinlichste Bedeutung\n\nGib nur die Nummer des besten Kandidaten zurück. Falls kein Kandidat gut passt, antworte mit \"0\".\nAntwort: "
+
+# Classification system (Dewey Decimal Classification) - same as original
+classification:
+  dewey_direct: "Assign the document {file} to up to three suitable Dewey Decimal Classifications (DDC), ranked by relevance. Return the result as a JSON array, where each entry includes: \"notation\": the DDC classification number (as a string), \"label\": the classification label in German, \"score\": a floating-point number between 0.0 and 1.0 representing relevance. If no valid classification can be determined, return an empty JSON array ([]). Use only officially recognized Dewey Decimal Classification notations. Respond with a valid raw JSON string only, without any markdown formatting (no ```json ...), explanations, or commentary."
+
+  # Two-step Dewey classification
+  thematic_analysis: "Analyze the content of the scientific paper {file} and identify the main research fields and topics. Which academic disciplines are covered? Name 3-5 main fields or research areas as keywords (e.g., \"Informatik\", \"Molekularbiologie\", \"Erziehungswissenschaft\", \"Astrophysik\", etc.). Consider the paper's abstract, introduction, and methodology. Respond only with the research fields, separated by commas. Answer must be in German."
+
+  dewey_mapping: "Based on the identified research fields: \"{thematic_areas}\" Map these fields to appropriate Dewey Decimal Classifications. Use ONLY the following official Dewey classifications: {dewey_sample} Select a maximum of 3 suitable classifications from the above list. Respond ONLY with a valid JSON array in the format: [{{\"notation\": \"XXX\", \"label\": \"Beschreibung\", \"score\": 0.X}}] No explanations or additional text. Answer must be in German."

@@ -17,6 +17,7 @@ class ProcessingConfigManager:
             'ai:author', 'ai:keywords_gen', 'ai:title', 'ai:type', 'ai:keywords_ext', 'ai:keywords_dnb', 'ai:summary'
         ])
         self.allow_skip_when_all_conditional_filled = processing_mode.get('allow_skip_when_all_conditional_filled', False)
+        self.skip_if_any_field_exists = processing_mode.get('skip_if_any_field_exists', False)
     
     def should_process_field(self, field_name: str, existing_metadata: Optional[Any]) -> Tuple[bool, str]:
         """Determine if a field should be processed based on configuration"""
@@ -43,20 +44,38 @@ class ProcessingConfigManager:
     
     def should_skip_file(self, existing_metadata: Optional[Any]) -> bool:
         """Determine if entire file should be skipped based on configuration"""
-        # If force processing is enabled for any field, never skip
-        if self.force_processing_fields:
+        # If no existing metadata, never skip (new document)
+        if existing_metadata is None:
             return False
-        
+
+        # If force processing is enabled for any field, never skip
+        if len(self.force_processing_fields) > 0:
+            return False
+
         # If skipping is disabled, never skip
         if not self.allow_skip_when_all_conditional_filled:
             return False
-        
-        # Check if all conditional fields are filled
+
+        # NEW: Skip if ANY field exists (document has been analyzed before)
+        # This mode skips all documents that have been processed, even if incomplete
+        if self.skip_if_any_field_exists:
+            # Check if at least one AI field exists and is not empty
+            for field_name in self.conditional_processing_fields:
+                if field_name in existing_metadata and not self._is_empty(existing_metadata[field_name]):
+                    return True  # Skip because document has been analyzed (at least one field exists)
+            return False  # Don't skip - no AI fields exist yet
+
+        # Special case: If conditional_processing is empty, skip all documents with existing metadata
+        # This means: "Skip all documents that have been analyzed before, regardless of completeness"
+        if len(self.conditional_processing_fields) == 0:
+            return True  # Skip because document exists in metadata
+
+        # Default: Check if all conditional fields are filled
         for field_name in self.conditional_processing_fields:
             should_process, _ = self.should_process_field(field_name, existing_metadata)
             if should_process:
                 return False  # At least one field needs processing
-        
+
         return True  # All conditional fields filled and no force processing
     
     def _is_empty(self, value: Any) -> bool:

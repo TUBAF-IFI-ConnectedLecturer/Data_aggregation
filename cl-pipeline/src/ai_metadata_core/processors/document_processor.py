@@ -4,7 +4,7 @@ Handles author, title, and document type extraction.
 """
 
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from ..utils.response_filtering import ResponseFilter
 from ..utils.prompt_manager import PromptManager
 from ..utils.llm_interface import LLMInterface
@@ -34,20 +34,23 @@ class DocumentProcessor:
         """Extract and process author information"""
         author_query = self.prompt_manager.get_document_prompt("author", file)
         authors = self.llm_interface.get_monitored_response(author_query, chain)
-        
+
+        # Filter the response
+        authors = self.response_filter.filter_response(authors)
+
         result = {'ai:author': authors}
-        
+
         # Add revised author if name checker is available
         if self.name_checker and authors:
             result['ai:revisedAuthor'] = self.name_checker.get_all_names(authors)
-        
+
         return result
     
     def process_title(self, file: str, chain: Any) -> Dict[str, str]:
         """Extract document title"""
         title_query = self.prompt_manager.get_document_prompt("title", file)
         title = self.llm_interface.get_monitored_response(title_query, chain)
-        
+
         return {'ai:title': self.response_filter.filter_response(title)}
     
     def process_document_type(self, file: str, chain: Any) -> Dict[str, str]:

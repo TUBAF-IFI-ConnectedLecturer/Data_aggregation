@@ -1,0 +1,689 @@
+2025-12-16 20:19:35,240 - root (184) - INFO     - MainThread   - Logging to: /media/sz/Data/Veits_pdfs/Data_aggregation/cl-pipeline/run/pipelines/arbeitsbasis/logs/full_2025-12-16_20-19-35.log
+2025-12-16 20:19:35,240 - root (53) - INFO     - MainThread   - Starting pipeline
+2025-12-16 20:19:35,240 - root (54) - INFO     - MainThread   - Config file: pipelines/arbeitsbasis/config/full.yaml
+2025-12-16 20:19:35,748 - root (156) - DEBUG    - MainThread   - Import BaseModel to globals()
+2025-12-16 20:19:35,749 - root (156) - DEBUG    - MainThread   - Import Name to globals()
+2025-12-16 20:19:35,749 - root (156) - DEBUG    - MainThread   - Import NameChecker to globals()
+2025-12-16 20:19:35,749 - root (156) - DEBUG    - MainThread   - Import OllamaLLM to globals()
+2025-12-16 20:19:35,749 - root (156) - DEBUG    - MainThread   - Import PromptTemplate to globals()
+2025-12-16 20:19:35,749 - root (156) - DEBUG    - MainThread   - Import ProvideDataFolders to globals()
+2025-12-16 20:19:36,001 - root (156) - DEBUG    - MainThread   - Import Document to globals()
+2025-12-16 20:19:36,001 - root (156) - DEBUG    - MainThread   - Import ExtractFileContent to globals()
+2025-12-16 20:19:36,001 - root (156) - DEBUG    - MainThread   - Import PyMuPDFLoader to globals()
+2025-12-16 20:19:36,001 - root (156) - DEBUG    - MainThread   - Import UnstructuredExcelLoader to globals()
+2025-12-16 20:19:36,001 - root (156) - DEBUG    - MainThread   - Import UnstructuredMarkdownLoader to globals()
+2025-12-16 20:19:36,001 - root (156) - DEBUG    - MainThread   - Import UnstructuredPowerPointLoader to globals()
+2025-12-16 20:19:36,001 - root (156) - DEBUG    - MainThread   - Import UnstructuredWordDocumentLoader to globals()
+2025-12-16 20:19:36,001 - root (156) - DEBUG    - MainThread   - Import tqdm to globals()
+2025-12-16 20:19:36,002 - root (156) - DEBUG    - MainThread   - Import FilterFilesByContent to globals()
+2025-12-16 20:19:36,220 - root (156) - DEBUG    - MainThread   - Import MetaDataExtraction to globals()
+2025-12-16 20:19:36,220 - root (156) - DEBUG    - MainThread   - Import datetime to globals()
+2025-12-16 20:19:36,220 - root (156) - DEBUG    - MainThread   - Import mdMetaExtractor to globals()
+2025-12-16 20:19:36,220 - root (156) - DEBUG    - MainThread   - Import officeMetaExtractor to globals()
+2025-12-16 20:19:36,220 - root (156) - DEBUG    - MainThread   - Import pdfMetaExtractor to globals()
+2025-12-16 20:19:36,220 - root (156) - DEBUG    - MainThread   - Import xlsxMetaExtractor to globals()
+2025-12-16 20:19:37,612 - root (156) - DEBUG    - MainThread   - Import GNDKeywordCheck to globals()
+2025-12-16 20:19:37,626 - root (156) - DEBUG    - MainThread   - Import PromptManager to globals()
+2025-12-16 20:19:37,626 - root (156) - DEBUG    - MainThread   - Import WikidataKeywordCheck to globals()
+2025-12-16 20:19:39,809 - root (156) - DEBUG    - MainThread   - Import Counter to globals()
+2025-12-16 20:19:39,810 - root (156) - DEBUG    - MainThread   - Import DocumentSimilarity to globals()
+2025-12-16 20:19:39,810 - root (156) - DEBUG    - MainThread   - Import OllamaEmbeddings to globals()
+2025-12-16 20:19:39,810 - root (156) - DEBUG    - MainThread   - Import SentenceTransformer to globals()
+2025-12-16 20:19:39,899 - root (156) - DEBUG    - MainThread   - Import AIEmbeddingsGeneration to globals()
+2025-12-16 20:19:39,900 - root (156) - DEBUG    - MainThread   - Import DirectoryLoader to globals()
+2025-12-16 20:19:39,900 - root (156) - DEBUG    - MainThread   - Import HuggingFaceEmbeddings to globals()
+2025-12-16 20:19:39,900 - root (156) - DEBUG    - MainThread   - Import Ollama to globals()
+2025-12-16 20:19:39,900 - root (156) - DEBUG    - MainThread   - Import RecursiveCharacterTextSplitter to globals()
+2025-12-16 20:19:39,901 - root (156) - DEBUG    - MainThread   - Import CollectOPALOERdocuments to globals()
+2025-12-16 20:19:39,901 - root (156) - DEBUG    - MainThread   - Import DownloadOERFromOPAL to globals()
+2025-12-16 20:19:39,906 - root (156) - DEBUG    - MainThread   - Import AIMetaDataExtraction to globals()
+2025-12-16 20:19:39,906 - root (156) - DEBUG    - MainThread   - Import AffiliationProcessor to globals()
+2025-12-16 20:19:39,906 - root (156) - DEBUG    - MainThread   - Import Chroma to globals()
+2025-12-16 20:19:39,906 - root (156) - DEBUG    - MainThread   - Import DeweyClassifier to globals()
+2025-12-16 20:19:39,906 - root (156) - DEBUG    - MainThread   - Import DocumentProcessor to globals()
+2025-12-16 20:19:39,906 - root (156) - DEBUG    - MainThread   - Import KeywordExtractor to globals()
+2025-12-16 20:19:39,906 - root (156) - DEBUG    - MainThread   - Import LLMInterface to globals()
+2025-12-16 20:19:39,906 - root (156) - DEBUG    - MainThread   - Import ProcessingConfigManager to globals()
+2025-12-16 20:19:39,907 - root (156) - DEBUG    - MainThread   - Import SummaryProcessor to globals()
+2025-12-16 20:19:39,907 - root (156) - DEBUG    - MainThread   - Import Preprocessing to globals()
+2025-12-16 20:19:44,771 - lobid_keywordCheck (361) - INFO     - MainThread   - ✓ Ollama LLM (gemma3:27b) für Schlagwortauswahl erfolgreich initialisiert und getestet
+2025-12-16 20:19:44,772 - root (26) - INFO     - MainThread   - Stage Extract PDF metadata from files (MetaDataExtraction) started
+2025-12-16 20:19:44,772 - root (70) - DEBUG    - MainThread   - Input file at /media/sz/Data/Veits_pdfs/data_pipeline/arbeitsbasis/raw/LOCAL_files_base.p exists.
+2025-12-16 20:19:44,784 - root (109) - INFO     - MainThread   - Input files are present but have not changed.
+2025-12-16 20:19:44,785 - root (28) - INFO     - MainThread   - Stage Extract PDF metadata from files (MetaDataExtraction) finished
+2025-12-16 20:19:44,785 - root (26) - INFO     - MainThread   - Stage Extract content from local PDFs (ExtractFileContent) started
+2025-12-16 20:19:44,785 - root (70) - DEBUG    - MainThread   - Input file at /media/sz/Data/Veits_pdfs/data_pipeline/arbeitsbasis/raw/LOCAL_files_base.p exists.
+2025-12-16 20:19:44,797 - root (109) - INFO     - MainThread   - Input files are present but have not changed.
+2025-12-16 20:19:44,797 - root (28) - INFO     - MainThread   - Stage Extract content from local PDFs (ExtractFileContent) finished
+2025-12-16 20:19:44,797 - root (26) - INFO     - MainThread   - Stage Filter file list by content data (FilterFilesByContent) started
+2025-12-16 20:19:44,797 - root (70) - DEBUG    - MainThread   - Input file at /media/sz/Data/Veits_pdfs/data_pipeline/arbeitsbasis/raw/LOCAL_files_base.p exists.
+2025-12-16 20:19:44,804 - root (109) - INFO     - MainThread   - Input files are present but have not changed.
+2025-12-16 20:19:44,804 - root (28) - INFO     - MainThread   - Stage Filter file list by content data (FilterFilesByContent) finished
+2025-12-16 20:19:44,804 - root (26) - INFO     - MainThread   - Stage Generate embeddings (AIEmbeddingsGeneration) started
+2025-12-16 20:19:44,804 - root (70) - DEBUG    - MainThread   - Input file at /media/sz/Data/Veits_pdfs/data_pipeline/arbeitsbasis/raw/LOCAL_files_filtered.p exists.
+2025-12-16 20:19:44,809 - root (109) - INFO     - MainThread   - Input files are present but have not changed.
+2025-12-16 20:19:44,809 - root (28) - INFO     - MainThread   - Stage Generate embeddings (AIEmbeddingsGeneration) finished
+2025-12-16 20:19:44,809 - root (26) - INFO     - MainThread   - Stage Extract metadata with AI (AIMetaDataExtraction) started
+2025-12-16 20:19:44,809 - root (70) - DEBUG    - MainThread   - Input file at /media/sz/Data/Veits_pdfs/data_pipeline/arbeitsbasis/raw/LOCAL_files_filtered.p exists.
+2025-12-16 20:19:44,813 - root (105) - INFO     - MainThread   - Forcing task to run.
+2025-12-16 20:19:44,813 - root (106) - INFO     - MainThread   - Input files for task have changed. Running task.
+2025-12-16 20:19:44,885 - chromadb.telemetry.product.posthog (22) - INFO     - MainThread   - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2025-12-16 20:19:44,934 - chromadb.config (359) - DEBUG    - MainThread   - Starting component System
+2025-12-16 20:19:44,934 - chromadb.config (359) - DEBUG    - MainThread   - Starting component Posthog
+2025-12-16 20:20:59,259 - root (32) - ERROR    - MainThread   - Error processing query Look for 'Keywords', 'Schlüsselwörter', or 'Schlagwörter' section in the document. If found, extract ALL listed keywords. Otherwise, extract 10-15 key technical terms from the abstract and introduction. Focus on: domain terminology, methods, concepts. Avoid generic words. Return as comma-separated list.: Server disconnected without sending a response.
+2025-12-16 20:20:59,322 - root (32) - ERROR    - MainThread   - Error processing query Assign 10-15 controlled vocabulary keywords from library classification systems (GND, DDC concepts). Use broader, standardized terms suitable for bibliographic catalogs. Return as comma-separated list.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:20:59,362 - root (32) - ERROR    - MainThread   - Error processing query Summarize the document in maximum 3 sentences. Focus on: main topic, key findings or arguments. Write in German.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:20:59,403 - root (32) - ERROR    - MainThread   - Error processing query Analyze the content of the scientific paper 7312.pdf and identify the main research fields and topics. Which academic disciplines are covered? Name 3-5 main fields or research areas as keywords (e.g., "Informatik", "Molekularbiologie", "Erziehungswissenschaft", "Astrophysik", etc.). Consider the paper's abstract, introduction, and methodology. Respond only with the research fields, separated by commas. Answer must be in German.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:20:59,403 - root (157) - DEBUG    - MainThread   - Thematic areas identified: 
+2025-12-16 20:20:59,404 - root (32) - ERROR    - MainThread   - Error processing query Assign the document 7312.pdf to up to three suitable Dewey Decimal Classifications (DDC), ranked by relevance. Return the result as a JSON array, where each entry includes: "notation": the DDC classification number (as a string), "label": the classification label in German, "score": a floating-point number between 0.0 and 1.0 representing relevance. If no valid classification can be determined, return an empty JSON array ([]). Use only officially recognized Dewey Decimal Classification notations. Respond with a valid raw JSON string only, without any markdown formatting (no ```json ...), explanations, or commentary.
+
+Verfügbare Klassifikationen:
+000: Informatik, Information & Wissen, allgemeine Werke
+004: Informatik
+021: Beziehungen von Bibliotheken
+038: Enzyklopädien in skandinavischen Sprachen
+063: Organisationen in Deutschland; in Mitteleuropa
+078: Zeitungen in Skandinavien
+093: Inkunabeln
+109: Historische Behandlung, Behandlung mehrerer Einzelpersonen
+126: Das Selbst
+144: Humanismus und verwandte Systeme
+162: Deduktion
+179: Andere ethische Normen
+194: Philosophie in Frankreich
+209: Sekten, Reformbewegungen
+227: Briefe
+243: Evangelistisches Schrifttum für Einzelpersonen
+263: Heilige Tage, Zeiten und Orte
+278: Geschichte des Christentums in Südamerika
+295: Parsismus
+315: Allgemeine Statistiken zu Asien
+331: Arbeitsökonomie
+346: Privatrecht
+361: Soziale Probleme und Sozialhilfe im Allgemeinen
+378: Hochschulbildung
+393: Sterbe- und Bestattungsriten
+410: Linguistik
+428: Gebrauch des Standard-Englisch
+447: Varianten des Französischen
+465: Spanische Grammatik
+483: Wörterbücher des klassischen Griechisch
+500: Naturwissenschaften und Mathematik
+516: Geometrie
+533: Gasmechanik
+550: Geowissenschaften
+565: Fossile Arthropoden (Gliederfüßer)
+581: Einzelne Themen in der Naturgeschichte
+597: Wechselwarme Wirbeltiere; Pisces (Fische)
+612: Humanphysiologie
+629: Andere Fachrichtungen der Ingenieurwissenschaften
+644: Gebäudeversorgung für Haushalte
+662: Explosivstoffe, Brennstoffe und verwandte Produkte
+677: Textilien
+693: Einzelne Baustoffarten und Zwecke
+709: Historische, geografische, personenbezogene Behandlung der bildenden und angewandten Kunst
+724: Architektur ab 1400
+739: Metallkunst
+755: Religion
+772: Entwicklungsverfahren mit Metallsalzen
+788: Blasinstrumente
+803: Wörterbücher, Enzyklopädien
+819: (Optionale Notation)
+834: Deutsche Essays
+849: Okzitanische, katalanische Literaturen
+864: Spanische Essays
+879: Literaturen anderer italischer Sprachen
+894: Altaische, uralische, paläosibirische, drawidische Literaturen
+909: Weltgeschichte
+924: (Optionale Notation)
+939: Geschichte anderer Teile der Welt bis ca. 640
+954: Geschichte Südasiens; Indiens
+969: Geschichte der Inseln im südlichen Indischen Ozean
+984: Geschichte Boliviens: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:20:59,475 - root (32) - ERROR    - MainThread   - Error processing query Extract ONLY the document authors (NOT cited authors, references, or bibliography entries). Look specifically in: title page, document header, author block directly below the title. IGNORE: reference lists, citations in text, bibliography sections, footnotes, acknowledgments, 'References', 'Literaturverzeichnis'. If you see reference markers like [1], (2023), or 'et al.', those are NOT document authors. Format: Lastname, Firstname (comma-separated for multiple authors). If no clear document authors found on the first pages, return empty string.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:20:59,520 - root (32) - ERROR    - MainThread   - Error processing query : Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:20:59,524 - root (32) - ERROR    - MainThread   - Error processing query : Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:20:59,525 - root (32) - ERROR    - MainThread   - Error processing query : Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:20:59,569 - root (32) - ERROR    - MainThread   - Error processing query Generate 15 German keywords for library cataloging. Include: research field, main topics, methods, key concepts. Return as comma-separated list.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:20:59,617 - root (32) - ERROR    - MainThread   - Error processing query Extract ONLY the MAIN document title from the FIRST page. Rules: 1) Look for the LARGEST, most prominent text at the TOP of page 1. 2) This is usually above or near the author names. 3) IGNORE: section headings ('Einleitung', 'Abstract'), referenced titles in lists/agendas, figure captions, headers/footers, institution names. 4) Return ONLY ONE title as plain text. 5) NO lists like '1. Title A 2. Title B'. 6) NO prefix like 'Document title:'. 7) If title spans multiple lines, combine them. Example good output: 'Wissenschaftsgeleitetes Open-Access-Publizieren in Deutschland'. Example bad output: 'document titles: 1. Title A 2. Title B'.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:20:59,664 - root (32) - ERROR    - MainThread   - Error processing query What type of document is this? Answer with ONE of: Zeitschriftenartikel, Konferenzbeitrag, Forschungsbericht, Dissertation, Buchkapitel, Whitepaper, Technischer Bericht: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:20:59,704 - root (32) - ERROR    - MainThread   - Error processing query Look for 'Keywords', 'Schlüsselwörter', or 'Schlagwörter' section in the document. If found, extract ALL listed keywords. Otherwise, extract 10-15 key technical terms from the abstract and introduction. Focus on: domain terminology, methods, concepts. Avoid generic words. Return as comma-separated list.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:20:59,744 - root (32) - ERROR    - MainThread   - Error processing query Assign 10-15 controlled vocabulary keywords from library classification systems (GND, DDC concepts). Use broader, standardized terms suitable for bibliographic catalogs. Return as comma-separated list.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:20:59,794 - root (32) - ERROR    - MainThread   - Error processing query Summarize the document in maximum 3 sentences. Focus on: main topic, key findings or arguments. Write in German.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:20:59,835 - root (32) - ERROR    - MainThread   - Error processing query Analyze the content of the scientific paper 6981.pdf and identify the main research fields and topics. Which academic disciplines are covered? Name 3-5 main fields or research areas as keywords (e.g., "Informatik", "Molekularbiologie", "Erziehungswissenschaft", "Astrophysik", etc.). Consider the paper's abstract, introduction, and methodology. Respond only with the research fields, separated by commas. Answer must be in German.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:20:59,835 - root (157) - DEBUG    - MainThread   - Thematic areas identified: 
+2025-12-16 20:20:59,836 - root (32) - ERROR    - MainThread   - Error processing query Assign the document 6981.pdf to up to three suitable Dewey Decimal Classifications (DDC), ranked by relevance. Return the result as a JSON array, where each entry includes: "notation": the DDC classification number (as a string), "label": the classification label in German, "score": a floating-point number between 0.0 and 1.0 representing relevance. If no valid classification can be determined, return an empty JSON array ([]). Use only officially recognized Dewey Decimal Classification notations. Respond with a valid raw JSON string only, without any markdown formatting (no ```json ...), explanations, or commentary.
+
+Verfügbare Klassifikationen:
+000: Informatik, Information & Wissen, allgemeine Werke
+004: Informatik
+021: Beziehungen von Bibliotheken
+038: Enzyklopädien in skandinavischen Sprachen
+063: Organisationen in Deutschland; in Mitteleuropa
+078: Zeitungen in Skandinavien
+093: Inkunabeln
+109: Historische Behandlung, Behandlung mehrerer Einzelpersonen
+126: Das Selbst
+144: Humanismus und verwandte Systeme
+162: Deduktion
+179: Andere ethische Normen
+194: Philosophie in Frankreich
+209: Sekten, Reformbewegungen
+227: Briefe
+243: Evangelistisches Schrifttum für Einzelpersonen
+263: Heilige Tage, Zeiten und Orte
+278: Geschichte des Christentums in Südamerika
+295: Parsismus
+315: Allgemeine Statistiken zu Asien
+331: Arbeitsökonomie
+346: Privatrecht
+361: Soziale Probleme und Sozialhilfe im Allgemeinen
+378: Hochschulbildung
+393: Sterbe- und Bestattungsriten
+410: Linguistik
+428: Gebrauch des Standard-Englisch
+447: Varianten des Französischen
+465: Spanische Grammatik
+483: Wörterbücher des klassischen Griechisch
+500: Naturwissenschaften und Mathematik
+516: Geometrie
+533: Gasmechanik
+550: Geowissenschaften
+565: Fossile Arthropoden (Gliederfüßer)
+581: Einzelne Themen in der Naturgeschichte
+597: Wechselwarme Wirbeltiere; Pisces (Fische)
+612: Humanphysiologie
+629: Andere Fachrichtungen der Ingenieurwissenschaften
+644: Gebäudeversorgung für Haushalte
+662: Explosivstoffe, Brennstoffe und verwandte Produkte
+677: Textilien
+693: Einzelne Baustoffarten und Zwecke
+709: Historische, geografische, personenbezogene Behandlung der bildenden und angewandten Kunst
+724: Architektur ab 1400
+739: Metallkunst
+755: Religion
+772: Entwicklungsverfahren mit Metallsalzen
+788: Blasinstrumente
+803: Wörterbücher, Enzyklopädien
+819: (Optionale Notation)
+834: Deutsche Essays
+849: Okzitanische, katalanische Literaturen
+864: Spanische Essays
+879: Literaturen anderer italischer Sprachen
+894: Altaische, uralische, paläosibirische, drawidische Literaturen
+909: Weltgeschichte
+924: (Optionale Notation)
+939: Geschichte anderer Teile der Welt bis ca. 640
+954: Geschichte Südasiens; Indiens
+969: Geschichte der Inseln im südlichen Indischen Ozean
+984: Geschichte Boliviens: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:20:59,918 - root (32) - ERROR    - MainThread   - Error processing query Extract ONLY the document authors (NOT cited authors, references, or bibliography entries). Look specifically in: title page, document header, author block directly below the title. IGNORE: reference lists, citations in text, bibliography sections, footnotes, acknowledgments, 'References', 'Literaturverzeichnis'. If you see reference markers like [1], (2023), or 'et al.', those are NOT document authors. Format: Lastname, Firstname (comma-separated for multiple authors). If no clear document authors found on the first pages, return empty string.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:20:59,958 - root (32) - ERROR    - MainThread   - Error processing query : Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:20:59,962 - root (32) - ERROR    - MainThread   - Error processing query : Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:20:59,963 - root (32) - ERROR    - MainThread   - Error processing query : Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:00,007 - root (32) - ERROR    - MainThread   - Error processing query Generate 15 German keywords for library cataloging. Include: research field, main topics, methods, key concepts. Return as comma-separated list.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:00,053 - root (32) - ERROR    - MainThread   - Error processing query Extract ONLY the MAIN document title from the FIRST page. Rules: 1) Look for the LARGEST, most prominent text at the TOP of page 1. 2) This is usually above or near the author names. 3) IGNORE: section headings ('Einleitung', 'Abstract'), referenced titles in lists/agendas, figure captions, headers/footers, institution names. 4) Return ONLY ONE title as plain text. 5) NO lists like '1. Title A 2. Title B'. 6) NO prefix like 'Document title:'. 7) If title spans multiple lines, combine them. Example good output: 'Wissenschaftsgeleitetes Open-Access-Publizieren in Deutschland'. Example bad output: 'document titles: 1. Title A 2. Title B'.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:00,101 - root (32) - ERROR    - MainThread   - Error processing query What type of document is this? Answer with ONE of: Zeitschriftenartikel, Konferenzbeitrag, Forschungsbericht, Dissertation, Buchkapitel, Whitepaper, Technischer Bericht: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:00,142 - root (32) - ERROR    - MainThread   - Error processing query Look for 'Keywords', 'Schlüsselwörter', or 'Schlagwörter' section in the document. If found, extract ALL listed keywords. Otherwise, extract 10-15 key technical terms from the abstract and introduction. Focus on: domain terminology, methods, concepts. Avoid generic words. Return as comma-separated list.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:00,182 - root (32) - ERROR    - MainThread   - Error processing query Assign 10-15 controlled vocabulary keywords from library classification systems (GND, DDC concepts). Use broader, standardized terms suitable for bibliographic catalogs. Return as comma-separated list.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:00,233 - root (32) - ERROR    - MainThread   - Error processing query Summarize the document in maximum 3 sentences. Focus on: main topic, key findings or arguments. Write in German.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:00,276 - root (32) - ERROR    - MainThread   - Error processing query Analyze the content of the scientific paper 7670.pdf and identify the main research fields and topics. Which academic disciplines are covered? Name 3-5 main fields or research areas as keywords (e.g., "Informatik", "Molekularbiologie", "Erziehungswissenschaft", "Astrophysik", etc.). Consider the paper's abstract, introduction, and methodology. Respond only with the research fields, separated by commas. Answer must be in German.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:00,276 - root (157) - DEBUG    - MainThread   - Thematic areas identified: 
+2025-12-16 20:21:00,277 - root (32) - ERROR    - MainThread   - Error processing query Assign the document 7670.pdf to up to three suitable Dewey Decimal Classifications (DDC), ranked by relevance. Return the result as a JSON array, where each entry includes: "notation": the DDC classification number (as a string), "label": the classification label in German, "score": a floating-point number between 0.0 and 1.0 representing relevance. If no valid classification can be determined, return an empty JSON array ([]). Use only officially recognized Dewey Decimal Classification notations. Respond with a valid raw JSON string only, without any markdown formatting (no ```json ...), explanations, or commentary.
+
+Verfügbare Klassifikationen:
+000: Informatik, Information & Wissen, allgemeine Werke
+004: Informatik
+021: Beziehungen von Bibliotheken
+038: Enzyklopädien in skandinavischen Sprachen
+063: Organisationen in Deutschland; in Mitteleuropa
+078: Zeitungen in Skandinavien
+093: Inkunabeln
+109: Historische Behandlung, Behandlung mehrerer Einzelpersonen
+126: Das Selbst
+144: Humanismus und verwandte Systeme
+162: Deduktion
+179: Andere ethische Normen
+194: Philosophie in Frankreich
+209: Sekten, Reformbewegungen
+227: Briefe
+243: Evangelistisches Schrifttum für Einzelpersonen
+263: Heilige Tage, Zeiten und Orte
+278: Geschichte des Christentums in Südamerika
+295: Parsismus
+315: Allgemeine Statistiken zu Asien
+331: Arbeitsökonomie
+346: Privatrecht
+361: Soziale Probleme und Sozialhilfe im Allgemeinen
+378: Hochschulbildung
+393: Sterbe- und Bestattungsriten
+410: Linguistik
+428: Gebrauch des Standard-Englisch
+447: Varianten des Französischen
+465: Spanische Grammatik
+483: Wörterbücher des klassischen Griechisch
+500: Naturwissenschaften und Mathematik
+516: Geometrie
+533: Gasmechanik
+550: Geowissenschaften
+565: Fossile Arthropoden (Gliederfüßer)
+581: Einzelne Themen in der Naturgeschichte
+597: Wechselwarme Wirbeltiere; Pisces (Fische)
+612: Humanphysiologie
+629: Andere Fachrichtungen der Ingenieurwissenschaften
+644: Gebäudeversorgung für Haushalte
+662: Explosivstoffe, Brennstoffe und verwandte Produkte
+677: Textilien
+693: Einzelne Baustoffarten und Zwecke
+709: Historische, geografische, personenbezogene Behandlung der bildenden und angewandten Kunst
+724: Architektur ab 1400
+739: Metallkunst
+755: Religion
+772: Entwicklungsverfahren mit Metallsalzen
+788: Blasinstrumente
+803: Wörterbücher, Enzyklopädien
+819: (Optionale Notation)
+834: Deutsche Essays
+849: Okzitanische, katalanische Literaturen
+864: Spanische Essays
+879: Literaturen anderer italischer Sprachen
+894: Altaische, uralische, paläosibirische, drawidische Literaturen
+909: Weltgeschichte
+924: (Optionale Notation)
+939: Geschichte anderer Teile der Welt bis ca. 640
+954: Geschichte Südasiens; Indiens
+969: Geschichte der Inseln im südlichen Indischen Ozean
+984: Geschichte Boliviens: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:00,340 - root (32) - ERROR    - MainThread   - Error processing query Extract ONLY the document authors (NOT cited authors, references, or bibliography entries). Look specifically in: title page, document header, author block directly below the title. IGNORE: reference lists, citations in text, bibliography sections, footnotes, acknowledgments, 'References', 'Literaturverzeichnis'. If you see reference markers like [1], (2023), or 'et al.', those are NOT document authors. Format: Lastname, Firstname (comma-separated for multiple authors). If no clear document authors found on the first pages, return empty string.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:00,380 - root (32) - ERROR    - MainThread   - Error processing query : Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:00,386 - root (32) - ERROR    - MainThread   - Error processing query : Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:00,387 - root (32) - ERROR    - MainThread   - Error processing query : Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:00,430 - root (32) - ERROR    - MainThread   - Error processing query Generate 15 German keywords for library cataloging. Include: research field, main topics, methods, key concepts. Return as comma-separated list.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:00,475 - root (32) - ERROR    - MainThread   - Error processing query Extract ONLY the MAIN document title from the FIRST page. Rules: 1) Look for the LARGEST, most prominent text at the TOP of page 1. 2) This is usually above or near the author names. 3) IGNORE: section headings ('Einleitung', 'Abstract'), referenced titles in lists/agendas, figure captions, headers/footers, institution names. 4) Return ONLY ONE title as plain text. 5) NO lists like '1. Title A 2. Title B'. 6) NO prefix like 'Document title:'. 7) If title spans multiple lines, combine them. Example good output: 'Wissenschaftsgeleitetes Open-Access-Publizieren in Deutschland'. Example bad output: 'document titles: 1. Title A 2. Title B'.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:00,517 - root (32) - ERROR    - MainThread   - Error processing query What type of document is this? Answer with ONE of: Zeitschriftenartikel, Konferenzbeitrag, Forschungsbericht, Dissertation, Buchkapitel, Whitepaper, Technischer Bericht: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:00,562 - root (32) - ERROR    - MainThread   - Error processing query Look for 'Keywords', 'Schlüsselwörter', or 'Schlagwörter' section in the document. If found, extract ALL listed keywords. Otherwise, extract 10-15 key technical terms from the abstract and introduction. Focus on: domain terminology, methods, concepts. Avoid generic words. Return as comma-separated list.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:00,605 - root (32) - ERROR    - MainThread   - Error processing query Assign 10-15 controlled vocabulary keywords from library classification systems (GND, DDC concepts). Use broader, standardized terms suitable for bibliographic catalogs. Return as comma-separated list.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:00,658 - root (32) - ERROR    - MainThread   - Error processing query Summarize the document in maximum 3 sentences. Focus on: main topic, key findings or arguments. Write in German.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:00,701 - root (32) - ERROR    - MainThread   - Error processing query Analyze the content of the scientific paper 8000.pdf and identify the main research fields and topics. Which academic disciplines are covered? Name 3-5 main fields or research areas as keywords (e.g., "Informatik", "Molekularbiologie", "Erziehungswissenschaft", "Astrophysik", etc.). Consider the paper's abstract, introduction, and methodology. Respond only with the research fields, separated by commas. Answer must be in German.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:00,701 - root (157) - DEBUG    - MainThread   - Thematic areas identified: 
+2025-12-16 20:21:00,702 - root (32) - ERROR    - MainThread   - Error processing query Assign the document 8000.pdf to up to three suitable Dewey Decimal Classifications (DDC), ranked by relevance. Return the result as a JSON array, where each entry includes: "notation": the DDC classification number (as a string), "label": the classification label in German, "score": a floating-point number between 0.0 and 1.0 representing relevance. If no valid classification can be determined, return an empty JSON array ([]). Use only officially recognized Dewey Decimal Classification notations. Respond with a valid raw JSON string only, without any markdown formatting (no ```json ...), explanations, or commentary.
+
+Verfügbare Klassifikationen:
+000: Informatik, Information & Wissen, allgemeine Werke
+004: Informatik
+021: Beziehungen von Bibliotheken
+038: Enzyklopädien in skandinavischen Sprachen
+063: Organisationen in Deutschland; in Mitteleuropa
+078: Zeitungen in Skandinavien
+093: Inkunabeln
+109: Historische Behandlung, Behandlung mehrerer Einzelpersonen
+126: Das Selbst
+144: Humanismus und verwandte Systeme
+162: Deduktion
+179: Andere ethische Normen
+194: Philosophie in Frankreich
+209: Sekten, Reformbewegungen
+227: Briefe
+243: Evangelistisches Schrifttum für Einzelpersonen
+263: Heilige Tage, Zeiten und Orte
+278: Geschichte des Christentums in Südamerika
+295: Parsismus
+315: Allgemeine Statistiken zu Asien
+331: Arbeitsökonomie
+346: Privatrecht
+361: Soziale Probleme und Sozialhilfe im Allgemeinen
+378: Hochschulbildung
+393: Sterbe- und Bestattungsriten
+410: Linguistik
+428: Gebrauch des Standard-Englisch
+447: Varianten des Französischen
+465: Spanische Grammatik
+483: Wörterbücher des klassischen Griechisch
+500: Naturwissenschaften und Mathematik
+516: Geometrie
+533: Gasmechanik
+550: Geowissenschaften
+565: Fossile Arthropoden (Gliederfüßer)
+581: Einzelne Themen in der Naturgeschichte
+597: Wechselwarme Wirbeltiere; Pisces (Fische)
+612: Humanphysiologie
+629: Andere Fachrichtungen der Ingenieurwissenschaften
+644: Gebäudeversorgung für Haushalte
+662: Explosivstoffe, Brennstoffe und verwandte Produkte
+677: Textilien
+693: Einzelne Baustoffarten und Zwecke
+709: Historische, geografische, personenbezogene Behandlung der bildenden und angewandten Kunst
+724: Architektur ab 1400
+739: Metallkunst
+755: Religion
+772: Entwicklungsverfahren mit Metallsalzen
+788: Blasinstrumente
+803: Wörterbücher, Enzyklopädien
+819: (Optionale Notation)
+834: Deutsche Essays
+849: Okzitanische, katalanische Literaturen
+864: Spanische Essays
+879: Literaturen anderer italischer Sprachen
+894: Altaische, uralische, paläosibirische, drawidische Literaturen
+909: Weltgeschichte
+924: (Optionale Notation)
+939: Geschichte anderer Teile der Welt bis ca. 640
+954: Geschichte Südasiens; Indiens
+969: Geschichte der Inseln im südlichen Indischen Ozean
+984: Geschichte Boliviens: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:00,772 - root (32) - ERROR    - MainThread   - Error processing query Extract ONLY the document authors (NOT cited authors, references, or bibliography entries). Look specifically in: title page, document header, author block directly below the title. IGNORE: reference lists, citations in text, bibliography sections, footnotes, acknowledgments, 'References', 'Literaturverzeichnis'. If you see reference markers like [1], (2023), or 'et al.', those are NOT document authors. Format: Lastname, Firstname (comma-separated for multiple authors). If no clear document authors found on the first pages, return empty string.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:00,815 - root (32) - ERROR    - MainThread   - Error processing query : Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:00,819 - root (32) - ERROR    - MainThread   - Error processing query : Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:00,820 - root (32) - ERROR    - MainThread   - Error processing query : Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:00,865 - root (32) - ERROR    - MainThread   - Error processing query Generate 15 German keywords for library cataloging. Include: research field, main topics, methods, key concepts. Return as comma-separated list.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:00,918 - root (32) - ERROR    - MainThread   - Error processing query Extract ONLY the MAIN document title from the FIRST page. Rules: 1) Look for the LARGEST, most prominent text at the TOP of page 1. 2) This is usually above or near the author names. 3) IGNORE: section headings ('Einleitung', 'Abstract'), referenced titles in lists/agendas, figure captions, headers/footers, institution names. 4) Return ONLY ONE title as plain text. 5) NO lists like '1. Title A 2. Title B'. 6) NO prefix like 'Document title:'. 7) If title spans multiple lines, combine them. Example good output: 'Wissenschaftsgeleitetes Open-Access-Publizieren in Deutschland'. Example bad output: 'document titles: 1. Title A 2. Title B'.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:00,974 - root (32) - ERROR    - MainThread   - Error processing query What type of document is this? Answer with ONE of: Zeitschriftenartikel, Konferenzbeitrag, Forschungsbericht, Dissertation, Buchkapitel, Whitepaper, Technischer Bericht: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:01,023 - root (32) - ERROR    - MainThread   - Error processing query Look for 'Keywords', 'Schlüsselwörter', or 'Schlagwörter' section in the document. If found, extract ALL listed keywords. Otherwise, extract 10-15 key technical terms from the abstract and introduction. Focus on: domain terminology, methods, concepts. Avoid generic words. Return as comma-separated list.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:01,070 - root (32) - ERROR    - MainThread   - Error processing query Assign 10-15 controlled vocabulary keywords from library classification systems (GND, DDC concepts). Use broader, standardized terms suitable for bibliographic catalogs. Return as comma-separated list.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:01,141 - root (32) - ERROR    - MainThread   - Error processing query Summarize the document in maximum 3 sentences. Focus on: main topic, key findings or arguments. Write in German.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:01,185 - root (32) - ERROR    - MainThread   - Error processing query Analyze the content of the scientific paper 6781.pdf and identify the main research fields and topics. Which academic disciplines are covered? Name 3-5 main fields or research areas as keywords (e.g., "Informatik", "Molekularbiologie", "Erziehungswissenschaft", "Astrophysik", etc.). Consider the paper's abstract, introduction, and methodology. Respond only with the research fields, separated by commas. Answer must be in German.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:01,185 - root (157) - DEBUG    - MainThread   - Thematic areas identified: 
+2025-12-16 20:21:01,186 - root (32) - ERROR    - MainThread   - Error processing query Assign the document 6781.pdf to up to three suitable Dewey Decimal Classifications (DDC), ranked by relevance. Return the result as a JSON array, where each entry includes: "notation": the DDC classification number (as a string), "label": the classification label in German, "score": a floating-point number between 0.0 and 1.0 representing relevance. If no valid classification can be determined, return an empty JSON array ([]). Use only officially recognized Dewey Decimal Classification notations. Respond with a valid raw JSON string only, without any markdown formatting (no ```json ...), explanations, or commentary.
+
+Verfügbare Klassifikationen:
+000: Informatik, Information & Wissen, allgemeine Werke
+004: Informatik
+021: Beziehungen von Bibliotheken
+038: Enzyklopädien in skandinavischen Sprachen
+063: Organisationen in Deutschland; in Mitteleuropa
+078: Zeitungen in Skandinavien
+093: Inkunabeln
+109: Historische Behandlung, Behandlung mehrerer Einzelpersonen
+126: Das Selbst
+144: Humanismus und verwandte Systeme
+162: Deduktion
+179: Andere ethische Normen
+194: Philosophie in Frankreich
+209: Sekten, Reformbewegungen
+227: Briefe
+243: Evangelistisches Schrifttum für Einzelpersonen
+263: Heilige Tage, Zeiten und Orte
+278: Geschichte des Christentums in Südamerika
+295: Parsismus
+315: Allgemeine Statistiken zu Asien
+331: Arbeitsökonomie
+346: Privatrecht
+361: Soziale Probleme und Sozialhilfe im Allgemeinen
+378: Hochschulbildung
+393: Sterbe- und Bestattungsriten
+410: Linguistik
+428: Gebrauch des Standard-Englisch
+447: Varianten des Französischen
+465: Spanische Grammatik
+483: Wörterbücher des klassischen Griechisch
+500: Naturwissenschaften und Mathematik
+516: Geometrie
+533: Gasmechanik
+550: Geowissenschaften
+565: Fossile Arthropoden (Gliederfüßer)
+581: Einzelne Themen in der Naturgeschichte
+597: Wechselwarme Wirbeltiere; Pisces (Fische)
+612: Humanphysiologie
+629: Andere Fachrichtungen der Ingenieurwissenschaften
+644: Gebäudeversorgung für Haushalte
+662: Explosivstoffe, Brennstoffe und verwandte Produkte
+677: Textilien
+693: Einzelne Baustoffarten und Zwecke
+709: Historische, geografische, personenbezogene Behandlung der bildenden und angewandten Kunst
+724: Architektur ab 1400
+739: Metallkunst
+755: Religion
+772: Entwicklungsverfahren mit Metallsalzen
+788: Blasinstrumente
+803: Wörterbücher, Enzyklopädien
+819: (Optionale Notation)
+834: Deutsche Essays
+849: Okzitanische, katalanische Literaturen
+864: Spanische Essays
+879: Literaturen anderer italischer Sprachen
+894: Altaische, uralische, paläosibirische, drawidische Literaturen
+909: Weltgeschichte
+924: (Optionale Notation)
+939: Geschichte anderer Teile der Welt bis ca. 640
+954: Geschichte Südasiens; Indiens
+969: Geschichte der Inseln im südlichen Indischen Ozean
+984: Geschichte Boliviens: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:01,248 - root (32) - ERROR    - MainThread   - Error processing query Extract ONLY the document authors (NOT cited authors, references, or bibliography entries). Look specifically in: title page, document header, author block directly below the title. IGNORE: reference lists, citations in text, bibliography sections, footnotes, acknowledgments, 'References', 'Literaturverzeichnis'. If you see reference markers like [1], (2023), or 'et al.', those are NOT document authors. Format: Lastname, Firstname (comma-separated for multiple authors). If no clear document authors found on the first pages, return empty string.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:01,291 - root (32) - ERROR    - MainThread   - Error processing query : Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:01,295 - root (32) - ERROR    - MainThread   - Error processing query : Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:01,296 - root (32) - ERROR    - MainThread   - Error processing query : Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:01,340 - root (32) - ERROR    - MainThread   - Error processing query Generate 15 German keywords for library cataloging. Include: research field, main topics, methods, key concepts. Return as comma-separated list.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:01,386 - root (32) - ERROR    - MainThread   - Error processing query Extract ONLY the MAIN document title from the FIRST page. Rules: 1) Look for the LARGEST, most prominent text at the TOP of page 1. 2) This is usually above or near the author names. 3) IGNORE: section headings ('Einleitung', 'Abstract'), referenced titles in lists/agendas, figure captions, headers/footers, institution names. 4) Return ONLY ONE title as plain text. 5) NO lists like '1. Title A 2. Title B'. 6) NO prefix like 'Document title:'. 7) If title spans multiple lines, combine them. Example good output: 'Wissenschaftsgeleitetes Open-Access-Publizieren in Deutschland'. Example bad output: 'document titles: 1. Title A 2. Title B'.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:01,429 - root (32) - ERROR    - MainThread   - Error processing query What type of document is this? Answer with ONE of: Zeitschriftenartikel, Konferenzbeitrag, Forschungsbericht, Dissertation, Buchkapitel, Whitepaper, Technischer Bericht: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:01,469 - root (32) - ERROR    - MainThread   - Error processing query Look for 'Keywords', 'Schlüsselwörter', or 'Schlagwörter' section in the document. If found, extract ALL listed keywords. Otherwise, extract 10-15 key technical terms from the abstract and introduction. Focus on: domain terminology, methods, concepts. Avoid generic words. Return as comma-separated list.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:01,507 - root (32) - ERROR    - MainThread   - Error processing query Assign 10-15 controlled vocabulary keywords from library classification systems (GND, DDC concepts). Use broader, standardized terms suitable for bibliographic catalogs. Return as comma-separated list.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:01,555 - root (32) - ERROR    - MainThread   - Error processing query Summarize the document in maximum 3 sentences. Focus on: main topic, key findings or arguments. Write in German.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:01,599 - root (32) - ERROR    - MainThread   - Error processing query Analyze the content of the scientific paper 7628.pdf and identify the main research fields and topics. Which academic disciplines are covered? Name 3-5 main fields or research areas as keywords (e.g., "Informatik", "Molekularbiologie", "Erziehungswissenschaft", "Astrophysik", etc.). Consider the paper's abstract, introduction, and methodology. Respond only with the research fields, separated by commas. Answer must be in German.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:01,599 - root (157) - DEBUG    - MainThread   - Thematic areas identified: 
+2025-12-16 20:21:01,600 - root (32) - ERROR    - MainThread   - Error processing query Assign the document 7628.pdf to up to three suitable Dewey Decimal Classifications (DDC), ranked by relevance. Return the result as a JSON array, where each entry includes: "notation": the DDC classification number (as a string), "label": the classification label in German, "score": a floating-point number between 0.0 and 1.0 representing relevance. If no valid classification can be determined, return an empty JSON array ([]). Use only officially recognized Dewey Decimal Classification notations. Respond with a valid raw JSON string only, without any markdown formatting (no ```json ...), explanations, or commentary.
+
+Verfügbare Klassifikationen:
+000: Informatik, Information & Wissen, allgemeine Werke
+004: Informatik
+021: Beziehungen von Bibliotheken
+038: Enzyklopädien in skandinavischen Sprachen
+063: Organisationen in Deutschland; in Mitteleuropa
+078: Zeitungen in Skandinavien
+093: Inkunabeln
+109: Historische Behandlung, Behandlung mehrerer Einzelpersonen
+126: Das Selbst
+144: Humanismus und verwandte Systeme
+162: Deduktion
+179: Andere ethische Normen
+194: Philosophie in Frankreich
+209: Sekten, Reformbewegungen
+227: Briefe
+243: Evangelistisches Schrifttum für Einzelpersonen
+263: Heilige Tage, Zeiten und Orte
+278: Geschichte des Christentums in Südamerika
+295: Parsismus
+315: Allgemeine Statistiken zu Asien
+331: Arbeitsökonomie
+346: Privatrecht
+361: Soziale Probleme und Sozialhilfe im Allgemeinen
+378: Hochschulbildung
+393: Sterbe- und Bestattungsriten
+410: Linguistik
+428: Gebrauch des Standard-Englisch
+447: Varianten des Französischen
+465: Spanische Grammatik
+483: Wörterbücher des klassischen Griechisch
+500: Naturwissenschaften und Mathematik
+516: Geometrie
+533: Gasmechanik
+550: Geowissenschaften
+565: Fossile Arthropoden (Gliederfüßer)
+581: Einzelne Themen in der Naturgeschichte
+597: Wechselwarme Wirbeltiere; Pisces (Fische)
+612: Humanphysiologie
+629: Andere Fachrichtungen der Ingenieurwissenschaften
+644: Gebäudeversorgung für Haushalte
+662: Explosivstoffe, Brennstoffe und verwandte Produkte
+677: Textilien
+693: Einzelne Baustoffarten und Zwecke
+709: Historische, geografische, personenbezogene Behandlung der bildenden und angewandten Kunst
+724: Architektur ab 1400
+739: Metallkunst
+755: Religion
+772: Entwicklungsverfahren mit Metallsalzen
+788: Blasinstrumente
+803: Wörterbücher, Enzyklopädien
+819: (Optionale Notation)
+834: Deutsche Essays
+849: Okzitanische, katalanische Literaturen
+864: Spanische Essays
+879: Literaturen anderer italischer Sprachen
+894: Altaische, uralische, paläosibirische, drawidische Literaturen
+909: Weltgeschichte
+924: (Optionale Notation)
+939: Geschichte anderer Teile der Welt bis ca. 640
+954: Geschichte Südasiens; Indiens
+969: Geschichte der Inseln im südlichen Indischen Ozean
+984: Geschichte Boliviens: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:01,681 - root (32) - ERROR    - MainThread   - Error processing query Extract ONLY the document authors (NOT cited authors, references, or bibliography entries). Look specifically in: title page, document header, author block directly below the title. IGNORE: reference lists, citations in text, bibliography sections, footnotes, acknowledgments, 'References', 'Literaturverzeichnis'. If you see reference markers like [1], (2023), or 'et al.', those are NOT document authors. Format: Lastname, Firstname (comma-separated for multiple authors). If no clear document authors found on the first pages, return empty string.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:01,728 - root (32) - ERROR    - MainThread   - Error processing query : Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:01,734 - root (32) - ERROR    - MainThread   - Error processing query : Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:01,735 - root (32) - ERROR    - MainThread   - Error processing query : Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:01,777 - root (32) - ERROR    - MainThread   - Error processing query Generate 15 German keywords for library cataloging. Include: research field, main topics, methods, key concepts. Return as comma-separated list.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:01,829 - root (32) - ERROR    - MainThread   - Error processing query Extract ONLY the MAIN document title from the FIRST page. Rules: 1) Look for the LARGEST, most prominent text at the TOP of page 1. 2) This is usually above or near the author names. 3) IGNORE: section headings ('Einleitung', 'Abstract'), referenced titles in lists/agendas, figure captions, headers/footers, institution names. 4) Return ONLY ONE title as plain text. 5) NO lists like '1. Title A 2. Title B'. 6) NO prefix like 'Document title:'. 7) If title spans multiple lines, combine them. Example good output: 'Wissenschaftsgeleitetes Open-Access-Publizieren in Deutschland'. Example bad output: 'document titles: 1. Title A 2. Title B'.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:01,877 - root (32) - ERROR    - MainThread   - Error processing query What type of document is this? Answer with ONE of: Zeitschriftenartikel, Konferenzbeitrag, Forschungsbericht, Dissertation, Buchkapitel, Whitepaper, Technischer Bericht: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:01,919 - root (32) - ERROR    - MainThread   - Error processing query Look for 'Keywords', 'Schlüsselwörter', or 'Schlagwörter' section in the document. If found, extract ALL listed keywords. Otherwise, extract 10-15 key technical terms from the abstract and introduction. Focus on: domain terminology, methods, concepts. Avoid generic words. Return as comma-separated list.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:01,960 - root (32) - ERROR    - MainThread   - Error processing query Assign 10-15 controlled vocabulary keywords from library classification systems (GND, DDC concepts). Use broader, standardized terms suitable for bibliographic catalogs. Return as comma-separated list.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:02,014 - root (32) - ERROR    - MainThread   - Error processing query Summarize the document in maximum 3 sentences. Focus on: main topic, key findings or arguments. Write in German.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:02,055 - root (32) - ERROR    - MainThread   - Error processing query Analyze the content of the scientific paper 8208.pdf and identify the main research fields and topics. Which academic disciplines are covered? Name 3-5 main fields or research areas as keywords (e.g., "Informatik", "Molekularbiologie", "Erziehungswissenschaft", "Astrophysik", etc.). Consider the paper's abstract, introduction, and methodology. Respond only with the research fields, separated by commas. Answer must be in German.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:02,055 - root (157) - DEBUG    - MainThread   - Thematic areas identified: 
+2025-12-16 20:21:02,057 - root (32) - ERROR    - MainThread   - Error processing query Assign the document 8208.pdf to up to three suitable Dewey Decimal Classifications (DDC), ranked by relevance. Return the result as a JSON array, where each entry includes: "notation": the DDC classification number (as a string), "label": the classification label in German, "score": a floating-point number between 0.0 and 1.0 representing relevance. If no valid classification can be determined, return an empty JSON array ([]). Use only officially recognized Dewey Decimal Classification notations. Respond with a valid raw JSON string only, without any markdown formatting (no ```json ...), explanations, or commentary.
+
+Verfügbare Klassifikationen:
+000: Informatik, Information & Wissen, allgemeine Werke
+004: Informatik
+021: Beziehungen von Bibliotheken
+038: Enzyklopädien in skandinavischen Sprachen
+063: Organisationen in Deutschland; in Mitteleuropa
+078: Zeitungen in Skandinavien
+093: Inkunabeln
+109: Historische Behandlung, Behandlung mehrerer Einzelpersonen
+126: Das Selbst
+144: Humanismus und verwandte Systeme
+162: Deduktion
+179: Andere ethische Normen
+194: Philosophie in Frankreich
+209: Sekten, Reformbewegungen
+227: Briefe
+243: Evangelistisches Schrifttum für Einzelpersonen
+263: Heilige Tage, Zeiten und Orte
+278: Geschichte des Christentums in Südamerika
+295: Parsismus
+315: Allgemeine Statistiken zu Asien
+331: Arbeitsökonomie
+346: Privatrecht
+361: Soziale Probleme und Sozialhilfe im Allgemeinen
+378: Hochschulbildung
+393: Sterbe- und Bestattungsriten
+410: Linguistik
+428: Gebrauch des Standard-Englisch
+447: Varianten des Französischen
+465: Spanische Grammatik
+483: Wörterbücher des klassischen Griechisch
+500: Naturwissenschaften und Mathematik
+516: Geometrie
+533: Gasmechanik
+550: Geowissenschaften
+565: Fossile Arthropoden (Gliederfüßer)
+581: Einzelne Themen in der Naturgeschichte
+597: Wechselwarme Wirbeltiere; Pisces (Fische)
+612: Humanphysiologie
+629: Andere Fachrichtungen der Ingenieurwissenschaften
+644: Gebäudeversorgung für Haushalte
+662: Explosivstoffe, Brennstoffe und verwandte Produkte
+677: Textilien
+693: Einzelne Baustoffarten und Zwecke
+709: Historische, geografische, personenbezogene Behandlung der bildenden und angewandten Kunst
+724: Architektur ab 1400
+739: Metallkunst
+755: Religion
+772: Entwicklungsverfahren mit Metallsalzen
+788: Blasinstrumente
+803: Wörterbücher, Enzyklopädien
+819: (Optionale Notation)
+834: Deutsche Essays
+849: Okzitanische, katalanische Literaturen
+864: Spanische Essays
+879: Literaturen anderer italischer Sprachen
+894: Altaische, uralische, paläosibirische, drawidische Literaturen
+909: Weltgeschichte
+924: (Optionale Notation)
+939: Geschichte anderer Teile der Welt bis ca. 640
+954: Geschichte Südasiens; Indiens
+969: Geschichte der Inseln im südlichen Indischen Ozean
+984: Geschichte Boliviens: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:02,123 - root (32) - ERROR    - MainThread   - Error processing query Extract ONLY the document authors (NOT cited authors, references, or bibliography entries). Look specifically in: title page, document header, author block directly below the title. IGNORE: reference lists, citations in text, bibliography sections, footnotes, acknowledgments, 'References', 'Literaturverzeichnis'. If you see reference markers like [1], (2023), or 'et al.', those are NOT document authors. Format: Lastname, Firstname (comma-separated for multiple authors). If no clear document authors found on the first pages, return empty string.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:02,163 - root (32) - ERROR    - MainThread   - Error processing query : Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:02,169 - root (32) - ERROR    - MainThread   - Error processing query : Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:02,170 - root (32) - ERROR    - MainThread   - Error processing query : Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:02,213 - root (32) - ERROR    - MainThread   - Error processing query Generate 15 German keywords for library cataloging. Include: research field, main topics, methods, key concepts. Return as comma-separated list.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:02,263 - root (32) - ERROR    - MainThread   - Error processing query Extract ONLY the MAIN document title from the FIRST page. Rules: 1) Look for the LARGEST, most prominent text at the TOP of page 1. 2) This is usually above or near the author names. 3) IGNORE: section headings ('Einleitung', 'Abstract'), referenced titles in lists/agendas, figure captions, headers/footers, institution names. 4) Return ONLY ONE title as plain text. 5) NO lists like '1. Title A 2. Title B'. 6) NO prefix like 'Document title:'. 7) If title spans multiple lines, combine them. Example good output: 'Wissenschaftsgeleitetes Open-Access-Publizieren in Deutschland'. Example bad output: 'document titles: 1. Title A 2. Title B'.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:02,309 - root (32) - ERROR    - MainThread   - Error processing query What type of document is this? Answer with ONE of: Zeitschriftenartikel, Konferenzbeitrag, Forschungsbericht, Dissertation, Buchkapitel, Whitepaper, Technischer Bericht: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:02,349 - root (32) - ERROR    - MainThread   - Error processing query Look for 'Keywords', 'Schlüsselwörter', or 'Schlagwörter' section in the document. If found, extract ALL listed keywords. Otherwise, extract 10-15 key technical terms from the abstract and introduction. Focus on: domain terminology, methods, concepts. Avoid generic words. Return as comma-separated list.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:02,390 - root (32) - ERROR    - MainThread   - Error processing query Assign 10-15 controlled vocabulary keywords from library classification systems (GND, DDC concepts). Use broader, standardized terms suitable for bibliographic catalogs. Return as comma-separated list.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:02,438 - root (32) - ERROR    - MainThread   - Error processing query Summarize the document in maximum 3 sentences. Focus on: main topic, key findings or arguments. Write in German.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:02,478 - root (32) - ERROR    - MainThread   - Error processing query Analyze the content of the scientific paper 7328.pdf and identify the main research fields and topics. Which academic disciplines are covered? Name 3-5 main fields or research areas as keywords (e.g., "Informatik", "Molekularbiologie", "Erziehungswissenschaft", "Astrophysik", etc.). Consider the paper's abstract, introduction, and methodology. Respond only with the research fields, separated by commas. Answer must be in German.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:02,479 - root (157) - DEBUG    - MainThread   - Thematic areas identified: 
+2025-12-16 20:21:02,480 - root (32) - ERROR    - MainThread   - Error processing query Assign the document 7328.pdf to up to three suitable Dewey Decimal Classifications (DDC), ranked by relevance. Return the result as a JSON array, where each entry includes: "notation": the DDC classification number (as a string), "label": the classification label in German, "score": a floating-point number between 0.0 and 1.0 representing relevance. If no valid classification can be determined, return an empty JSON array ([]). Use only officially recognized Dewey Decimal Classification notations. Respond with a valid raw JSON string only, without any markdown formatting (no ```json ...), explanations, or commentary.
+
+Verfügbare Klassifikationen:
+000: Informatik, Information & Wissen, allgemeine Werke
+004: Informatik
+021: Beziehungen von Bibliotheken
+038: Enzyklopädien in skandinavischen Sprachen
+063: Organisationen in Deutschland; in Mitteleuropa
+078: Zeitungen in Skandinavien
+093: Inkunabeln
+109: Historische Behandlung, Behandlung mehrerer Einzelpersonen
+126: Das Selbst
+144: Humanismus und verwandte Systeme
+162: Deduktion
+179: Andere ethische Normen
+194: Philosophie in Frankreich
+209: Sekten, Reformbewegungen
+227: Briefe
+243: Evangelistisches Schrifttum für Einzelpersonen
+263: Heilige Tage, Zeiten und Orte
+278: Geschichte des Christentums in Südamerika
+295: Parsismus
+315: Allgemeine Statistiken zu Asien
+331: Arbeitsökonomie
+346: Privatrecht
+361: Soziale Probleme und Sozialhilfe im Allgemeinen
+378: Hochschulbildung
+393: Sterbe- und Bestattungsriten
+410: Linguistik
+428: Gebrauch des Standard-Englisch
+447: Varianten des Französischen
+465: Spanische Grammatik
+483: Wörterbücher des klassischen Griechisch
+500: Naturwissenschaften und Mathematik
+516: Geometrie
+533: Gasmechanik
+550: Geowissenschaften
+565: Fossile Arthropoden (Gliederfüßer)
+581: Einzelne Themen in der Naturgeschichte
+597: Wechselwarme Wirbeltiere; Pisces (Fische)
+612: Humanphysiologie
+629: Andere Fachrichtungen der Ingenieurwissenschaften
+644: Gebäudeversorgung für Haushalte
+662: Explosivstoffe, Brennstoffe und verwandte Produkte
+677: Textilien
+693: Einzelne Baustoffarten und Zwecke
+709: Historische, geografische, personenbezogene Behandlung der bildenden und angewandten Kunst
+724: Architektur ab 1400
+739: Metallkunst
+755: Religion
+772: Entwicklungsverfahren mit Metallsalzen
+788: Blasinstrumente
+803: Wörterbücher, Enzyklopädien
+819: (Optionale Notation)
+834: Deutsche Essays
+849: Okzitanische, katalanische Literaturen
+864: Spanische Essays
+879: Literaturen anderer italischer Sprachen
+894: Altaische, uralische, paläosibirische, drawidische Literaturen
+909: Weltgeschichte
+924: (Optionale Notation)
+939: Geschichte anderer Teile der Welt bis ca. 640
+954: Geschichte Südasiens; Indiens
+969: Geschichte der Inseln im südlichen Indischen Ozean
+984: Geschichte Boliviens: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:02,541 - root (32) - ERROR    - MainThread   - Error processing query Extract ONLY the document authors (NOT cited authors, references, or bibliography entries). Look specifically in: title page, document header, author block directly below the title. IGNORE: reference lists, citations in text, bibliography sections, footnotes, acknowledgments, 'References', 'Literaturverzeichnis'. If you see reference markers like [1], (2023), or 'et al.', those are NOT document authors. Format: Lastname, Firstname (comma-separated for multiple authors). If no clear document authors found on the first pages, return empty string.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:02,585 - root (32) - ERROR    - MainThread   - Error processing query : Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:02,590 - root (32) - ERROR    - MainThread   - Error processing query : Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:02,591 - root (32) - ERROR    - MainThread   - Error processing query : Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:02,635 - root (32) - ERROR    - MainThread   - Error processing query Generate 15 German keywords for library cataloging. Include: research field, main topics, methods, key concepts. Return as comma-separated list.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:02,682 - root (32) - ERROR    - MainThread   - Error processing query Extract ONLY the MAIN document title from the FIRST page. Rules: 1) Look for the LARGEST, most prominent text at the TOP of page 1. 2) This is usually above or near the author names. 3) IGNORE: section headings ('Einleitung', 'Abstract'), referenced titles in lists/agendas, figure captions, headers/footers, institution names. 4) Return ONLY ONE title as plain text. 5) NO lists like '1. Title A 2. Title B'. 6) NO prefix like 'Document title:'. 7) If title spans multiple lines, combine them. Example good output: 'Wissenschaftsgeleitetes Open-Access-Publizieren in Deutschland'. Example bad output: 'document titles: 1. Title A 2. Title B'.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:02,726 - root (32) - ERROR    - MainThread   - Error processing query What type of document is this? Answer with ONE of: Zeitschriftenartikel, Konferenzbeitrag, Forschungsbericht, Dissertation, Buchkapitel, Whitepaper, Technischer Bericht: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+2025-12-16 20:21:02,772 - root (32) - ERROR    - MainThread   - Error processing query Look for 'Keywords', 'Schlüsselwörter', or 'Schlagwörter' section in the document. If found, extract ALL listed keywords. Otherwise, extract 10-15 key technical terms from the abstract and introduction. Focus on: domain terminology, methods, concepts. Avoid generic words. Return as comma-separated list.: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download

@@ -1,0 +1,73 @@
+2025-12-16 20:02:44,335 - root (184) - INFO     - MainThread   - Logging to: /media/sz/Data/Veits_pdfs/Data_aggregation/cl-pipeline/run/pipelines/arbeitsbasis/logs/full_2025-12-16_20-02-44.log
+2025-12-16 20:02:44,335 - root (53) - INFO     - MainThread   - Starting pipeline
+2025-12-16 20:02:44,335 - root (54) - INFO     - MainThread   - Config file: pipelines/arbeitsbasis/config/full.yaml
+2025-12-16 20:02:44,862 - root (156) - DEBUG    - MainThread   - Import BaseModel to globals()
+2025-12-16 20:02:44,862 - root (156) - DEBUG    - MainThread   - Import Name to globals()
+2025-12-16 20:02:44,862 - root (156) - DEBUG    - MainThread   - Import NameChecker to globals()
+2025-12-16 20:02:44,862 - root (156) - DEBUG    - MainThread   - Import OllamaLLM to globals()
+2025-12-16 20:02:44,862 - root (156) - DEBUG    - MainThread   - Import PromptTemplate to globals()
+2025-12-16 20:02:44,863 - root (156) - DEBUG    - MainThread   - Import ProvideDataFolders to globals()
+2025-12-16 20:02:45,136 - root (156) - DEBUG    - MainThread   - Import Document to globals()
+2025-12-16 20:02:45,136 - root (156) - DEBUG    - MainThread   - Import ExtractFileContent to globals()
+2025-12-16 20:02:45,136 - root (156) - DEBUG    - MainThread   - Import PyMuPDFLoader to globals()
+2025-12-16 20:02:45,136 - root (156) - DEBUG    - MainThread   - Import UnstructuredExcelLoader to globals()
+2025-12-16 20:02:45,136 - root (156) - DEBUG    - MainThread   - Import UnstructuredMarkdownLoader to globals()
+2025-12-16 20:02:45,136 - root (156) - DEBUG    - MainThread   - Import UnstructuredPowerPointLoader to globals()
+2025-12-16 20:02:45,136 - root (156) - DEBUG    - MainThread   - Import UnstructuredWordDocumentLoader to globals()
+2025-12-16 20:02:45,136 - root (156) - DEBUG    - MainThread   - Import tqdm to globals()
+2025-12-16 20:02:45,137 - root (156) - DEBUG    - MainThread   - Import FilterFilesByContent to globals()
+2025-12-16 20:02:45,434 - root (156) - DEBUG    - MainThread   - Import MetaDataExtraction to globals()
+2025-12-16 20:02:45,434 - root (156) - DEBUG    - MainThread   - Import datetime to globals()
+2025-12-16 20:02:45,434 - root (156) - DEBUG    - MainThread   - Import mdMetaExtractor to globals()
+2025-12-16 20:02:45,434 - root (156) - DEBUG    - MainThread   - Import officeMetaExtractor to globals()
+2025-12-16 20:02:45,434 - root (156) - DEBUG    - MainThread   - Import pdfMetaExtractor to globals()
+2025-12-16 20:02:45,434 - root (156) - DEBUG    - MainThread   - Import xlsxMetaExtractor to globals()
+2025-12-16 20:02:46,906 - root (156) - DEBUG    - MainThread   - Import GNDKeywordCheck to globals()
+2025-12-16 20:02:46,921 - root (156) - DEBUG    - MainThread   - Import PromptManager to globals()
+2025-12-16 20:02:46,921 - root (156) - DEBUG    - MainThread   - Import WikidataKeywordCheck to globals()
+2025-12-16 20:02:49,151 - root (156) - DEBUG    - MainThread   - Import Counter to globals()
+2025-12-16 20:02:49,151 - root (156) - DEBUG    - MainThread   - Import DocumentSimilarity to globals()
+2025-12-16 20:02:49,151 - root (156) - DEBUG    - MainThread   - Import OllamaEmbeddings to globals()
+2025-12-16 20:02:49,151 - root (156) - DEBUG    - MainThread   - Import SentenceTransformer to globals()
+2025-12-16 20:02:49,238 - root (156) - DEBUG    - MainThread   - Import AIEmbeddingsGeneration to globals()
+2025-12-16 20:02:49,238 - root (156) - DEBUG    - MainThread   - Import DirectoryLoader to globals()
+2025-12-16 20:02:49,238 - root (156) - DEBUG    - MainThread   - Import HuggingFaceEmbeddings to globals()
+2025-12-16 20:02:49,238 - root (156) - DEBUG    - MainThread   - Import Ollama to globals()
+2025-12-16 20:02:49,238 - root (156) - DEBUG    - MainThread   - Import RecursiveCharacterTextSplitter to globals()
+2025-12-16 20:02:49,239 - root (156) - DEBUG    - MainThread   - Import CollectOPALOERdocuments to globals()
+2025-12-16 20:02:49,240 - root (156) - DEBUG    - MainThread   - Import DownloadOERFromOPAL to globals()
+2025-12-16 20:02:49,244 - root (156) - DEBUG    - MainThread   - Import AIMetaDataExtraction to globals()
+2025-12-16 20:02:49,244 - root (156) - DEBUG    - MainThread   - Import AffiliationProcessor to globals()
+2025-12-16 20:02:49,244 - root (156) - DEBUG    - MainThread   - Import Chroma to globals()
+2025-12-16 20:02:49,244 - root (156) - DEBUG    - MainThread   - Import DeweyClassifier to globals()
+2025-12-16 20:02:49,244 - root (156) - DEBUG    - MainThread   - Import DocumentProcessor to globals()
+2025-12-16 20:02:49,244 - root (156) - DEBUG    - MainThread   - Import KeywordExtractor to globals()
+2025-12-16 20:02:49,244 - root (156) - DEBUG    - MainThread   - Import LLMInterface to globals()
+2025-12-16 20:02:49,244 - root (156) - DEBUG    - MainThread   - Import ProcessingConfigManager to globals()
+2025-12-16 20:02:49,244 - root (156) - DEBUG    - MainThread   - Import SummaryProcessor to globals()
+2025-12-16 20:02:49,245 - root (156) - DEBUG    - MainThread   - Import Preprocessing to globals()
+2025-12-16 20:02:54,132 - lobid_keywordCheck (361) - INFO     - MainThread   - ✓ Ollama LLM (gemma3:27b) für Schlagwortauswahl erfolgreich initialisiert und getestet
+2025-12-16 20:02:54,132 - root (26) - INFO     - MainThread   - Stage Extract PDF metadata from files (MetaDataExtraction) started
+2025-12-16 20:02:54,133 - root (70) - DEBUG    - MainThread   - Input file at /media/sz/Data/Veits_pdfs/data_pipeline/arbeitsbasis/raw/LOCAL_files_base.p exists.
+2025-12-16 20:02:54,145 - root (109) - INFO     - MainThread   - Input files are present but have not changed.
+2025-12-16 20:02:54,146 - root (28) - INFO     - MainThread   - Stage Extract PDF metadata from files (MetaDataExtraction) finished
+2025-12-16 20:02:54,146 - root (26) - INFO     - MainThread   - Stage Extract content from local PDFs (ExtractFileContent) started
+2025-12-16 20:02:54,146 - root (70) - DEBUG    - MainThread   - Input file at /media/sz/Data/Veits_pdfs/data_pipeline/arbeitsbasis/raw/LOCAL_files_base.p exists.
+2025-12-16 20:02:54,156 - root (109) - INFO     - MainThread   - Input files are present but have not changed.
+2025-12-16 20:02:54,157 - root (28) - INFO     - MainThread   - Stage Extract content from local PDFs (ExtractFileContent) finished
+2025-12-16 20:02:54,157 - root (26) - INFO     - MainThread   - Stage Filter file list by content data (FilterFilesByContent) started
+2025-12-16 20:02:54,157 - root (70) - DEBUG    - MainThread   - Input file at /media/sz/Data/Veits_pdfs/data_pipeline/arbeitsbasis/raw/LOCAL_files_base.p exists.
+2025-12-16 20:02:54,162 - root (109) - INFO     - MainThread   - Input files are present but have not changed.
+2025-12-16 20:02:54,162 - root (28) - INFO     - MainThread   - Stage Filter file list by content data (FilterFilesByContent) finished
+2025-12-16 20:02:54,162 - root (26) - INFO     - MainThread   - Stage Generate embeddings (AIEmbeddingsGeneration) started
+2025-12-16 20:02:54,163 - root (70) - DEBUG    - MainThread   - Input file at /media/sz/Data/Veits_pdfs/data_pipeline/arbeitsbasis/raw/LOCAL_files_filtered.p exists.
+2025-12-16 20:02:54,167 - root (109) - INFO     - MainThread   - Input files are present but have not changed.
+2025-12-16 20:02:54,167 - root (28) - INFO     - MainThread   - Stage Generate embeddings (AIEmbeddingsGeneration) finished
+2025-12-16 20:02:54,167 - root (26) - INFO     - MainThread   - Stage Extract metadata with AI (AIMetaDataExtraction) started
+2025-12-16 20:02:54,167 - root (70) - DEBUG    - MainThread   - Input file at /media/sz/Data/Veits_pdfs/data_pipeline/arbeitsbasis/raw/LOCAL_files_filtered.p exists.
+2025-12-16 20:02:54,172 - root (105) - INFO     - MainThread   - Forcing task to run.
+2025-12-16 20:02:54,172 - root (106) - INFO     - MainThread   - Input files for task have changed. Running task.
+2025-12-16 20:02:54,193 - root (433) - INFO     - MainThread   - Loaded existing metadata: 1319 documents already processed
+2025-12-16 20:02:54,248 - chromadb.telemetry.product.posthog (22) - INFO     - MainThread   - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2025-12-16 20:02:54,297 - chromadb.config (359) - DEBUG    - MainThread   - Starting component System
+2025-12-16 20:02:54,298 - chromadb.config (359) - DEBUG    - MainThread   - Starting component Posthog

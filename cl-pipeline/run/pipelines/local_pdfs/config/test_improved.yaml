@@ -1,0 +1,139 @@
+# Pipeline Configuration for Local PDF Collection - TEST SUBSET
+# Tests improved prompts on 50 documents
+# Based on full.yaml with test-specific modifications
+
+# Defining data folder structure
+folder_structure:
+  data_root_folder: &BASE /media/sz/Data/Veits_pdfs/data_pipeline/local_pdfs
+  raw_data_folder: &RAW !join [*BASE, /raw]
+  file_folder: &FILE_FOLDER !join [*RAW, /files]
+  content_folder: &CONTENT_FOLDER !join [*RAW, /content]
+  processed_data_folder: &PREPROCESSED !join [*BASE, /processed]
+
+# Global LLM Configuration (can be overridden in individual stages)
+global_llm_config: &LLM_CONFIG
+  base_url: "http://localhost:11434"
+  embedding_model: "jina/jina-embeddings-v2-base-de"
+  collection_name: "local_pdfs_test_collection"  # Separate test collection
+  timeout_seconds: 240
+  chroma_db_folder: "chroma_db_local_test"  # Separate test ChromaDB
+
+# Global Logging Configuration
+logging:
+  configure_root_logger: false
+  root_level: "ERROR"
+  pipeline_level: "INFO"
+
+  external_loggers:
+    httpcore: "CRITICAL"
+    "httpcore.http11": "CRITICAL"
+    httpx: "CRITICAL"
+    urllib3: "CRITICAL"
+    "urllib3.connectionpool": "CRITICAL"
+    requests: "CRITICAL"
+    langchain: "WARNING"
+    langchain_ollama: "WARNING"
+    "langchain_text_splitters.base": "ERROR"
+    ollama: "WARNING"
+    PIL: "WARNING"
+    "PIL.PngImagePlugin": "WARNING"
+    "unstructured.trace": "CRITICAL"
+
+# Referencing the modules containing classes
+stages_module_path:
+    - ../stages/general/
+    - ../stages/opal/
+
+# Defining stages and parameters
+stages:
+  # Stage 1: Extract PDF metadata (embedded in files)
+  - name: Extract PDF metadata from files
+    class: MetaDataExtraction
+    parameters:
+      file_name_input: &LOCALBASE LOCAL_files_base_test.p
+      file_name_output: &LOCALMETA LOCAL_files_meta_test.p
+      file_types: ['pdf']
+      force_run: False
+
+  # Stage 2: Extract content from PDFs
+  - name: Extract content from local PDFs
+    class: ExtractFileContent
+    parameters:
+      file_name_input: *LOCALBASE
+      file_name_output: &LOCALCONTENT LOCAL_content_test.p
+      force_run: False  # Kann gecacht werden
+      file_types: ['pdf']
+
+  # Stage 3: Filter files by content quality
+  - name: Filter file list by content data
+    class: FilterFilesByContent
+    parameters:
+      file_name_input: *LOCALBASE
+      file_content: *LOCALCONTENT
+      file_name_output: &LOCALFILTERED LOCAL_files_filtered_test.p
+      force_run: False
+
+  # Stage 4: Generate embeddings for RAG
+  - name: Generate embeddings
+    class: AIEmbeddingsGeneration
+    parameters:
+      file_name_input: *LOCALFILTERED
+      file_name_output: &LOCALEMBEDDINGS LOCAL_embeddings_files_test.p
+      force_run: False  # Kann gecacht werden
+      file_types: ['pdf']
+
+      # LLM and Vector Store Configuration
+      llm_config: *LLM_CONFIG
+
+  # Stage 5: AI-based metadata extraction (IMPROVED PROMPTS)
+  - name: Extract metadata with AI
+    class: AIMetaDataExtraction
+    parameters:
+      file_name_input: *LOCALFILTERED
+      file_name_output: &LOCALAIMETA LOCAL_ai_meta_test.p
+      prompts_file_name: pipelines/local_pdfs/prompts/prompts_scientific_papers.yaml  # IMPROVED PROMPTS
+      dewey_classification_file: pipelines/shared/dewey_classification.txt
+      model_name: llama3:70b
+      force_run: True  # WICHTIG: Immer neu verarbeiten für Test
+      file_types: ['pdf']
+
+      # LLM and Vector Store Configuration
+      llm_config: *LLM_CONFIG
+
+      # Retrieval configuration
+      max_retrieval_chunks: 10  # Wie in full.yaml
+
+      # Retrieval strategy
+      retrieval_strategy: "all"  # Wie in full.yaml (field-specific overrides in code)
+
+      # Processing mode configuration
+      processing_mode:
+        # Force processing: ALLE relevanten Felder neu verarbeiten (Test!)
+        force_processing:
+          - ai:title         # Teste verbesserten Titel-Prompt!
+          - ai:author        # Teste verbesserten Autoren-Prompt
+          - ai:keywords_ext  # Teste Keyword-Extraktion
+          - ai:keywords_gen  # Teste Keyword-Generierung
+          - ai:keywords_dnb  # Teste kontrolliertes Vokabular
+
+        # Conditional processing: Rest nur wenn leer
+        conditional_processing:
+          - ai:affiliation
+          - ai:type
+          - ai:summary
+          - ai:dewey
+
+        # Skip configuration
+        allow_skip_when_all_conditional_filled: false  # Verarbeite alle für Test
+
+  # Stage 6: Validate keywords against GND
+  - name: Check and enrich keywords with GND
+    class: GNDKeywordCheck
+    parameters:
+      file_name_input: *LOCALAIMETA
+      file_name_output: &LOCALKEYWORDS LOCAL_checked_keywords_test.p
+      force_run: True  # Immer für Test
+      use_llm: true
+      llm_model: "gemma3:27b"
+      use_full_keyword_context: true
+      use_document_metadata: true

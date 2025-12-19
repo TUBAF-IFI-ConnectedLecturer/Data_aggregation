@@ -1,0 +1,70 @@
+2025-12-14 11:20:41,706 - root (184) - INFO     - MainThread   - Logging to: /media/sz/Data/Veits_pdfs/Data_aggregation/cl-pipeline/run/pipelines/arbeitsbasis/logs/full_2025-12-14_11-20-41.log
+2025-12-14 11:20:41,706 - root (53) - INFO     - MainThread   - Starting pipeline
+2025-12-14 11:20:41,706 - root (54) - INFO     - MainThread   - Config file: pipelines/arbeitsbasis/config/full.yaml
+2025-12-14 11:20:42,417 - root (156) - DEBUG    - MainThread   - Import BaseModel to globals()
+2025-12-14 11:20:42,417 - root (156) - DEBUG    - MainThread   - Import Name to globals()
+2025-12-14 11:20:42,417 - root (156) - DEBUG    - MainThread   - Import NameChecker to globals()
+2025-12-14 11:20:42,418 - root (156) - DEBUG    - MainThread   - Import OllamaLLM to globals()
+2025-12-14 11:20:42,418 - root (156) - DEBUG    - MainThread   - Import PromptTemplate to globals()
+2025-12-14 11:20:42,418 - root (156) - DEBUG    - MainThread   - Import ProvideDataFolders to globals()
+2025-12-14 11:20:42,745 - root (156) - DEBUG    - MainThread   - Import Document to globals()
+2025-12-14 11:20:42,745 - root (156) - DEBUG    - MainThread   - Import ExtractFileContent to globals()
+2025-12-14 11:20:42,746 - root (156) - DEBUG    - MainThread   - Import PyMuPDFLoader to globals()
+2025-12-14 11:20:42,746 - root (156) - DEBUG    - MainThread   - Import UnstructuredExcelLoader to globals()
+2025-12-14 11:20:42,746 - root (156) - DEBUG    - MainThread   - Import UnstructuredMarkdownLoader to globals()
+2025-12-14 11:20:42,746 - root (156) - DEBUG    - MainThread   - Import UnstructuredPowerPointLoader to globals()
+2025-12-14 11:20:42,746 - root (156) - DEBUG    - MainThread   - Import UnstructuredWordDocumentLoader to globals()
+2025-12-14 11:20:42,746 - root (156) - DEBUG    - MainThread   - Import tqdm to globals()
+2025-12-14 11:20:42,746 - root (156) - DEBUG    - MainThread   - Import FilterFilesByContent to globals()
+2025-12-14 11:20:43,110 - root (156) - DEBUG    - MainThread   - Import MetaDataExtraction to globals()
+2025-12-14 11:20:43,110 - root (156) - DEBUG    - MainThread   - Import datetime to globals()
+2025-12-14 11:20:43,111 - root (156) - DEBUG    - MainThread   - Import mdMetaExtractor to globals()
+2025-12-14 11:20:43,111 - root (156) - DEBUG    - MainThread   - Import officeMetaExtractor to globals()
+2025-12-14 11:20:43,111 - root (156) - DEBUG    - MainThread   - Import pdfMetaExtractor to globals()
+2025-12-14 11:20:43,111 - root (156) - DEBUG    - MainThread   - Import xlsxMetaExtractor to globals()
+2025-12-14 11:20:45,138 - root (156) - DEBUG    - MainThread   - Import GNDKeywordCheck to globals()
+2025-12-14 11:20:45,163 - root (156) - DEBUG    - MainThread   - Import PromptManager to globals()
+2025-12-14 11:20:45,163 - root (156) - DEBUG    - MainThread   - Import WikidataKeywordCheck to globals()
+2025-12-14 11:20:48,408 - root (156) - DEBUG    - MainThread   - Import Counter to globals()
+2025-12-14 11:20:48,408 - root (156) - DEBUG    - MainThread   - Import DocumentSimilarity to globals()
+2025-12-14 11:20:48,408 - root (156) - DEBUG    - MainThread   - Import OllamaEmbeddings to globals()
+2025-12-14 11:20:48,408 - root (156) - DEBUG    - MainThread   - Import SentenceTransformer to globals()
+2025-12-14 11:20:48,539 - root (156) - DEBUG    - MainThread   - Import AIEmbeddingsGeneration to globals()
+2025-12-14 11:20:48,539 - root (156) - DEBUG    - MainThread   - Import DirectoryLoader to globals()
+2025-12-14 11:20:48,539 - root (156) - DEBUG    - MainThread   - Import HuggingFaceEmbeddings to globals()
+2025-12-14 11:20:48,539 - root (156) - DEBUG    - MainThread   - Import Ollama to globals()
+2025-12-14 11:20:48,539 - root (156) - DEBUG    - MainThread   - Import RecursiveCharacterTextSplitter to globals()
+2025-12-14 11:20:48,540 - root (156) - DEBUG    - MainThread   - Import CollectOPALOERdocuments to globals()
+2025-12-14 11:20:48,541 - root (156) - DEBUG    - MainThread   - Import DownloadOERFromOPAL to globals()
+2025-12-14 11:20:48,547 - root (156) - DEBUG    - MainThread   - Import AIMetaDataExtraction to globals()
+2025-12-14 11:20:48,547 - root (156) - DEBUG    - MainThread   - Import AffiliationProcessor to globals()
+2025-12-14 11:20:48,547 - root (156) - DEBUG    - MainThread   - Import Chroma to globals()
+2025-12-14 11:20:48,547 - root (156) - DEBUG    - MainThread   - Import DeweyClassifier to globals()
+2025-12-14 11:20:48,547 - root (156) - DEBUG    - MainThread   - Import DocumentProcessor to globals()
+2025-12-14 11:20:48,547 - root (156) - DEBUG    - MainThread   - Import KeywordExtractor to globals()
+2025-12-14 11:20:48,547 - root (156) - DEBUG    - MainThread   - Import LLMInterface to globals()
+2025-12-14 11:20:48,547 - root (156) - DEBUG    - MainThread   - Import ProcessingConfigManager to globals()
+2025-12-14 11:20:48,547 - root (156) - DEBUG    - MainThread   - Import SummaryProcessor to globals()
+2025-12-14 11:20:48,548 - root (156) - DEBUG    - MainThread   - Import Preprocessing to globals()
+2025-12-14 11:20:48,660 - lobid_keywordCheck (351) - INFO     - MainThread   - Ollama LLM für Schlagwortauswahl erfolgreich initialisiert
+2025-12-14 11:20:48,661 - root (26) - INFO     - MainThread   - Stage Extract PDF metadata from files (MetaDataExtraction) started
+2025-12-14 11:20:48,661 - root (70) - DEBUG    - MainThread   - Input file at /media/sz/Data/Veits_pdfs/data_pipeline/arbeitsbasis/raw/LOCAL_files_base.p exists.
+2025-12-14 11:20:48,665 - root (106) - INFO     - MainThread   - Input files for task have changed. Running task.
+2025-12-14 11:22:44,774 - root (28) - INFO     - MainThread   - Stage Extract PDF metadata from files (MetaDataExtraction) finished
+2025-12-14 11:22:44,774 - root (26) - INFO     - MainThread   - Stage Extract content from local PDFs (ExtractFileContent) started
+2025-12-14 11:22:44,775 - root (70) - DEBUG    - MainThread   - Input file at /media/sz/Data/Veits_pdfs/data_pipeline/arbeitsbasis/raw/LOCAL_files_base.p exists.
+2025-12-14 11:22:44,778 - root (109) - INFO     - MainThread   - Input files are present but have not changed.
+2025-12-14 11:22:44,778 - root (28) - INFO     - MainThread   - Stage Extract content from local PDFs (ExtractFileContent) finished
+2025-12-14 11:22:44,778 - root (26) - INFO     - MainThread   - Stage Filter file list by content data (FilterFilesByContent) started
+2025-12-14 11:22:44,778 - root (70) - DEBUG    - MainThread   - Input file at /media/sz/Data/Veits_pdfs/data_pipeline/arbeitsbasis/raw/LOCAL_files_base.p exists.
+2025-12-14 11:22:44,781 - root (109) - INFO     - MainThread   - Input files are present but have not changed.
+2025-12-14 11:22:44,781 - root (28) - INFO     - MainThread   - Stage Filter file list by content data (FilterFilesByContent) finished
+2025-12-14 11:22:44,781 - root (26) - INFO     - MainThread   - Stage Generate embeddings (AIEmbeddingsGeneration) started
+2025-12-14 11:22:44,782 - root (112) - ERROR    - MainThread   - Input files are missing!
+2025-12-14 11:22:44,782 - root (28) - INFO     - MainThread   - Stage Generate embeddings (AIEmbeddingsGeneration) finished
+2025-12-14 11:22:44,782 - root (26) - INFO     - MainThread   - Stage Extract metadata with AI (AIMetaDataExtraction) started
+2025-12-14 11:22:44,782 - root (112) - ERROR    - MainThread   - Input files are missing!
+2025-12-14 11:22:44,782 - root (28) - INFO     - MainThread   - Stage Extract metadata with AI (AIMetaDataExtraction) finished
+2025-12-14 11:22:44,782 - root (26) - INFO     - MainThread   - Stage Check and enrich keywords with GND (GNDKeywordCheck) started
+2025-12-14 11:22:44,782 - root (112) - ERROR    - MainThread   - Input files are missing!
+2025-12-14 11:22:44,782 - root (28) - INFO     - MainThread   - Stage Check and enrich keywords with GND (GNDKeywordCheck) finished

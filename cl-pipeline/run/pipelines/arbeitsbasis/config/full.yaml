@@ -1,0 +1,161 @@
+# Pipeline Configuration for Arbeitsbasis Collection
+# This configuration processes the Arbeitsbasis collection (6732 PDFs from 18 journals)
+
+# Defining data folder structure
+folder_structure:
+  data_root_folder: &BASE /media/sz/Data/Veits_pdfs/data_pipeline/arbeitsbasis
+  raw_data_folder: &RAW !join [*BASE, /raw]
+  file_folder: &FILE_FOLDER !join [*RAW, /files]
+  content_folder: &CONTENT_FOLDER !join [*RAW, /content]
+  processed_data_folder: &PREPROCESSED !join [*BASE, /processed]
+
+# Global LLM Configuration (can be overridden in individual stages)
+global_llm_config: &LLM_CONFIG
+  base_url: "http://localhost:11434"
+  embedding_model: "jina/jina-embeddings-v2-base-de"
+  collection_name: "arbeitsbasis_collection"
+  timeout_seconds: 240
+  chroma_db_folder: "chroma_db_arbeitsbasis"  # ChromaDB database folder
+
+# Global Logging Configuration
+logging:
+  configure_root_logger: false  # Whether to configure the root logger
+  root_level: "ERROR"          # Level for root logger (if enabled)
+  pipeline_level: "INFO"       # Level for pipeline-specific loggers
+
+  # External logger configuration (overrides default values)
+  external_loggers:
+    # HTTP and network - set to CRITICAL for less noise
+    httpcore: "CRITICAL"
+    "httpcore.http11": "CRITICAL"
+    httpx: "CRITICAL"
+    urllib3: "CRITICAL"
+    "urllib3.connectionpool": "CRITICAL"
+    requests: "CRITICAL"
+
+    # LangChain and AI - set to WARNING for important messages
+    langchain: "WARNING"
+    langchain_ollama: "WARNING"
+    "langchain_text_splitters.base": "ERROR"
+    ollama: "WARNING"
+
+    # Image processing - set to WARNING
+    PIL: "WARNING"
+    "PIL.PngImagePlugin": "WARNING"
+
+    # Unstructured - set to CRITICAL for less noise
+    "unstructured.trace": "CRITICAL"
+
+# Referencing the modules containing classes
+stages_module_path:
+    - ../stages/general/
+    - ../stages/opal/
+
+# Defining stages and parameters
+stages:
+  # Stage 1: Extract PDF metadata (embedded in files)
+  - name: Extract PDF metadata from files
+    class: MetaDataExtraction
+    parameters:
+      file_name_input: &LOCALBASE LOCAL_files_base.p
+      file_name_output: &LOCALMETA LOCAL_files_meta.p
+      file_types: ['pdf']
+      force_run: False
+
+  # Stage 2: Extract content from PDFs
+  - name: Extract content from local PDFs
+    class: ExtractFileContent
+    parameters:
+      file_name_input: *LOCALBASE
+      file_name_output: &LOCALCONTENT LOCAL_content.p
+      force_run: False  # Process new files
+      file_types: ['pdf']
+
+  # Stage 3: Filter files by content quality
+  - name: Filter file list by content data
+    class: FilterFilesByContent
+    parameters:
+      file_name_input: *LOCALBASE
+      file_content: *LOCALCONTENT
+      file_name_output: &LOCALFILTERED LOCAL_files_filtered.p
+      force_run: False  # Process new files
+
+  # Stage 4: Generate embeddings for RAG
+  - name: Generate embeddings
+    class: AIEmbeddingsGeneration
+    parameters:
+      file_name_input: *LOCALFILTERED
+      file_name_output: &LOCALEMBEDDINGS LOCAL_embeddings_files.p
+      force_run: False  # Process new files
+      file_types: ['pdf']
+
+      # LLM and Vector Store Configuration
+      llm_config: *LLM_CONFIG
+
+  # Stage 5: AI-based metadata extraction
+  - name: Extract metadata with AI
+    class: AIMetaDataExtraction
+    parameters:
+      file_name_input: *LOCALFILTERED
+      file_name_output: &LOCALAIMETA LOCAL_ai_meta.p
+      prompts_file_name: pipelines/local_pdfs/prompts/prompts_scientific_papers.yaml  # Optimized prompts for research papers
+      dewey_classification_file: pipelines/shared/dewey_classification.txt
+      model_name: llama3:70b
+      force_run: True  # TEMPORÄR auf True gesetzt um neue PDFs zu verarbeiten
+      file_types: ['pdf']
+
+      # LLM and Vector Store Configuration
+      llm_config: *LLM_CONFIG
+
+      # Retrieval configuration
+      # Limit number of chunks retrieved for LLM context to reduce hallucinations
+      # Lower values = more precise metadata extraction (especially for author, title)
+      # Higher values = better for content analysis (summary, keywords)
+      # Default: None (use all available chunks)
+      max_retrieval_chunks: 10
+
+      # Retrieval strategy: Determines which chunks are selected for LLM context
+      # Options:
+      #   "all" (default): Use first N chunks from document (backwards compatible)
+      #   "first_and_last_pages": Prioritize chunks from first and last pages
+      #                           Useful for documents with metadata on title page and author info on last page
+      #   "first_pages_only": Use only chunks from first 1-2 pages
+      #                       Optimal for metadata extraction when all info is on title page
+      # Default: "all"
+      retrieval_strategy: "all"
+
+      # Processing mode configuration
+      processing_mode:
+        # Force processing: These fields are ALWAYS processed (overwrite existing data)
+        # WICHTIG: Leere Liste für Checkpoint-Funktion! Sonst werden alle Dokumente neu verarbeitet!
+        force_processing: []    # Empty list = use checkpoints, skip already processed documents
+
+        # Conditional processing: These fields are only processed if empty/missing
+        conditional_processing:
+          - ai:author
+          - ai:affiliation
+          - ai:keywords_gen
+          - ai:title
+          - ai:type
+          - ai:keywords_ext
+          - ai:keywords_dnb
+          - ai:summary
+          - ai:dewey
+
+        # Skip configuration: Skip file if it has been analyzed (any AI field exists)
+        # TRUE = überspringt Dokumente die bereits analysiert wurden (auch mit Lücken!)
+        allow_skip_when_all_conditional_filled: true
+        skip_if_any_field_exists: true  # NEW: Skip if ANY AI field exists (not all)
+
+  # Stage 6: Validate keywords against GND (German National Library)
+  - name: Check and enrich keywords with GND
+    class: GNDKeywordCheck
+    parameters:
+      file_name_input: *LOCALAIMETA
+      file_name_output: &LOCALKEYWORDS LOCAL_checked_keywords.p
+      force_run: True
+      use_llm: true         # KI-basierte Schlagwortauswahl aktivieren
+      llm_model: "gemma3:27b"  # Ollama-Modell für Schlagwortauswahl
+      use_full_keyword_context: true  # Alle Keywords eines Dokuments als Kontext verwenden
+      use_document_metadata: true     # Zusätzliche Dokumentmetadaten als Kontext einbeziehen
+

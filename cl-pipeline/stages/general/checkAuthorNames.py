@@ -2,15 +2,38 @@ from langchain_ollama import OllamaLLM
 from langchain.prompts import PromptTemplate
 from pydantic import BaseModel
 from typing import Optional
+import re
 
 class Name(BaseModel):
     Vorname: Optional[str] = None
     Familienname: Optional[str] = None
     Titel: Optional[str] = None
 
-black_list = ["Ich kann ", "Name", "name", "Vorname", "vorname", "Prof", "Dr", 
-              "Kein Hinweis", "home", "unknown", "None", "nicht ", "keiner", "kein"
-              "?", "!", "keine "]
+black_list = ["Ich kann ", "Name", "name", "Vorname", "vorname", "Prof", "Dr",
+              "Kein Hinweis", "home", "unknown", "None", "nicht ", "keiner", "kein",
+              "?", "!", "keine ", "anwender", "user", "nan", "null", "undefined"]
+
+# Institutional keywords for identifying organizations vs. persons
+institutional_keywords = [
+    # Universitäten & Hochschulen
+    "universität", "university", "hochschule", "college",
+    # TU/FH Prefix (with space to avoid false positives)
+    "tu ", "fh ", "rwth", "kit ",
+    # Organisationen
+    "institut", "institute", "zentrum", "center", "centre",
+    "gesellschaft", "verband", "association", "foundation", "stiftung",
+    # Abteilungen
+    "medienzentrum", "fakultät", "department", "fachbereich", "lehrstuhl",
+    "chair", "arbeitsgruppe", "forschungsgruppe",
+    # Firmen
+    "gmbh", "ag ", "inc", "ltd", "llc", "corporation", "corp",
+    # Regierung & Verwaltung
+    "ministerium", "ministry", "behörde", "agency", "amt",
+    # Bibliotheken & Archive
+    "bibliothek", "library", "archiv", "archive",
+    # Andere
+    "verlag", "publisher", "redaktion"
+]
 
 class NameChecker():
     def __init__(self):
@@ -33,6 +56,7 @@ class NameChecker():
                 6. Include compound last names (e.g., "von Goethe", "van der Meer") completely in the LAST_NAME field.
                 7. For hyphenated names (e.g., "Hans-Peter", "Müller-Schmidt"), keep them together in their respective fields.
                 8. If a component is missing (e.g., no title), leave that field empty.
+                9. **CRITICAL FOR SINGLE NAMES**: If only ONE word is given (e.g., "Hillenkötter", "Blumensberger"), treat it as a LAST_NAME and leave FIRST_NAME empty. Single words are typically last names in bibliographic contexts.
 
                 FORMAT:
                 Return ONLY lines with the following pattern, with fields separated by the pipe symbol (|):
@@ -40,14 +64,18 @@ class NameChecker():
 
                 EXAMPLES:
                 - For "Dr. Max Mustermann": Dr.|Max|Mustermann
-                - For "Angela Schmidt": |Angela|Schmidt  
+                - For "Angela Schmidt": |Angela|Schmidt
                 - For "Prof. Dr. Hans-Peter von der Müller-Schmidt": Prof. Dr.|Hans-Peter|von der Müller-Schmidt
+                - For "Hillenkötter" (single name): ||Hillenkötter
+                - For "Blumensberger" (single name): ||Blumensberger
+                - For "Faust" (single name): ||Faust
 
                 IMPORTANT:
                 - Return ONLY the formatted lines as shown above
                 - Include NO explanations, headers, or additional text
                 - Each name should be on a separate line
                 - If no names are found, return an empty response
+                - Single words WITHOUT comma separation are ALWAYS last names
                 """,
             input_variables=["name_string"]
         ).format(name_string=name_string)
@@ -68,19 +96,92 @@ class NameChecker():
         
         return names
 
+    def is_likely_institution(self, name):
+        """
+        Check if a name is likely an institution rather than a person.
+
+        Args:
+            name: Name object with Vorname, Familienname, Titel
+
+        Returns:
+            True if the name appears to be an institution
+        """
+
+        # Pattern 1: Kein Vorname + institutionelle Keywords im Familienname
+        if not name.Vorname or name.Vorname == "":
+            lastname_lower = name.Familienname.lower()
+
+            # Check for institutional keywords
+            if any(keyword in lastname_lower for keyword in institutional_keywords):
+                return True
+
+            # Pattern 2: Multiple kapitalisierte Wörter ohne Vorname
+            # z.B. "Dresden Medienzentrum", "Berlin Institute"
+            words = name.Familienname.split()
+            if len(words) >= 2:
+                # Check if most words start with uppercase (allowing for "und", "of", etc.)
+                capitalized_count = sum(1 for w in words if w and w[0].isupper())
+                if capitalized_count >= len(words) * 0.6:  # 60% threshold
+                    return True
+
+        # Pattern 3: Abteilungscodes (z.B. "FIN A 2.3", "CS 101")
+        if re.match(r'^[A-Z]{2,}\s+[A-Z]\s+\d', name.Familienname):
+            return True
+
+        # Pattern 4: Nur Großbuchstaben (Akronyme wie "TUD", "HTWK", "MIT")
+        if name.Familienname.isupper() and len(name.Familienname) > 2:
+            return True
+
+        # Pattern 5: Username-ähnliche Muster
+        # z.B. "uhc;pschoeps", "user@domain", "admin_user"
+        if any(char in name.Familienname for char in [';', '@', '_']):
+            return True
+
+        # Pattern 6: Einzelne Wörter die typisch für Organisationen sind
+        # z.B. wenn jemand nur "Medienzentrum" als Familienname hat
+        if not name.Vorname or name.Vorname == "":
+            single_word_lower = name.Familienname.lower().strip()
+            for keyword in institutional_keywords:
+                if single_word_lower == keyword.strip():
+                    return True
+
+        return False
+
     def validate_name(self, name):
         """Validate a single name object."""
-        if name.Vorname is None or name.Familienname is None:
+        # Last name is required
+        if name.Familienname is None or name.Familienname == "":
             return False
-        if name.Vorname == "" or name.Familienname == "":
+
+        # Check if it's an institution
+        if self.is_likely_institution(name):
             return False
-        if any([x in name.Vorname for x in black_list]) or any([x in name.Familienname for x in black_list]):
+
+        # Check blacklist for last name
+        if any([x in name.Familienname for x in black_list]):
             return False
+
+        # Check blacklist for first name only if it exists
+        if name.Vorname and any([x in name.Vorname for x in black_list]):
+            return False
+
         return True
 
     def get_validated_names(self, name_string):
         """Get all valid names from the text."""
         names = self.get_all_names(name_string)
+
+        # Additional check: if multiple names without first names are extracted,
+        # and at least one is an institution, filter all of them
+        # (e.g., "TU Dresden Medienzentrum" → ["Dresden", "Medienzentrum"])
+        if len(names) > 1:
+            all_without_firstname = all(not n.Vorname or n.Vorname == "" for n in names)
+            any_is_institution = any(self.is_likely_institution(n) for n in names)
+
+            if all_without_firstname and any_is_institution:
+                # This is likely an institutional name split into parts
+                return []
+
         return [name for name in names if self.validate_name(name)]
 
     def get_validated_name(self, name_string):
