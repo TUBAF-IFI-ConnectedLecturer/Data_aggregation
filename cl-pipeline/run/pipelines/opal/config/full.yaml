@@ -119,7 +119,7 @@ stages:
       file_name_input: *OPALSINGLEFILESFILTERED
       file_name_output: &OPALSINGLEAIMETA OPAL_ai_meta.p
       prompts_file_name: pipelines/opal/prompts/prompts.yaml
-      dewey_classification_file: pipelines/shared/dewey_classification.txt
+      dewey_classification_file: dewey_classification.txt
       model_name: llama3:70b
       force_run: False
       file_types: ['pptx', 'pdf', 'docx', 'xlsx', 'md']

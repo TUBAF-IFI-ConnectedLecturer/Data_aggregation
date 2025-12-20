@@ -99,7 +99,7 @@ stages:
       file_name_input: *LOCALFILTERED
       file_name_output: &LOCALAIMETA LOCAL_ai_meta.p
       prompts_file_name: pipelines/local_pdfs/prompts/prompts_scientific_papers.yaml  # Optimized prompts for research papers
-      dewey_classification_file: pipelines/shared/dewey_classification.txt
+      dewey_classification_file: dewey_classification.txt
       model_name: llama3:70b
       force_run: False  # WICHTIG: Muss True sein, damit interne Checkpoints genutzt werden
       file_types: ['pdf']
