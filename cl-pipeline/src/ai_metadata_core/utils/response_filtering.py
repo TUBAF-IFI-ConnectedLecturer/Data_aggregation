@@ -20,7 +20,10 @@ class ResponseFilter:
             "Der Autor", "die Frage", "Ich habe keine", "Ich habe ", "Ich brauche",
             "Bitte geben", "Das Dokument ", "Es tut mir leid", "Es handelt sich",
             "Es ist nicht", "Es konnte kein", "I'm ready to help", "Please provide",
-            "I'll respond with"
+            "I'll respond with", "Keine Autoren gefunden", "No authors found",
+            "(Empty string", "empty string", "leerer String", "Leerer String",
+            "(Empty response", "empty response", "keine klaren", "no clear",
+            "no author names", "keine Autorennamen"
         ]
 
         # Phrases to remove from the beginning of responses

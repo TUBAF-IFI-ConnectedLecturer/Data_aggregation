@@ -7,7 +7,7 @@ import os
 import hashlib
 import warnings
 
-from langchain.schema import Document
+from langchain_core.documents import Document
 import json
 from typing import Iterable
 import logging

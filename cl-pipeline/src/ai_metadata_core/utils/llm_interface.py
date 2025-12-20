@@ -42,7 +42,7 @@ class LLMInterface:
     
     def create_qa_chain(self, retriever: Any, llm: Any, prompt: Any) -> Any:
         """Create RetrievalQA chain"""
-        from langchain.chains import RetrievalQA
+        from langchain_classic.chains import RetrievalQA
         
         return RetrievalQA.from_chain_type(
             llm=llm,

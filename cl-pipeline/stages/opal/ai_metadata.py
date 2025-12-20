@@ -281,7 +281,7 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
                     search_kwargs={"filter": search_filter, "k": self._k * 3}
                 )
 
-                all_docs = retriever.get_relevant_documents(query)
+                all_docs = retriever.invoke(query)
 
                 # Filter by page number
                 filtered_docs = []

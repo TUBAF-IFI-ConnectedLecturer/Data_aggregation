@@ -42,7 +42,7 @@ class DocumentProcessor:
 
         # Add revised author if name checker is available
         if self.name_checker and authors:
-            result['ai:revisedAuthor'] = self.name_checker.get_all_names(authors)
+            result['ai:revisedAuthor'] = self.name_checker.get_validated_names(authors)
 
         return result
     

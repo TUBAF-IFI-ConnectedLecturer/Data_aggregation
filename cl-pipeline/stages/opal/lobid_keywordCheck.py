@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 # Ollama Integration für KI-basierte Schlagwortauswahl
 from langchain_ollama import OllamaLLM
-from langchain.prompts import PromptTemplate
+from langchain_core.prompts import PromptTemplate
 
 from pipeline.taskfactory import TaskWithInputFileMonitor
 

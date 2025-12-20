@@ -10,7 +10,7 @@ from langchain_community.document_loaders import (UnstructuredPowerPointLoader,
                                                   PyMuPDFLoader,
                                                   DirectoryLoader)
 import chromadb
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
 
 import pandas as pd

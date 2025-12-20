@@ -26,6 +26,7 @@ langchain-ollama = "*"
 spacy = "*"
 numpy = "*"
 langchain-chroma = "*"
+msoffcrypto-tool = "*"
 
 [dev-packages]
 
