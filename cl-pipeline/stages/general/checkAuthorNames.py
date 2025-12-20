@@ -32,12 +32,26 @@ institutional_keywords = [
     # Bibliotheken & Archive
     "bibliothek", "library", "archiv", "archive",
     # Andere
-    "verlag", "publisher", "redaktion"
+    "verlag", "publisher", "redaktion",
+    # Sächsische Hochschulen (spezifisch für OPAL-Kontext)
+    "tu dresden", "htw dresden", "tu bergakademie", "bergakademie freiberg",
+    "hochschule mittweida", "westsächsische hochschule", "berufsakademie sachsen",
+    "evangelische hochschule dresden", "palucca", "hfbk dresden", "hfm dresden",
+    "hhl leipzig", "dipf leipzig", "tubaf", "htwdd", "hsmw",
+    # Weitere deutsche Hochschulen
+    "tu berlin", "tu münchen", "lmu münchen", "rwth aachen", "uni hamburg",
+    "uni köln", "uni frankfurt", "uni heidelberg", "uni freiburg"
 ]
 
 class NameChecker():
-    def __init__(self):
-        self.llm = OllamaLLM(model="gemma3:27b", temperature=0.0)
+    def __init__(self, model="llama3:70b"):
+        """
+        Initialize NameChecker with configurable LLM model.
+
+        Args:
+            model: Ollama model name (default: llama3:70b for improved accuracy)
+        """
+        self.llm = OllamaLLM(model=model, temperature=0.0)
     
     def get_all_names(self, name_string):
         """Extract all names with minimal processing."""

@@ -429,30 +429,14 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
         # Load existing metadata
         if Path(self.file_name_output).exists():
             try:
-                print(f"\n{'='*70}")
-                print(f"CHECKPOINT: Loading existing metadata from:")
-                print(f"  {self.file_name_output}")
                 df_metadata = self._safe_load_pickle(self.file_name_output)
-                print(f"✓ Successfully loaded: {len(df_metadata)} documents already processed")
-
-                # Show sample of what was loaded
-                if len(df_metadata) > 0:
-                    ai_cols = [col for col in df_metadata.columns if col.startswith('ai:')]
-                    print(f"  Columns found: {', '.join(ai_cols)}")
-                print(f"{'='*70}\n")
+                print(f"✓ Loaded existing metadata: {len(df_metadata)} documents already processed")
             except Exception as e:
-                print(f"\n{'='*70}")
-                print(f"✗ ERROR: Could not load existing metadata file!")
-                print(f"  Error: {e}")
+                print(f"✗ ERROR: Could not load existing metadata file: {e}")
                 print(f"  Starting with empty metadata - all documents will be processed")
-                print(f"{'='*70}\n")
                 df_metadata = pd.DataFrame()
         else:
-            print(f"\n{'='*70}")
-            print(f"INFO: No existing metadata file found")
-            print(f"  Path: {self.file_name_output}")
-            print(f"  Starting with empty metadata")
-            print(f"{'='*70}\n")
+            print(f"INFO: No existing metadata file found - starting with empty metadata")
             df_metadata = pd.DataFrame()
         
         # Setup vector store
