@@ -169,39 +169,139 @@ flowchart
     class BASIC,Metadatenaggregation,Evaluation gray
 ```
 
-## Generelle Installation 
+## Installation
 
-+ Installation von `pipenv` als virtuelle Entwicklungsumgebung
-+ Ausführen von `pipenv install` im Projektordner
+### Voraussetzungen
 
+- Python 3.12
+- [pipenv](https://pipenv.pypa.io/) für Dependency Management
+- [Ollama](https://ollama.ai/) für lokale LLM-Nutzung (optional, je nach Pipeline)
 
-### OPAL
+### Installation der Dependencies
+
+```bash
+# 1. Ins cl-pipeline Verzeichnis wechseln
+cd cl-pipeline
+
+# 2. Virtual Environment erstellen und alle Dependencies installieren
+pipenv install
+
+# Dies installiert automatisch:
+# - Alle Python-Pakete aus dem Pipfile
+# - Das pipeline-Package als editable install
+```
+
+**Wichtig**: Es ist NICHT notwendig, `pipenv install` in mehreren Verzeichnissen auszuführen.
+Das `cl-pipeline/Pipfile` verwaltet alle Dependencies und referenziert das `pipeline`-Package automatisch.
+
+### Ollama Setup (für AI-Metadaten-Extraktion)
+
+```bash
+# Ollama installieren (siehe https://ollama.ai/)
+# Benötigte Modelle herunterladen:
+ollama pull llama3:70b      # Für Metadaten-Extraktion
+ollama pull gemma3:27b      # Für Keyword-Auswahl
+ollama pull jina/jina-embeddings-v2-base-de  # Für Embeddings
+
+# Ollama Server starten
+ollama serve
+```
+
+## Pipeline-Ausführung
+
+Die Pipelines sind jetzt in einer modularen Struktur unter `cl-pipeline/run/pipelines/` organisiert:
+
+- `arbeitsbasis/` - Verarbeitung von 6732 PDFs aus 18 Journals
+- `local_pdfs/` - Lokale PDF-Verarbeitung mit wissenschaftlichen Papers
+- `opal/` - OPAL OER Dokumente
+- `liascript/` - LiaScript GitHub Repositories
+
+### OPAL Pipeline
 
 *Vorbereitung*
 
-+ Prüfen der Angaben der Ordnerstruktur und den internen Nutzern in `identification_opal.yaml`
++ Prüfen der Konfiguration in [cl-pipeline/run/pipelines/opal/config/full.yaml](cl-pipeline/run/pipelines/opal/config/full.yaml)
++ Ordnerstruktur und Datenquellen anpassen falls nötig
 
 *Ausführung*
 
-``` 
-pipenv shell
-(pipenv) cd run
-(pipenv) python run_pipeline.py -c identification_opal.yaml
+```bash
+cd cl-pipeline/run
+pipenv run python run_pipeline.py -c pipelines/opal/config/full.yaml
 ```
 
-### LiaScript 
+Logs werden automatisch in `pipelines/opal/logs/` gespeichert.
+
+Mehr Details: [cl-pipeline/run/pipelines/opal/README.md](cl-pipeline/run/pipelines/opal/README.md)
+
+### Local PDFs Pipeline
 
 *Vorbereitung*
 
-+ github Account anlegen und in `.env` hinterlegen
-+ Prüfen der Angaben der Ordnerstruktur und den internen Nutzern in `identification_liascript.yaml`
++ Konfiguration prüfen: [cl-pipeline/run/pipelines/local_pdfs/config/full.yaml](cl-pipeline/run/pipelines/local_pdfs/config/full.yaml)
++ PDFs vorbereiten mit: `pipelines/local_pdfs/scripts/prepare_local_pdfs.py`
 
 *Ausführung*
 
-``` 
-pipenv shell
-(pipenv) cd run
-(pipenv) python run_pipeline.py -c identification_liascript.yaml
+```bash
+cd cl-pipeline/run
+pipenv run python run_pipeline.py -c pipelines/local_pdfs/config/full.yaml
 ```
 
-> Wegen der API Limitierung von Github, kann es sein, dass das Auslesen der Datensätze von Github mehrere Tage dauern!
+Mehr Details: [cl-pipeline/run/pipelines/local_pdfs/README.md](cl-pipeline/run/pipelines/local_pdfs/README.md)
+
+### LiaScript Pipeline
+
+*Vorbereitung*
+
++ GitHub Personal Access Token erstellen und in `.env` hinterlegen:
+  ```bash
+  # In cl-pipeline/run/.env
+  GITHUB_API_KEY=your_token_here
+  ```
++ Konfiguration prüfen: [cl-pipeline/run/pipelines/liascript/config/full.yaml](cl-pipeline/run/pipelines/liascript/config/full.yaml)
+
+*Ausführung*
+
+```bash
+cd cl-pipeline/run
+pipenv run python run_pipeline.py -c pipelines/liascript/config/full.yaml
+```
+
+> **Hinweis**: Wegen der API-Limitierung von GitHub kann das Auslesen der Datensätze mehrere Tage dauern!
+
+Mehr Details: [cl-pipeline/run/pipelines/liascript/README.md](cl-pipeline/run/pipelines/liascript/README.md)
+
+### Arbeitsbasis Pipeline
+
+*Vorbereitung*
+
++ PDFs vorbereiten mit: `pipelines/local_pdfs/scripts/prepare_arbeitsbasis.py`
++ Konfiguration prüfen: [cl-pipeline/run/pipelines/arbeitsbasis/config/full.yaml](cl-pipeline/run/pipelines/arbeitsbasis/config/full.yaml)
+
+*Ausführung*
+
+```bash
+cd cl-pipeline/run
+pipenv run python run_pipeline.py -c pipelines/arbeitsbasis/config/full.yaml
+```
+
+## Projektstruktur
+
+```
+Data_aggregation/
+├── cl-pipeline/           # Hauptprojekt
+│   ├── Pipfile           # Dependency Management (alle Pakete)
+│   ├── run/
+│   │   ├── pipelines/    # Modulare Pipeline-Projekte
+│   │   │   ├── arbeitsbasis/
+│   │   │   ├── local_pdfs/
+│   │   │   ├── opal/
+│   │   │   ├── liascript/
+│   │   │   └── shared/   # Gemeinsame Ressourcen
+│   │   └── run_pipeline.py
+│   ├── src/              # Pipeline Stage Implementierungen
+│   └── stages/           # Stage-spezifische Module
+└── pipeline/             # Core Pipeline Framework
+    └── pipeline/         # Base Classes
+```
