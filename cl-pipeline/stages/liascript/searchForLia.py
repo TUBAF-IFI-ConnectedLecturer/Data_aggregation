@@ -9,6 +9,49 @@ from dotenv import load_dotenv
 
 from pipeline.taskfactory import Task, loggedExecution
 import logging
+from datetime import datetime, timedelta
+
+# Custom logging filter to improve GitHub retry messages
+class GithubRetryFilter(logging.Filter):
+    """Filter to convert GitHub backoff seconds to human-readable format"""
+
+    def filter(self, record):
+        if hasattr(record, 'msg'):
+            msg = str(record.msg)
+            # Handle "Setting next backoff to X.Xs" messages
+            if 'Setting next backoff to' in msg and record.name == 'github.GithubRetry':
+                try:
+                    # Extract seconds from message like "Setting next backoff to 1182.8533s"
+                    parts = msg.split('Setting next backoff to ')
+                    if len(parts) > 1:
+                        seconds_str = parts[1].replace('s', '').strip()
+                        seconds = float(seconds_str)
+
+                        # Convert to human-readable format
+                        if seconds < 60:
+                            readable = f"{int(seconds)} Sekunden"
+                        elif seconds < 3600:
+                            minutes = int(seconds / 60)
+                            remaining_secs = int(seconds % 60)
+                            readable = f"{minutes} Minuten und {remaining_secs} Sekunden"
+                        else:
+                            hours = int(seconds / 3600)
+                            minutes = int((seconds % 3600) / 60)
+                            readable = f"{hours} Stunden und {minutes} Minuten"
+
+                        # Calculate restart time
+                        restart_time = datetime.now() + timedelta(seconds=seconds)
+                        restart_str = restart_time.strftime('%H:%M:%S')
+
+                        record.msg = f"GitHub API Rate-Limit erreicht. Warte {readable} (bis ca. {restart_str} Uhr)"
+                except (ValueError, IndexError):
+                    pass  # Keep original message if parsing fails
+
+            # Suppress the "Restarting queries at ..." message as it's now included above
+            elif 'Restarting queries at' in msg and record.name == 'github.GithubRetry':
+                return False  # Don't show this message
+
+        return True
 
 # Load environment variables from .env file in run directory only for direct execution
 if __name__ == "__main__":
@@ -176,41 +219,73 @@ def search_code(github_handle, queries):
 
 def search_lia_repos(github_handle, data_folder, data_file):
     repository_list = []
+
+    # Enhanced search queries with filters for forks and archived repos
+    # Base filters: fork:false archived:false
+    base_filters = " fork:false archived:false"
+
+    # Repository searches with quality filters
     search_queries = [
-        {"keyword": '"liascript"', "focus": " in:topic", "validity": 1},
-        {"keyword": '"liascript-course"', "focus": " in:topic", "validity": 1},
-        {"keyword": '"liascript"', "focus": " in:description", "validity": 1},
-        {"keyword": '" liascript "', "focus": " in:readme", "validity": 1},
-        {"keyword": 'liascript', "focus": " in:path,file", "validity": 2},
+        # High-quality indicators
+        {"keyword": '"liascript"', "focus": f" in:topic{base_filters}", "validity": 1},
+        {"keyword": '"liascript-course"', "focus": f" in:topic{base_filters}", "validity": 1},
+        {"keyword": '"liascript"', "focus": f" in:description{base_filters}", "validity": 2},
+        # Broader searches
+        {"keyword": '"liascript"', "focus": f" in:readme{base_filters}", "validity": 2},
+        {"keyword": 'liascript', "focus": f" in:path,file{base_filters}", "validity": 3},
     ]
-    print("Searching for repositories")
+    print("Searching for repositories with quality filters")
     repos = search_repositories(github_handle, search_queries)
     repository_list.extend(repos)
 
+    # Enhanced code searches for LiaScript-specific patterns
     search_queries = [
-        {"keyword": '" liascript "', "validity": 1},
+        # LiaScript-specific patterns (HIGH PRECISION)
+        {"keyword": '"LiaScript.github.io/course"', "validity": 1},  # Deployed courses
+        {"keyword": '"https://raw.githubusercontent.com/LiaScript/LiaScript/master/badges/course.svg"', "validity": 1},
+        {"keyword": '".eval" "LiaScript" filename:.md', "validity": 1},
+
+        # LiaScript header metadata patterns
+        {"keyword": '"narrator:" filename:.md', "validity": 1},  # LiaScript narrator setting
         {"keyword": '"https://github.com/LiaTemplates/"', "validity": 1},
-        {"keyword": '"liascript"', "validity": 2},
+
+        # General patterns (LOWER PRECISION)
+        {"keyword": '"liascript" filename:.md', "validity": 2},
     ]
-    print("Searching for files")
+    print("Searching for LiaScript-specific code patterns")
     code = search_code(github_handle, search_queries)
     repository_list.extend(code)
 
+    # Combine results and deduplicate
     df = pd.DataFrame(repository_list)
-    df_droped = df.sort_values('validity', ascending=True).drop_duplicates(subset=['name','user'], keep='first').reset_index(drop=True)
 
-    print(f"{df.shape} -> {df_droped.shape}")
-    df = df_droped
+    if df.empty:
+        print("WARNING: No repositories found!")
+        df = pd.DataFrame(columns=['name', 'user', 'validity', 'repo_url', 'searched_type'])
+    else:
+        # Keep repository with highest validity (lowest number = best)
+        df_droped = df.sort_values('validity', ascending=True).drop_duplicates(
+            subset=['name','user'], keep='first'
+        ).reset_index(drop=True)
 
-    black_list = ['LiaScript', 'TUBAF-IfI-LiaScript','LiaPlayground', 'SebastianZug', 
-                  'andre-dietrich', 'LiaBooks', 'LiaTemplates', 'TUBAF-IUZ-LiaScript',
-                  'markjjacob', 'HueblerPatricia']
+        print(f"Deduplication: {df.shape[0]} results -> {df_droped.shape[0]} unique repositories")
+        df = df_droped
 
-    df['internal'] = False
-    df.loc[df.user.isin(black_list), 'internal'] = True
+        # Filter out internal/development repositories
+        # These are primarily LiaScript core developers and test repositories
+        black_list = [
+            'LiaScript', 'TUBAF-IfI-LiaScript', 'LiaPlayground', 'SebastianZug',
+            'andre-dietrich', 'LiaBooks', 'LiaTemplates', 'TUBAF-IUZ-LiaScript',
+            'markjjacob', 'HueblerPatricia'
+        ]
 
-    ###########
-    df = df[~df.internal]
+        df['internal'] = False
+        df.loc[df.user.isin(black_list), 'internal'] = True
+
+        # Keep only external (user-created) courses
+        df_external = df[~df.internal]
+        print(f"Filtered: {df.shape[0]} total -> {df_external.shape[0]} external repositories")
+        df = df_external
 
     data_file = Path().resolve().parent / Path(data_folder) / data_file
     df.to_pickle(Path(str(data_file)))
@@ -234,6 +309,10 @@ class CrawlGithubForLiaScript(Task):
         auth = Auth.Token(github_api_token)
         self.github_handle = Github(auth=auth)
         logging.getLogger("urllib3").propagate = False
+
+        # Add custom filter for GitHub retry messages
+        github_logger = logging.getLogger("github.GithubRetry")
+        github_logger.addFilter(GithubRetryFilter())
 
     @loggedExecution
     def execute_task(self):
@@ -266,6 +345,11 @@ if __name__ == "__main__":
     try:
         auth = Auth.Token(github_api_token)
         github_handle = Github(auth=auth)
+
+        # Add custom filter for GitHub retry messages
+        github_logger = logging.getLogger("github.GithubRetry")
+        github_logger.addFilter(GithubRetryFilter())
+
         user = github_handle.get_user()
         print(f"Successfully authenticated as: {user.login}")
     except Exception as e:

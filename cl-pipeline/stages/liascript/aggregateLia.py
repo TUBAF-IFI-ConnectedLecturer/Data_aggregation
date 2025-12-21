@@ -2,16 +2,60 @@ import pandas as pd
 from pathlib import Path
 from tqdm import tqdm
 import os
+import hashlib
 from github import Github
 from github import Auth
 
 from pipeline.taskfactory import Task, TaskWithInputFileMonitor, loggedExecution
 import logging
 from langdetect import detect_langs
+from datetime import datetime, timedelta
 
 # TODO
 # Warum taucht dieser Datensatz in unserer Auswahl auf?
 # https://raw.githubusercontent.com/djplaner/memex/master/docs/sense/Design/pedagogy-before-technology.md
+
+# Custom logging filter to improve GitHub retry messages
+class GithubRetryFilter(logging.Filter):
+    """Filter to convert GitHub backoff seconds to human-readable format"""
+
+    def filter(self, record):
+        if hasattr(record, 'msg'):
+            msg = str(record.msg)
+            # Handle "Setting next backoff to X.Xs" messages
+            if 'Setting next backoff to' in msg and record.name == 'github.GithubRetry':
+                try:
+                    # Extract seconds from message like "Setting next backoff to 1182.8533s"
+                    parts = msg.split('Setting next backoff to ')
+                    if len(parts) > 1:
+                        seconds_str = parts[1].replace('s', '').strip()
+                        seconds = float(seconds_str)
+
+                        # Convert to human-readable format
+                        if seconds < 60:
+                            readable = f"{int(seconds)} Sekunden"
+                        elif seconds < 3600:
+                            minutes = int(seconds / 60)
+                            remaining_secs = int(seconds % 60)
+                            readable = f"{minutes} Minuten und {remaining_secs} Sekunden"
+                        else:
+                            hours = int(seconds / 3600)
+                            minutes = int((seconds % 3600) / 60)
+                            readable = f"{hours} Stunden und {minutes} Minuten"
+
+                        # Calculate restart time
+                        restart_time = datetime.now() + timedelta(seconds=seconds)
+                        restart_str = restart_time.strftime('%H:%M:%S')
+
+                        record.msg = f"GitHub API Rate-Limit erreicht. Warte {readable} (bis ca. {restart_str} Uhr)"
+                except (ValueError, IndexError):
+                    pass  # Keep original message if parsing fails
+
+            # Suppress the "Restarting queries at ..." message as it's now included above
+            elif 'Restarting queries at' in msg and record.name == 'github.GithubRetry':
+                return False  # Don't show this message
+
+        return True
 
 
 def extract_liafile_meta_data(file):
@@ -67,7 +111,11 @@ def extract_liafile_meta_data(file):
 
 def extract_data(file, content):
     repo_data = {}
-    repo_data['id'] = hash(file.download_url)
+    # Create consistent pipe:ID using hash of download URL
+    hash_object = hashlib.sha256(file.download_url.encode('utf-8'))
+    repo_data['pipe:ID'] = hash_object.hexdigest()[:16]  # Use first 16 chars of hash
+    repo_data['pipe:file_type'] = 'md'  # Mark as markdown file
+    repo_data['id'] = hash(file.download_url)  # Keep old ID for backwards compatibility
     repo_data['repo_name'] = file.repository.name
     repo_data['repo_user'] = file.repository.owner.login
     repo_data['repo_url'] = file.repository.html_url
@@ -134,9 +182,10 @@ def explore_potential_lia_files(github_handle, data_folder,
             for file in files:
                 repo_data, content = extract_liafile_meta_data(file)
                 if repo_data is not None:
-                    file_name = f"{repo_data['repo_user']}_{repo_data['repo_name']}_{repo_data['file_name']}"
+                    # Use pipe:ID for consistent file naming
+                    file_name = f"{repo_data['pipe:ID']}.md"
                     file_path = storage_folder / file_name
-                    with open(file_path, "w") as f:
+                    with open(file_path, "w", encoding='utf-8') as f:
                         f.write(content)
                     course_list.append(repo_data)
 
@@ -170,6 +219,10 @@ class AggregateLiaScriptFiles(TaskWithInputFileMonitor):
         auth = Auth.Token(github_api_token)
         self.github_handle = Github(auth=auth)
         logging.getLogger("urllib3").propagate = False
+
+        # Add custom filter for GitHub retry messages
+        github_logger = logging.getLogger("github.GithubRetry")
+        github_logger.addFilter(GithubRetryFilter())
 
     @loggedExecution
     def execute_task(self):

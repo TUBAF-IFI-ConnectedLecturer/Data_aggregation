@@ -8,6 +8,49 @@ from github import Auth
 from pipeline.taskfactory import loggedExecution
 from pipeline.taskfactory import TaskWithInputFileMonitor
 import logging
+from datetime import datetime, timedelta
+
+# Custom logging filter to improve GitHub retry messages
+class GithubRetryFilter(logging.Filter):
+    """Filter to convert GitHub backoff seconds to human-readable format"""
+
+    def filter(self, record):
+        if hasattr(record, 'msg'):
+            msg = str(record.msg)
+            # Handle "Setting next backoff to X.Xs" messages
+            if 'Setting next backoff to' in msg and record.name == 'github.GithubRetry':
+                try:
+                    # Extract seconds from message like "Setting next backoff to 1182.8533s"
+                    parts = msg.split('Setting next backoff to ')
+                    if len(parts) > 1:
+                        seconds_str = parts[1].replace('s', '').strip()
+                        seconds = float(seconds_str)
+
+                        # Convert to human-readable format
+                        if seconds < 60:
+                            readable = f"{int(seconds)} Sekunden"
+                        elif seconds < 3600:
+                            minutes = int(seconds / 60)
+                            remaining_secs = int(seconds % 60)
+                            readable = f"{minutes} Minuten und {remaining_secs} Sekunden"
+                        else:
+                            hours = int(seconds / 3600)
+                            minutes = int((seconds % 3600) / 60)
+                            readable = f"{hours} Stunden und {minutes} Minuten"
+
+                        # Calculate restart time
+                        restart_time = datetime.now() + timedelta(seconds=seconds)
+                        restart_str = restart_time.strftime('%H:%M:%S')
+
+                        record.msg = f"GitHub API Rate-Limit erreicht. Warte {readable} (bis ca. {restart_str} Uhr)"
+                except (ValueError, IndexError):
+                    pass  # Keep original message if parsing fails
+
+            # Suppress the "Restarting queries at ..." message as it's now included above
+            elif 'Restarting queries at' in msg and record.name == 'github.GithubRetry':
+                return False  # Don't show this message
+
+        return True
 
 def explore_potential_lia_commits(github_handle, data_folder,
          course_data_file_name, commits_data_file_name):
@@ -92,6 +135,10 @@ class AggregateLiaScriptCommits(TaskWithInputFileMonitor):
         auth = Auth.Token(github_api_token)
         self.github_handle = Github(auth=auth)
         logging.getLogger("urllib3").propagate = False
+
+        # Add custom filter for GitHub retry messages
+        github_logger = logging.getLogger("github.GithubRetry")
+        github_logger.addFilter(GithubRetryFilter())
 
     @loggedExecution
     def execute_task(self):

@@ -2,6 +2,7 @@ import pandas as pd
 from pathlib import Path
 from tqdm import tqdm
 from datetime import datetime
+import logging
 
 from pipeline.taskfactory import TaskWithInputFileMonitor
 from pipeline.taskfactory import loggedExecution
@@ -30,18 +31,28 @@ class ExtractLiaScriptMetadata(TaskWithInputFileMonitor):
             df_meta = pd.DataFrame()
 
         for index, row in tqdm(df_files.iterrows(), total=df_files.shape[0]):
-            # file starts with <!-- 
+            # Check if metadata already exists for this file
+            if df_meta.shape[0] > 0:
+                if df_meta[df_meta['pipe:ID'] == row['pipe:ID']].shape[0] > 0:
+                    continue
+
+            # file starts with <!--
             if row['liaIndi_comment_in_beginning']:
-                file_name = f"{row['repo_user']}_{row['repo_name']}_{row['file_name']}"
+                # Use pipe:ID for consistent file naming
+                file_name = f"{row['pipe:ID']}.md"
                 file_path = self.file_folder / file_name
-                with open(file_path, "r") as f:
+
+                if not file_path.exists():
+                    logging.warning(f"File not found: {file_path}")
+                    continue
+
+                with open(file_path, "r", encoding='utf-8') as f:
                     content = f.read()
-                
+
                 meta_data = self.extract_metadata(content)
-                #if meta_data is not None and len(meta_data) > 0:
-                #    print(meta_data)
                 if meta_data is not None:
-                    meta_data['id'] = row['id']
+                    meta_data['pipe:ID'] = row['pipe:ID']
+                    meta_data['id'] = row['id']  # Keep old ID for backwards compatibility
                     df_meta = pd.concat([df_meta, pd.DataFrame([meta_data])])
                     df_meta.to_pickle(Path(self.lia_metadata_name))
 
