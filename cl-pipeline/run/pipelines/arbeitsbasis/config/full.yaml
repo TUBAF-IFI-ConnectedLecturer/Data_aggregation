@@ -100,7 +100,7 @@ stages:
       file_name_output: &LOCALAIMETA LOCAL_ai_meta.p
       prompts_file_name: pipelines/local_pdfs/prompts/prompts_scientific_papers.yaml  # Optimized prompts for research papers
       dewey_classification_file: dewey_classification.txt
-      model_name: llama3:70b
+      model_name: llama3.3:70b
       force_run: True  # TEMPORÄR auf True gesetzt um neue PDFs zu verarbeiten
       file_types: ['pdf']
 

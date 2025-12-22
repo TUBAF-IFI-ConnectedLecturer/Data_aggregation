@@ -199,7 +199,7 @@ Das `cl-pipeline/Pipfile` verwaltet alle Dependencies und referenziert das `pipe
 ```bash
 # Ollama installieren (siehe https://ollama.ai/)
 # Benötigte Modelle herunterladen:
-ollama pull llama3:70b      # Für Metadaten-Extraktion
+ollama pull llama3.3:70b    # Für Metadaten-Extraktion
 ollama pull gemma3:27b      # Für Keyword-Auswahl
 ollama pull jina/jina-embeddings-v2-base-de  # Für Embeddings
 
