@@ -2,8 +2,9 @@
 # This configuration processes the Arbeitsbasis collection (6732 PDFs from 18 journals)
 
 # Defining data folder structure
+# ADJUST data_root_folder FOR YOUR SYSTEM:
 folder_structure:
-  data_root_folder: &BASE /media/sz/Data/Veits_pdfs/data_pipeline/arbeitsbasis
+  data_root_folder: &BASE /home/crosslab/Desktop/VeitsPdfs/data_pipeline/arbeitsbasis
   raw_data_folder: &RAW !join [*BASE, /raw]
   file_folder: &FILE_FOLDER !join [*RAW, /files]
   content_folder: &CONTENT_FOLDER !join [*RAW, /content]

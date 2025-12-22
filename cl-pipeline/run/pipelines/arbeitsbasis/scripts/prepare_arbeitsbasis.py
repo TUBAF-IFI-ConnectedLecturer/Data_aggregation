@@ -26,8 +26,9 @@ from tqdm import tqdm
 import re
 
 # Configuration
-SOURCE_DIR = Path("/media/sz/Data/Veits_pdfs/data/Arbeitsbasis")
-TARGET_BASE = Path("/media/sz/Data/Veits_pdfs/data_pipeline/arbeitsbasis")
+# ADJUST THESE PATHS FOR YOUR SYSTEM:
+SOURCE_DIR = Path("/home/crosslab/Desktop/VeitsPdfs/data/Arbeitsbasis")
+TARGET_BASE = Path("/home/crosslab/Desktop/VeitsPdfs/data_pipeline/arbeitsbasis")
 TARGET_RAW = TARGET_BASE / "raw"
 TARGET_FILES = TARGET_RAW / "files"
 TARGET_CONTENT = TARGET_RAW / "content"
