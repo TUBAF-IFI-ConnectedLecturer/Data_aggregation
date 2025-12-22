@@ -79,7 +79,7 @@ stages:
       file_name_input: *LOCALBASE
       file_content: *LOCALCONTENT
       file_name_output: &LOCALFILTERED LOCAL_files_filtered.p
-      force_run: False  # Process new files
+      force_run: True  # Force creation of output file (needed when starting on new system)
 
   # Stage 4: Generate embeddings for RAG
   - name: Generate embeddings
