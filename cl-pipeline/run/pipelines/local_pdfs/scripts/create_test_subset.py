@@ -94,7 +94,7 @@ def main():
     print(f"  Stage 2 (Content): ~2-3 minutes")
     print(f"  Stage 3 (Filter): ~10 seconds")
     print(f"  Stage 4 (Embeddings): ~5-10 minutes")
-    print(f"  Stage 5 (AI Metadata): ~15-25 minutes (llama3:70b)")
+    print(f"  Stage 5 (AI Metadata): ~15-25 minutes (llama3.3:70b)")
     print(f"  Stage 6 (GND Check): ~10-20 minutes (gemma3:27b + Lobid API)")
     print(f"  TOTAL: ~35-60 minutes")
 

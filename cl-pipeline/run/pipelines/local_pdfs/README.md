@@ -29,7 +29,7 @@ Creates vector embeddings using Jina embeddings model for RAG (Retrieval-Augment
 - **Embedding model**: jina/jina-embeddings-v2-base-de
 
 ### 5. AI Metadata Extraction
-Extracts structured metadata using LLM (llama3:70b):
+Extracts structured metadata using LLM (llama3.3:70b):
 - **Author names**: Extracted and validated with specialized LLM-based name parser
 - **Title**: Document title
 - **Document type**: Classification (article, conference paper, thesis, etc.)
@@ -290,7 +290,7 @@ The exported BibTeX file can be imported into:
 ## Dependencies
 
 - LangChain
-- Ollama (llama3:70b, gemma3:27b)
+- Ollama (llama3.3:70b, gemma3:27b)
 - ChromaDB
 - PyMuPDF
 - Jina Embeddings (jina-embeddings-v2-base-de)

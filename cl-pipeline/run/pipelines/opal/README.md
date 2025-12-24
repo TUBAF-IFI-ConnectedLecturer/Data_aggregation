@@ -51,7 +51,7 @@ Creates vector embeddings for RAG
 - **Collection**: oer_connected_lecturer
 
 ### 9. AI Metadata Extraction
-Extracts structured metadata using LLM (llama3:70b):
+Extracts structured metadata using LLM (llama3.3:70b):
 - Author names
 - Title
 - Document type
@@ -195,7 +195,7 @@ grep "AIMetaDataExtraction" pipelines/opal/logs/*.log
 ## Dependencies
 
 - LangChain
-- Ollama (llama3:70b, gemma3:27b)
+- Ollama (llama3.3:70b, gemma3:27b)
 - ChromaDB
 - PyMuPDF (PDF)
 - python-pptx (PowerPoint)

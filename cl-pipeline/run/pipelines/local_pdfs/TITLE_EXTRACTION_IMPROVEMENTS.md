@@ -185,7 +185,7 @@ class TitleFilter:
 
 ### 6. Modell-Wechsel für Titel
 
-**Problem**: llama3:70b könnte für diese präzise Aufgabe zu groß/generisch sein.
+**Problem**: llama3.3:70b könnte für diese präzise Aufgabe zu groß/generisch sein.
 
 **Vorschlag**: Kleineres, spezialisiertes Modell nur für Titelextraktion.
 
@@ -195,12 +195,12 @@ class TitleFilter:
 - name: Extract metadata with AI
   class: AIMetaDataExtraction
   parameters:
-    model_name: llama3:70b  # Standard für alle Felder
+    model_name: llama3.3:70b  # Standard für alle Felder
 
     # Field-specific models
     field_models:
       ai:title: gemma3:27b      # Kleiner, schneller für einfache Extraktion
-      ai:keywords_ext: llama3:70b  # Komplex, braucht großes Modell
+      ai:keywords_ext: llama3.3:70b  # Komplex, braucht großes Modell
 ```
 
 **Vorteil**:
@@ -311,7 +311,7 @@ EOF
 ## 📌 Hinweise
 
 - Der neue Prompt ist **sofort aktiv**, aber die Daten müssen **neu extrahiert** werden (Stage 5 mit `force_run: True`)
-- Für vollständige Re-Extraktion: **~8-12 Stunden** (965 Dokumente × llama3:70b)
+- Für vollständige Re-Extraktion: **~8-12 Stunden** (965 Dokumente × llama3.3:70b)
 - Alternativ: Nur **Teilmenge testen** (z.B. 50 Dokumente) mit `test.yaml` Config
 
 ---

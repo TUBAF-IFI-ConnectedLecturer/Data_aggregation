@@ -69,24 +69,43 @@ stages:
       lia_files_name: &LIAFILES_DF LiaScript_files.p
       force_run: True
 
+      # Optional: Exclude specific repository indices from processing
+      exclude_repo_indices:
+        - 439
+        - 481
+        - 497
+
+  - name: Validate LiaScript files with AI
+    class: ValidateLiaScriptFiles
+    parameters:
+      file_name_input: *LIAFILES_DF
+      file_name_output: &LIAFILES_VALIDATED_DF LiaScript_files_validated.p
+      force_run: True
+      model_name: llama3.3:70b
+      max_content_length: 8000  # Characters to send to AI for validation
+      validate_all: False  # Only validate files without validation result
+
+      # LLM Configuration
+      llm_config: *LLM_CONFIG
+
   - name: Aggregate LiaScript commits
     class: AggregateLiaScriptCommits
     parameters:
-      lia_files_name_input: *LIAFILES_DF
+      lia_files_name_input: *LIAFILES_VALIDATED_DF
       lia_commits_name: &LIACOMMITS_DF LiaScript_commits.p
       force_run: True
 
   - name: Extract LiaScript metadata from headers
     class: ExtractLiaScriptMetadata
     parameters:
-      lia_files_name_input: *LIAFILES_DF
+      lia_files_name_input: *LIAFILES_VALIDATED_DF
       lia_metadata_name: &LIAMETADATA_DF LiaScript_metadata.p
       force_run: True
 
   - name: Extract content from markdown files
     class: ExtractFileContent
     parameters:
-      file_name_input: *LIAFILES_DF
+      file_name_input: *LIAFILES_VALIDATED_DF
       file_name_output: &LIASCONTENT_DF LiaScript_content.p
       force_run: True
       file_types: ['md']
@@ -94,7 +113,7 @@ stages:
   - name: Provide embeddings
     class: AIEmbeddingsGeneration
     parameters:
-      file_name_input: *LIAFILES_DF
+      file_name_input: *LIAFILES_VALIDATED_DF
       file_name_output: &LIACHROMAFILES LiaScript_embeddings_files.p
       force_run: True
       file_types: ['md']
@@ -105,7 +124,7 @@ stages:
   - name: Extract AI metadata from content
     class: AIMetaDataExtraction
     parameters:
-      file_name_input: *LIAFILES_DF
+      file_name_input: *LIAFILES_VALIDATED_DF
       file_name_output: &LIAAIMETA LiaScript_ai_meta.p
       prompts_file_name: pipelines/liascript/prompts/prompts.yaml
       dewey_classification_file: dewey_classification.txt
@@ -148,7 +167,7 @@ stages:
   - name: Determine similarity between courses
     class: DocumentSimilarity
     parameters:
-      file_name_input: *LIAFILES_DF
+      file_name_input: *LIAFILES_VALIDATED_DF
       file_name_output: &LIASIMILARITY LiaScript_ai_similarity.p
       force_run: True
 

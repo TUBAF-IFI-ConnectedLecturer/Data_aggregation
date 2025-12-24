@@ -44,12 +44,12 @@ institutional_keywords = [
 ]
 
 class NameChecker():
-    def __init__(self, model="llama3:70b"):
+    def __init__(self, model="llama3.3:70b"):
         """
         Initialize NameChecker with configurable LLM model.
 
         Args:
-            model: Ollama model name (default: llama3:70b for improved accuracy)
+            model: Ollama model name (default: llama3.3:70b for improved accuracy)
         """
         self.llm = OllamaLLM(model=model, temperature=0.0)
     

@@ -81,6 +81,11 @@ stages:
       file_name_output: &LOCALFILTERED LOCAL_files_filtered.p
       force_run: True  # Force creation of output file (needed when starting on new system)
 
+      # Optional: Exclude specific document IDs from processing
+      # Add IDs to exclude (e.g., problematic documents)
+      # exclude_ids:
+      #   - 439  # Add IDs to exclude here
+
   # Stage 4: Generate embeddings for RAG
   - name: Generate embeddings
     class: AIEmbeddingsGeneration
