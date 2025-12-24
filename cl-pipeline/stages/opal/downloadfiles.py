@@ -49,12 +49,13 @@ class DownloadOERFromOPAL(TaskWithInputFileMonitor):
                 try:
                     _, _ = urllib.request.urlretrieve(row['opal:oer_permalink'], file_path)
                 except urllib.error.HTTPError as e:
-                    print("Error while downloading.")
+                    print(f"Error while downloading {file_path.name}: HTTP {e.code}")
                     if e.code == 404:
                         download_list_sample["pipe:error_download"] = 'Missing(404)'
                     else:
                         download_list_sample["pipe:error_download"] = f'Unknown download error {e.code}'
-                except:
+                except Exception as e:
+                    print(f"Error while downloading {file_path.name}: {str(e)}")
                     download_list_sample["pipe:error_download"] = 'Unknown error'
             else:
                 download_list_sample['pipe:download_date'] = pd.to_datetime(os.path.getmtime(file_path), unit='s')

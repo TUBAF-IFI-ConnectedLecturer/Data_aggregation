@@ -45,7 +45,7 @@ class CollectOPALOERdocuments(Task):
         try:
             urllib.request.urlretrieve(self.json_url, self.json_file)
         except Exception as e:
-            logging.error(f"Download failed: {e}")
+            logging.error(f"Download of {self.json_file.name} failed: {e}")
             return
         
         logging.debug(f"OPAL data set successfully downloaded.")
