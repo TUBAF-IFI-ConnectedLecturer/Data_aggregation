@@ -17,6 +17,9 @@ class FilterFilesByContent(TaskWithInputFileMonitor):
         self.file_content = Path(config_global['raw_data_folder']) / stage_param['file_content']
         self.file_name_output =  Path(config_global['raw_data_folder']) / stage_param['file_name_output']
 
+        # Optional: IDs to exclude from processing
+        self.exclude_ids = stage_param.get('exclude_ids', [])
+
     def execute_task(self):
 
         df_files = pd.read_pickle(self.file_name_inputs)
@@ -35,6 +38,16 @@ class FilterFilesByContent(TaskWithInputFileMonitor):
         df_content = df_content[(df_content["pipe:language_probability"] > 0.9) & (df_content["pipe:most_prob_language"] == "de")]
 
         df_files_filtered = df_files[df_files["pipe:ID"].isin(df_content["pipe:ID"])]
+
+        # Exclude specific IDs if configured
+        if self.exclude_ids:
+            initial_count = len(df_files_filtered)
+            # Convert IDs to strings for consistent comparison
+            exclude_ids_str = [str(id) for id in self.exclude_ids]
+            df_files_filtered = df_files_filtered[~df_files_filtered["pipe:ID"].astype(str).isin(exclude_ids_str)]
+            excluded_count = initial_count - len(df_files_filtered)
+            if excluded_count > 0:
+                logging.info(f"Excluded {excluded_count} files based on exclude_ids configuration.")
 
         logging.info(f"Filtered {df_files_filtered.shape[0]} relevant files by content.")
         df_files_filtered.reset_index(drop=True, inplace=True)

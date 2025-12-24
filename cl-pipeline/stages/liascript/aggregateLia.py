@@ -207,9 +207,12 @@ class AggregateLiaScriptFiles(TaskWithInputFileMonitor):
         self.data_folder = Path(config_global['raw_data_folder'])
         self.repo_data_file_name = stage_param['repo_data_file_name_input']
         self.file_folder = Path(config_global['file_folder'])
-        
+
         self.file_name =  Path(config_global['raw_data_folder']) / stage_param['repo_data_file_name_input']
         self.lia_files_name =  Path(config_global['raw_data_folder']) / stage_param['lia_files_name']
+
+        # Optional: Repository indices to exclude from processing
+        self.exclude_repo_indices = stage_param.get('exclude_repo_indices', [])
         
         # Get GitHub API token (should be loaded by run_pipeline.py)
         github_api_token = os.environ.get("GITHUB_API_KEY")
@@ -226,15 +229,12 @@ class AggregateLiaScriptFiles(TaskWithInputFileMonitor):
 
     @loggedExecution
     def execute_task(self):
-        blacklist = [41, 580, 597, 598, 600, 607, 617, 640, 641, 647, 649, 683, 689, 712, 724, 725, 726, 727, 728, 729, 732, 733, 734, 741, 750, 809,
-                     763, 764, 765, 776, 793, 799, 801, 814, 816, 822, 825, 839, 842, 843, 844, 850, 869, 880, 881, 897, 898, 900, 932, 933, 934, 946, 950,
-                     965, 966, 967, 972, 974, 975, 976, 977, 978, 980, 986, 987, 988, 990, 991, 1016, 1017, 1023, 1026, 1027, 1029, 1075]
         explore_potential_lia_files(
             github_handle=self.github_handle,
             data_folder=self.data_folder,
             repo_data_file_name=self.repo_data_file_name,
             course_data_file_name=self.lia_files_name,
             file_folder=self.file_folder,
-            blacklist_indices=blacklist
+            blacklist_indices=self.exclude_repo_indices
         )
 
