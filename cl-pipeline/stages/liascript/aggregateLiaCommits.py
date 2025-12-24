@@ -60,6 +60,13 @@ def explore_potential_lia_commits(github_handle, data_folder,
 
     df_courses = pd.read_pickle(Path(course_data_file))
 
+    # Filter only validated LiaScript files
+    if 'pipe:is_valid_liascript' in df_courses.columns:
+        initial_count = len(df_courses)
+        df_courses = df_courses[df_courses['pipe:is_valid_liascript'] == True]
+        filtered_count = len(df_courses)
+        logging.info(f"Filtered courses: {initial_count} -> {filtered_count} (removed {initial_count - filtered_count} invalid files)")
+
     if Path(commit_data_file).exists():
         df_commits = pd.read_pickle(Path(commit_data_file))
     else:

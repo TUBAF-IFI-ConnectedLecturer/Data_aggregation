@@ -46,6 +46,13 @@ class DocumentSimilarity(TaskWithInputFileMonitor):
 
         df_files = pd.read_pickle(self.file_name_inputs)
 
+        # Filter only validated LiaScript files (if validation column exists)
+        if 'pipe:is_valid_liascript' in df_files.columns:
+            initial_count = len(df_files)
+            df_files = df_files[df_files['pipe:is_valid_liascript'] == True]
+            filtered_count = len(df_files)
+            logging.info(f"Filtered files: {initial_count} -> {filtered_count} (removed {initial_count - filtered_count} invalid files)")
+
         logging.info("Reading db files")
         chroma_client = chromadb.PersistentClient(path=str(self.chroma_file))
         collection = chroma_client.get_collection(

@@ -25,6 +25,13 @@ class ExtractLiaScriptMetadata(TaskWithInputFileMonitor):
 
         df_files = pd.read_pickle(Path(self.lia_files_name))
 
+        # Filter only validated LiaScript files
+        if 'pipe:is_valid_liascript' in df_files.columns:
+            initial_count = len(df_files)
+            df_files = df_files[df_files['pipe:is_valid_liascript'] == True]
+            filtered_count = len(df_files)
+            logging.info(f"Filtered files: {initial_count} -> {filtered_count} (removed {initial_count - filtered_count} invalid files)")
+
         if Path(self.lia_metadata_name).exists():
             df_meta = pd.read_pickle(Path(self.lia_metadata_name))
         else:
