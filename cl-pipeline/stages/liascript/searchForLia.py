@@ -246,7 +246,7 @@ def search_lia_repos(github_handle, data_folder, data_file):
         {"keyword": '".eval" "LiaScript" filename:.md', "validity": 1},
 
         # LiaScript header metadata patterns
-        {"keyword": '"narrator:" filename:.md', "validity": 1},  # LiaScript narrator setting
+        {"keyword": '"<!--" "narrator:" filename:.md', "validity": 1},  # LiaScript header with narrator
         {"keyword": '"https://github.com/LiaTemplates/"', "validity": 1},
 
         # General patterns (LOWER PRECISION)
