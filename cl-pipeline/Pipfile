@@ -27,6 +27,7 @@ spacy = "*"
 numpy = "*"
 langchain-chroma = "*"
 msoffcrypto-tool = "*"
+markdown = "*"
 
 [dev-packages]
 
