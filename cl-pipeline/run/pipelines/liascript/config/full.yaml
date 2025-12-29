@@ -67,20 +67,21 @@ stages:
     parameters:
       repo_data_file_name_input: *REPOSITORIES_DF
       lia_files_name: &LIAFILES_DF LiaScript_files.p
-      force_run: True
+      force_run: False
 
       # Optional: Exclude specific repository indices from processing
       exclude_repo_indices:
         - 439
         - 481
         - 497
+        - 575
 
   - name: Validate LiaScript files with AI
     class: ValidateLiaScriptFiles
     parameters:
       file_name_input: *LIAFILES_DF
       file_name_output: &LIAFILES_VALIDATED_DF LiaScript_files_validated.p
-      force_run: True
+      force_run: False
       model_name: llama3.3:70b
       max_content_length: 8000  # Characters to send to AI for validation
       validate_all: False  # Only validate files without validation result
@@ -93,21 +94,21 @@ stages:
     parameters:
       lia_files_name_input: *LIAFILES_VALIDATED_DF
       lia_commits_name: &LIACOMMITS_DF LiaScript_commits.p
-      force_run: True
+      force_run: False
 
   - name: Extract LiaScript metadata from headers
     class: ExtractLiaScriptMetadata
     parameters:
       lia_files_name_input: *LIAFILES_VALIDATED_DF
       lia_metadata_name: &LIAMETADATA_DF LiaScript_metadata.p
-      force_run: True
+      force_run: False
 
   - name: Extract content from markdown files
     class: ExtractFileContent
     parameters:
       file_name_input: *LIAFILES_VALIDATED_DF
       file_name_output: &LIASCONTENT_DF LiaScript_content.p
-      force_run: True
+      force_run: False
       file_types: ['md']
 
   - name: Provide embeddings
@@ -115,7 +116,7 @@ stages:
     parameters:
       file_name_input: *LIAFILES_VALIDATED_DF
       file_name_output: &LIACHROMAFILES LiaScript_embeddings_files.p
-      force_run: True
+      force_run: False
       file_types: ['md']
 
       # LLM and Vector Store Configuration
@@ -138,39 +139,15 @@ stages:
       # Processing mode configuration
       processing_mode:
         # Force processing: These fields are ALWAYS processed (overwrite existing data)
-        force_processing: []    # Empty list = no force processing
+        force_processing:
+          - ai:keywords_ext    # Re-process with "exactly 15" prompt
+          - ai:keywords_gen    # Re-process with "exactly 15" prompt
+          - ai:dewey          # Re-process with improved classification rules
 
         # Conditional processing: These fields are only processed if empty/missing
         conditional_processing:
-          - ai:author
-          - ai:keywords_gen
           - ai:title
-          - ai:type
-          - ai:keywords_ext
           - ai:summary
-          - ai:dewey
 
         # Skip configuration: Skip file if NO conditional fields need processing
         allow_skip_when_all_conditional_filled: false  # Enable skipping when all fields are filled
-
-  - name: Check Keywords with GND
-    class: GNDKeywordCheck
-    parameters:
-      file_name_input: *LIAAIMETA
-      file_name_output: &LIAKEYWORDS LiaScript_checked_keywords.p
-      force_run: True
-      use_llm: true         # KI-basierte Schlagwortauswahl aktivieren
-      llm_model: "gemma3:27b"  # Ollama-Modell für Schlagwortauswahl
-      use_full_keyword_context: true  # Alle Keywords eines Dokuments als Kontext verwenden
-      use_document_metadata: true     # Zusätzliche Dokumentmetadaten als Kontext einbeziehen
-
-  - name: Determine similarity between courses
-    class: DocumentSimilarity
-    parameters:
-      file_name_input: *LIAFILES_VALIDATED_DF
-      file_name_output: &LIASIMILARITY LiaScript_ai_similarity.p
-      force_run: True
-
-      # Vector Store Configuration
-      llm_config:
-        collection_name: "liascript_courses"

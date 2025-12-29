@@ -1,0 +1,53 @@
+# Minimal config to run only metadata extraction stage
+# Use this to re-extract metadata from already downloaded files
+
+folder_structure:
+  data_root_folder: &BASE /media/sz/Data/Connected_Lecturers/LiaScript
+  raw_data_folder: &RAW !join [*BASE, /raw]
+  file_folder: &FILE_FOLDER !join [*RAW, /files]
+  content_folder: &CONTENT_FOLDER !join [*RAW, /content]
+  processed_data_folder: &PREPROCESSED !join [*BASE, /processed]
+
+# Global LLM Configuration
+global_llm_config: &LLM_CONFIG
+  base_url: "http://localhost:11434"
+  embedding_model: "jina/jina-embeddings-v2-base-de"
+  collection_name: "liascript_courses"
+  timeout_seconds: 240
+  chroma_db_folder: "chroma_db"
+
+# Global Logging Configuration
+logging:
+  configure_root_logger: false
+  root_level: "ERROR"
+  pipeline_level: "INFO"
+
+  external_loggers:
+    httpcore: "CRITICAL"
+    "httpcore.http11": "CRITICAL"
+    httpx: "CRITICAL"
+    urllib3: "CRITICAL"
+    "urllib3.connectionpool": "CRITICAL"
+    requests: "CRITICAL"
+    langchain: "WARNING"
+    langchain_ollama: "WARNING"
+    "langchain_text_splitters.base": "ERROR"
+    ollama: "WARNING"
+    PIL: "WARNING"
+    "PIL.PngImagePlugin": "WARNING"
+    "unstructured.trace": "CRITICAL"
+
+# Module paths
+stages_module_path:
+    - ../stages/general/
+    - ../stages/liascript/
+    - ../stages/opal/
+
+# Only run metadata extraction stage
+stages:
+  - name: Extract LiaScript Metadata from Headers
+    class: ExtractLiaScriptMetadata
+    parameters:
+      lia_files_name_input: &LIAFILES_VALIDATED_DF LiaScript_files_validated.p
+      lia_metadata_name: &LIAMETADATA_DF LiaScript_metadata.p
+      force_run: True  # Set to True to re-extract all metadata

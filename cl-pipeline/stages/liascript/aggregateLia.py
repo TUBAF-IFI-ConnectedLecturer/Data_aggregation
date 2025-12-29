@@ -90,6 +90,11 @@ def extract_liafile_meta_data(file):
     meta_data['liaIndi_liascript_in_content'] = False
     meta_data['liaIndi_lia_button'] = False
     meta_data['liaIndi_comment_in_beginning'] = False
+    meta_data['liaIndi_import_statement'] = False
+    meta_data['liaIndi_narrator_statement'] = False
+    meta_data['liaIndi_version_statement'] = False
+    meta_data['liaIndi_video_syntax'] = False
+    meta_data['liaIndi_lia_in_h1'] = False
 
     if "liascript" in file.name.lower():
         meta_data['liaIndi_Lia_in_filename'] = True
@@ -100,11 +105,41 @@ def extract_liafile_meta_data(file):
     if "liaTemplates" in content:
         meta_data['liaIndi_liaTemplates_used'] = True
 
-    if "https://LiaScript.github.io/course/?" in content:
+    # Check for LiaScript button/badge or course link
+    if ("https://LiaScript.github.io/course/?" in content or
+        "LiaScript/LiaScript/master/badges/course.svg" in content):
         meta_data['liaIndi_lia_button'] = True
+
+    # Video syntax is very specific to LiaScript
+    if "!?[" in content:
+        meta_data['liaIndi_video_syntax'] = True
+
+    # Check for "LiaScript" in main heading (first # line)
+    lines = content.split('\n')
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith('#') and not stripped.startswith('##'):
+            if 'liascript' in stripped.lower():
+                meta_data['liaIndi_lia_in_h1'] = True
+            break
 
     if content.lstrip().startswith("<!--"):
         meta_data['liaIndi_comment_in_beginning'] = True
+
+        # Check for LiaScript-specific header content (within first 2000 chars)
+        header_section = content[:2000].lower()
+
+        # import: statement is a very strong indicator
+        if "import:" in header_section or "import :" in header_section:
+            meta_data['liaIndi_import_statement'] = True
+
+        # narrator: statement is a strong indicator
+        if "narrator:" in header_section or "narrator :" in header_section:
+            meta_data['liaIndi_narrator_statement'] = True
+
+        # version: statement is a moderate indicator (combined with others)
+        if "version:" in header_section or "version :" in header_section:
+            meta_data['liaIndi_version_statement'] = True
         
     return meta_data, content
 
@@ -122,6 +157,10 @@ def extract_data(file, content):
     repo_data['file_name'] = file.name
     repo_data['file_download_url'] = file.download_url
     repo_data['file_html_url'] = file.html_url
+    # Add license information from repository
+    repo = file.repository
+    repo_data['repo_license_spdx'] = repo.license.spdx_id if repo.license else None
+    repo_data['repo_license_name'] = repo.license.name if repo.license else None
     print("*", end="")
     return repo_data
 

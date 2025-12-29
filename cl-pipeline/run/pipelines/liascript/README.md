@@ -20,13 +20,22 @@ Creates necessary directory structure for data processing
 ### 2. Identify LiaScript Repositories
 Crawls GitHub to find repositories containing LiaScript content
 - Uses GitHub API to search for LiaScript files
-- Collects repository metadata
+- Collects repository metadata including:
+  - Repository name, owner, URL
+  - Creation/update dates
+  - Stars, forks, watchers
+  - **License information** (SPDX ID and full name)
 - Stores results in `LiaScript_repositories.p`
 
 ### 3. Aggregate LiaScript Files
 Collects all LiaScript files from identified repositories
 - Parses repository structure
 - Identifies Markdown files with LiaScript syntax
+- Stores file metadata including:
+  - File name, download URL, HTML URL
+  - Repository information
+  - **Repository license** (SPDX ID and full name)
+  - LiaScript-specific indicators
 - Stores file metadata in `LiaScript_files.p`
 
 ### 4. Aggregate LiaScript Commits
@@ -36,12 +45,14 @@ Gathers commit history for LiaScript files
 - Stores commit data in `LiaScript_commits.p`
 
 ### 5. Extract LiaScript Metadata
-Extracts structured metadata from LiaScript files:
-- Course titles
-- Authors
-- Topics
-- Learning objectives
-- Interactive elements
+Extracts structured metadata from LiaScript markdown headers:
+- **Author information**: author, email
+- **Content metadata**: version, language, narrator, comment (multi-line support)
+- **Visual elements**: icon, logo URLs
+- **External resources**: import, link, script (multi-line support)
+- **Translation**: translation references
+- **License**: content license from markdown (CC-BY, MIT, etc.) and license URLs
+- Stores metadata in `LiaScript_metadata.p`
 
 ## Configuration Files
 
@@ -56,6 +67,63 @@ Complete pipeline configuration for LiaScript collection
 - **Raw data**: `raw/`
 - **Files**: `raw/files/`
 - **Processed**: `processed/`
+
+## Data Structure
+
+### Repository Data (`LiaScript_repositories.p`)
+| Field | Type | Description |
+|-------|------|-------------|
+| `user` | str | Repository owner/organization |
+| `name` | str | Repository name |
+| `repo_url` | str | GitHub repository URL |
+| `created_at` | datetime | Repository creation date |
+| `updated_at` | datetime | Last update date |
+| `stars` | int | Number of stars |
+| `forks` | int | Number of forks |
+| `watchers` | int | Number of watchers |
+| `contributors_per_repo` | int | Total number of contributors |
+| `license_spdx` | str | SPDX license identifier (e.g., "MIT", "Apache-2.0", "CC-BY-4.0") |
+| `license_name` | str | Full license name (e.g., "MIT License") |
+
+### File Data (`LiaScript_files.p`)
+| Field | Type | Description |
+|-------|------|-------------|
+| `pipe:ID` | str | Unique file identifier (hash) |
+| `pipe:file_type` | str | File type (always "md") |
+| `repo_name` | str | Repository name |
+| `repo_user` | str | Repository owner |
+| `repo_url` | str | Repository URL |
+| `repo_license_spdx` | str | Repository's SPDX license ID |
+| `repo_license_name` | str | Repository's full license name |
+| `file_name` | str | Markdown file name |
+| `file_download_url` | str | Direct download URL |
+| `file_html_url` | str | GitHub web view URL |
+| `liaIndi_*` | bool | LiaScript indicator flags |
+
+### Metadata (`LiaScript_metadata.p`)
+| Field | Type | Description |
+|-------|------|-------------|
+| `pipe:ID` | str | Unique file identifier (matches LiaScript_files.p) |
+| `lia:author` | str | Course author name |
+| `lia:email` | str | Author email address |
+| `lia:version` | str | Course version (e.g., "1.0.0") |
+| `lia:language` | str | Content language code (e.g., "de", "en", "PT-BR") |
+| `lia:narrator` | str | Text-to-speech narrator voice |
+| `lia:comment` | list[str] | Course description/comments (multi-line support) |
+| `lia:icon` | str | Icon/logo file path or URL |
+| `lia:logo` | str | Logo file path or URL |
+| `lia:import` | list[str] | Imported LiaScript templates/macros |
+| `lia:link` | list[str] | External CSS stylesheets |
+| `lia:script` | list[str] | External JavaScript libraries |
+| `lia:translation` | str | Translation file reference |
+| `lia:content_license` | str | License from content (e.g., "CC-BY", "MIT") |
+| `lia:content_license_url` | str | URL to license terms |
+
+### License Information
+The pipeline automatically captures license information for each repository:
+- **Open licenses**: MIT, Apache-2.0, GPL-*, BSD-*, CC-BY-*, ISC, LGPL-*
+- **No license**: `None` if repository has no license file
+- **SPDX identifiers**: Standardized license identifiers for easy filtering
 
 ## Running the Pipeline
 

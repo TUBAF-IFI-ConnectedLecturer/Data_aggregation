@@ -70,6 +70,8 @@ def get_repo_meta_data(repo):
        'is_fork': repo.fork,
        'watchers': repo.watchers_count,
        'contributors_per_repo': repo.get_contributors().totalCount,
+       'license_spdx': repo.license.spdx_id if repo.license else None,
+       'license_name': repo.license.name if repo.license else None,
     }
     return repository
 
