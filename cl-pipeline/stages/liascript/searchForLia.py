@@ -75,20 +75,19 @@ def get_repo_meta_data(repo):
     }
     return repository
 
-def search_repositories_by_year(github_handle, base_query, year, validity):
+def search_repositories_by_year(github_handle, base_query, year):
     """Search repositories for a specific year to avoid the 1000 result limit"""
     query = f"{base_query} created:{year}-01-01..{year}-12-31"
     print(f"  Searching year {year}: {query}")
-    
+
     repository_list = []
     try:
         repositories = github_handle.search_repositories(query)
         print(f"    Found {repositories.totalCount} repositories for year {year}")
-        
+
         for repo in tqdm(repositories, desc=f"Year {year}", leave=False):
             repository = get_repo_meta_data(repo)
             repository['searched_type'] = 'repository'
-            repository['validity'] = validity
             repository['search_year'] = year
             repository_list.append(repository)
             
@@ -120,22 +119,20 @@ def search_repositories(github_handle, queries):
             for repo in tqdm(repositories, total=total_count, desc="Processing repositories"):
                 repository = get_repo_meta_data(repo)
                 repository['searched_type'] = 'repository'
-                repository['validity'] = query_param['validity']
                 repository_list.append(repository)
         else:
             # If we hit the 1000 limit, search year by year
             print(f"Hit 1000 result limit. Searching year by year from {start_year} to {current_year}...")
-            
+
             # For repository searches, we need to modify the base query to remove the focus part
             # because we'll add the year constraint
             base_query = query_param['keyword'] + " " + query_param['focus']
-            
+
             for year in range(start_year, current_year + 1):
                 year_results = search_repositories_by_year(
-                    github_handle, 
-                    base_query, 
-                    year, 
-                    query_param['validity']
+                    github_handle,
+                    base_query,
+                    year
                 )
                 repository_list.extend(year_results)
         
@@ -144,30 +141,29 @@ def search_repositories(github_handle, queries):
       
     return repository_list
 
-def search_code_with_pagination(github_handle, base_query, validity):
+def search_code_with_pagination(github_handle, base_query):
     """Search code using different strategies to get all results beyond 1000 limit"""
     repository_list = []
-    
+
     # Strategy: Split by file size
     size_ranges = [
         "size:0..1000",
-        "size:1001..5000", 
+        "size:1001..5000",
         "size:5001..20000",
         "size:>20000"
     ]
-    
+
     for size_range in size_ranges:
         query = f"{base_query} {size_range}"
         print(f"  Searching with size filter: {query}")
-        
+
         try:
             files = github_handle.search_code(query)
             print(f"    Found {files.totalCount} files with {size_range}")
-            
+
             for code in tqdm(files, desc=f"Size {size_range}", leave=False):
                 repository = get_repo_meta_data(code.repository)
                 repository['searched_type'] = 'code'
-                repository['validity'] = validity
                 repository['size_range'] = size_range
                 repository_list.append(repository)
                 
@@ -198,16 +194,14 @@ def search_code(github_handle, queries):
                 for code in tqdm(files, total=total_count, desc="Processing files"):
                     repository = get_repo_meta_data(code.repository)
                     repository['searched_type'] = 'code'
-                    repository['validity'] = query_param['validity']
                     repository_list.append(repository)
             else:
                 # If we hit the 1000 limit, use pagination strategies
                 print(f"Hit 1000 result limit. Using alternative search strategies...")
-                
+
                 pagination_results = search_code_with_pagination(
-                    github_handle, 
-                    base_query, 
-                    query_param['validity']
+                    github_handle,
+                    base_query
                 )
                 repository_list.extend(pagination_results)
                 
@@ -226,33 +220,35 @@ def search_lia_repos(github_handle, data_folder, data_file):
     # Base filters: fork:false archived:false
     base_filters = " fork:false archived:false"
 
-    # Repository searches with quality filters
+    # Repository searches ordered by precision (most precise first)
+    # Note: Search order matters - when duplicates are found, the first match is kept
     search_queries = [
-        # High-quality indicators
-        {"keyword": '"liascript"', "focus": f" in:topic{base_filters}", "validity": 1},
-        {"keyword": '"liascript-course"', "focus": f" in:topic{base_filters}", "validity": 1},
-        {"keyword": '"liascript"', "focus": f" in:description{base_filters}", "validity": 2},
+        # High-precision indicators
+        {"keyword": '"liascript"', "focus": f" in:topic{base_filters}"},
+        {"keyword": '"liascript-course"', "focus": f" in:topic{base_filters}"},
+        {"keyword": '"liascript"', "focus": f" in:description{base_filters}"},
         # Broader searches
-        {"keyword": '"liascript"', "focus": f" in:readme{base_filters}", "validity": 2},
-        {"keyword": 'liascript', "focus": f" in:path,file{base_filters}", "validity": 3},
+        {"keyword": '"liascript"', "focus": f" in:readme{base_filters}"},
+        {"keyword": 'liascript', "focus": f" in:path,file{base_filters}"},
     ]
     print("Searching for repositories with quality filters")
     repos = search_repositories(github_handle, search_queries)
     repository_list.extend(repos)
 
-    # Enhanced code searches for LiaScript-specific patterns
+    # Code searches for LiaScript-specific patterns ordered by precision (most precise first)
+    # Note: Search order matters - when duplicates are found, the first match is kept
     search_queries = [
-        # LiaScript-specific patterns (HIGH PRECISION)
-        {"keyword": '"LiaScript.github.io/course"', "validity": 1},  # Deployed courses
-        {"keyword": '"https://raw.githubusercontent.com/LiaScript/LiaScript/master/badges/course.svg"', "validity": 1},
-        {"keyword": '".eval" "LiaScript" filename:.md', "validity": 1},
+        # LiaScript-specific patterns (high precision)
+        {"keyword": '"LiaScript.github.io/course"'},  # Deployed courses
+        {"keyword": '"https://raw.githubusercontent.com/LiaScript/LiaScript/master/badges/course.svg"'},
+        {"keyword": '".eval" "LiaScript" filename:.md'},
 
         # LiaScript header metadata patterns
-        {"keyword": '"<!--" "narrator:" filename:.md', "validity": 1},  # LiaScript header with narrator
-        {"keyword": '"https://github.com/LiaTemplates/"', "validity": 1},
+        {"keyword": '"<!--" "narrator:" filename:.md'},  # LiaScript header with narrator
+        {"keyword": '"https://github.com/LiaTemplates/"'},
 
-        # General patterns (LOWER PRECISION)
-        {"keyword": '"liascript" filename:.md', "validity": 2},
+        # General patterns (lower precision)
+        {"keyword": '"liascript" filename:.md'},
     ]
     print("Searching for LiaScript-specific code patterns")
     code = search_code(github_handle, search_queries)
@@ -263,10 +259,10 @@ def search_lia_repos(github_handle, data_folder, data_file):
 
     if df.empty:
         print("WARNING: No repositories found!")
-        df = pd.DataFrame(columns=['name', 'user', 'validity', 'repo_url', 'searched_type'])
+        df = pd.DataFrame(columns=['name', 'user', 'repo_url', 'searched_type'])
     else:
-        # Keep repository with highest validity (lowest number = best)
-        df_droped = df.sort_values('validity', ascending=True).drop_duplicates(
+        # Deduplicate: keep first occurrence (most precise search wins due to query order)
+        df_droped = df.drop_duplicates(
             subset=['name','user'], keep='first'
         ).reset_index(drop=True)
 
