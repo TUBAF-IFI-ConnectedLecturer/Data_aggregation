@@ -155,6 +155,43 @@ grep ERROR pipelines/liascript/logs/*.log
 - Python libraries for GitHub interaction
 - Markdown parsers
 
+## Visualization Tools
+
+### Commit Statistics Visualization
+
+The pipeline includes a powerful visualization tool for analyzing commit patterns across LiaScript documents:
+
+**Script**: [scripts/visualize_commits.py](scripts/visualize_commits.py)
+
+This script creates an interactive scatter plot showing:
+- **X-axis**: Duration in days (logarithmic scale) - how long the document has been maintained
+- **Y-axis**: Number of commits (logarithmic scale) - how actively the document is updated
+- **Color**: Number of authors contributing to each document
+- **Size**: Indicates grouped documents at the same position (same commit count and duration)
+- **Interactive**: Click on single documents to open their GitHub URL, hover for detailed information
+
+**Features**:
+- Aggregates overlapping points to avoid clutter
+- Shows author lists and repository information on hover
+- Generates both online (CDN-based, smaller) and offline (embedded, larger) HTML versions
+- Provides statistics summary of all documents
+
+**Usage**:
+```bash
+cd /media/sz/Data/Veits_pdfs/Data_aggregation/cl-pipeline/run/pipelines/liascript/scripts
+python visualize_commits.py
+```
+
+**Output**:
+- `liascript_commits_visualization.html` - Lightweight version (requires internet)
+- `liascript_commits_visualization_offline.html` - Standalone version (works offline)
+
+The visualization helps identify:
+- Long-term maintained educational materials
+- Actively updated courses
+- Single-author vs. collaborative projects
+- Document lifecycle patterns
+
 ## Common Issues
 
 ### GitHub API Rate Limits
