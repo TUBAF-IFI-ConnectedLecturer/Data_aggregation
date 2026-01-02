@@ -12,6 +12,108 @@ The OPAL pipeline collects, processes, and enriches educational materials from t
 - **Content**: Educational materials, lectures, course materials
 - **Language**: Primarily German
 
+## Metadata Extraction
+
+Metadata extraction for OPAL files is performed on three levels:
+
+| Level | Source                                                    | Prefix in Dataset |
+| ----- | --------------------------------------------------------- | ----------------- |
+| 1     | Original metadata from UB Freiberg JSON dataset           | `opal`            |
+| 2     | Metadata/Properties embedded in the files                 | `file`            |
+| 3     | AI-extracted metadata from file contents                  | `ai`              |
+
+The final dataset combines metadata from all three levels and maps them to the comprehensive [OER Metadata Schema](https://dini-ag-kim.github.io/hs-oer-lom-profil/latest/).
+
+### Pipeline Metadata for Each Dataset
+
+| Meaning         | CL-Naming             |
+| --------------- | --------------------- |
+| ID              | `pipe:ID`             |
+| Folder          | `pipe:file_path`      |
+| File Type       | `pipe:file_type`      |
+| Language        | `pipe:language`       |
+| Error           | `pipe:error_download` |
+| Download Date   | `pipe:download_date`  |
+
+### Original OPAL Metadata
+
+| OPAL Label         | OPAL Meaning        | CL-Naming               |
+| ------------------ | ------------------- | ----------------------- |
+| `filename`         | Filename            | `opal:filename`         |
+| `license`          | License             | `opal:license`          |
+| `oer_permalink`    | Permalink           | `opal:oer_permalink`    |
+| `title`            | Title               | `opal:title`            |
+| `comment`          | Description         | `opal:comment`          |
+| `creator`          | Author              | `opal:creator`          |
+| `publisher`        | Publisher           |                         |
+| `source`           | Source              |                         |
+| `city`             | City                |                         |
+| `publicationMonth` | Publication Month   | `opal:publicationMonth` |
+| `publicationYear`  | Publication Year    | `opal:publicationYear`  |
+| `pages`            | Pages               |                         |
+| `language`         | Language            | `opal:language`         |
+| `url`              | Link / URL          |                         |
+| `act`              | Work                |                         |
+| `appId`            | Project             |                         |
+| `category`         | Category            |                         |
+| `chapter`          | Chapter             |                         |
+| `duration`         | Duration            |                         |
+| `mediaType`        | Media Type          |                         |
+| `nav1`             | ?                   |                         |
+| `nav2`             | ?                   |                         |
+| `nav3`             | ?                   |                         |
+| `series`           | Series              |                         |
+
+### File Metadata
+
+Metadata is extracted from `docx`, `pptx`, `xlsx` and `pdf` files.
+
+| Office Files     | PDF Files      | CL-Naming       |
+| ---------------- | -------------- | --------------- |
+| `creator`        | `author`       | `file:author`   |
+| `title`          | `title`        | `file:title`    |
+| `description`    |                |                 |
+| `subject`        | `subject`      | `file:subject`  |
+| `identifier`     |                |                 |
+| `language`       | `language`     | `file:language` |
+| `created`        | `creationDate` | `file:created`  |
+| `modified`       | `modDate`      | `file:modified` |
+| `lastModifiedBy` |                |                 |
+| `category`       |                |                 |
+| `contentStatus`  |                |                 |
+| `version`        |                |                 |
+| `revision`       |                |                 |
+| `keywords`       |                | `file:keywords` |
+| `lastPrinted`    |                |                 |
+|                  | `creator`      |                 |
+|                  | `producer`     |                 |
+|                  | `format`       |                 |
+
+### AI-Extracted Metadata
+
+| CL-Naming     | Prompt                                                                                                        |
+| ------------- | ------------------------------------------------------------------------------------------------------------- |
+| `ai:title`    | `f"Give me a title of the document {file}. Just answer by the title. Please answer in German."`              |
+| `ai:author`   | `f"Who is the author of the document {file}. Avoid all additional information, just answer by authors name."` |
+| `ai:keywords` | `f"Please extract 5 Keywords from {file}? Just answer by a list separated by commas. Please answer in German.` |
+
+### OER Metadata Schema Mapping
+
+The structure from [LOM for Higher Education OER Repositories](https://dini-ag-kim.github.io/hs-oer-lom-profil/latest/) has been flattened here. The final schema will be determined during the project runtime and a transformation script will be integrated.
+
+| Field Name           | Notes                                          | `pipe:`          | `opal:`              | `file:`         | `ai:`         |
+| -------------------- | ---------------------------------------------- | ---------------- | -------------------- | --------------- | ------------- |
+| `<title>`            |                                                |                  | `opal:title`         | `file:title`    | `ai:title`    |
+| `<language>`         |                                                | `pipe:language`  | `opal:language`      | `file:language` |               |
+| `<description>`      |                                                |                  | `opal:comment`       | `file:subject`  |               |
+| `<keyword>`          |                                                |                  |                      | `file:keywords` | `ai:keywords` |
+| `<aggregationlevel>` | For individual, atomic materials (1)           | 1                |                      |                 |               |
+| `<format>`           | e.g. application/pdf or image/png              | `pipe:file_type` |                      |                 |               |
+| `<location>`         | Usually a Uniform Resource Locator (URL)       |                  | `opal:oer_permalink` |                 |               |
+| `<rights>`           | License parameters                             |                  | `opal:license`       |                 |               |
+| `<author>`           |                                                |                  | `opal:creator`       | `file:author`   | `ai:author`   |
+| `<date>`             |                                                |                  |                      | `file:modified` |               |
+
 ## Pipeline Stages
 
 ### 1. Generate Data Folder Structure

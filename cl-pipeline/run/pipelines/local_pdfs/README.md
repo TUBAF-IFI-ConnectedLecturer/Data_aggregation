@@ -6,6 +6,87 @@ This pipeline processes a local collection of scientific research papers (PDFs) 
 
 The Local PDFs pipeline is optimized for academic research papers with structured metadata. It processes 1,010 scientific papers from various domains.
 
+## Unterschied zu arbeitsbasis Pipeline
+
+Die `local_pdfs`- und `arbeitsbasis`-Pipelines nutzen **die gleichen 6 Verarbeitungsstufen (Stages)**, unterscheiden sich jedoch in folgenden Punkten:
+
+### Hauptunterschiede
+
+| Aspekt | local_pdfs | arbeitsbasis |
+|--------|-----------|-------------|
+| **Datenmenge** | 1.010 PDFs | 6.732 PDFs |
+| **Datenstruktur** | Flache Dateisammlung | 18 Journal-Ordner mit Unterordnern |
+| **BibTeX-Quellen** | 1 zentrale `Artikelbasis.bib` | 18 separate `.bib`-Dateien (eine pro Journal) |
+| **Journal-Tracking** | Keine Journal-Differenzierung | `pipe:journal`-Feld trackt Herkunft |
+| **Prepare-Skript** | `prepare_local_pdfs.py` (364 Zeilen) | `prepare_arbeitsbasis.py` (430 Zeilen) |
+| **Verarbeitungsstrategie** | Inkrementell: `force_run: False` | Aggressiv: `force_run: True` |
+| **ChromaDB** | `chroma_db_local` | `chroma_db_arbeitsbasis` |
+| **Collection Name** | `local_pdfs_collection` | `arbeitsbasis_collection` |
+| **Zusatztools** | ✅ 6 Title-Improvement & Export-Scripts | ❌ Keine |
+
+### Technische Unterschiede im Detail
+
+#### 1. Prepare-Skript (`prepare_local_pdfs.py`)
+
+Das Prepare-Skript für local_pdfs ist einfacher, weil es:
+
+- **Eine flache Dateisammlung verarbeitet**: Alle PDFs in einem Ordner
+- **Eine zentrale BibTeX-Datei nutzt**: `Artikelbasis.bib` mit allen Metadaten
+- **Keine Journal-Differenzierung**: Alle Dokumente werden gleich behandelt
+- **Fokus auf Einfachheit**: 364 Zeilen vs. 430 Zeilen in arbeitsbasis
+
+#### 2. Konfiguration (`config/full.yaml`)
+
+**Stage 5 (AIMetaDataExtraction)**:
+```yaml
+force_run: False  # Inkrementelle Verarbeitung über Checkpoints
+# skip_if_any_field_exists: nicht gesetzt
+```
+
+**Bedeutung**: Die local_pdfs-Pipeline nutzt eine **inkrementelle Verarbeitungsstrategie**. Bei wiederholten Runs werden nur neue oder geänderte Dokumente verarbeitet.
+
+**Vorteil**: Schnellere Laufzeit bei wiederholten Runs
+**Nachteil**: Bei Prompt-Änderungen müssen Checkpoints manuell gelöscht werden, um Reprocessing zu erzwingen
+
+Im Gegensatz dazu nutzt arbeitsbasis `force_run: True` für aggressives Reprocessing.
+
+#### 3. Zusätzliche Post-Processing-Tools
+
+Die local_pdfs-Pipeline bietet 6 zusätzliche Hilfsskripte in `scripts/`:
+
+1. **bibtex_export.py** - Exportiert AI-extrahierte Metadaten zu BibTeX
+2. **export_journal_bibtex.py** - Journal-spezifischer BibTeX-Export
+3. **improve_titles_hybrid.py** - Verbessert Titel mit Hybrid-Ansatz
+4. **improve_titles_with_pdf_metadata.py** - Nutzt PDF-Metadaten für Titel
+5. **extract_title_from_layout.py** - Layout-basierte Titelextraktion
+6. **CHANGELOG.md** - Dokumentation der Verbesserungen
+
+Diese Tools sind besonders nützlich für Post-Processing und Qualitätsverbesserungen.
+
+### Wann welche Pipeline verwenden?
+
+**Verwende local_pdfs, wenn**:
+- Du eine kleinere, homogene Sammlung hast
+- Du schnelle, inkrementelle Updates bevorzugst
+- Du zusätzliche Post-Processing-Tools brauchst (Title-Improvement-Scripts)
+- Du eine zentrale BibTeX-Datei hast
+
+**Verwende arbeitsbasis, wenn**:
+- Du eine große, heterogene Sammlung aus mehreren Quellen hast
+- Du Journal-Herkunft tracken musst
+- Du bereit bist, längere Laufzeiten für vollständiges Reprocessing zu akzeptieren
+- Du separate BibTeX-Dateien pro Quelle hast
+
+### Gemeinsame Features
+
+Beide Pipelines teilen:
+- Identische 6 Verarbeitungsstufen (Stages)
+- Gleiche KI-Modelle (llama3.3:70b, gemma3:27b)
+- Gleiches Embedding-Model (jina-embeddings-v2-base-de)
+- Identische Prompt-Struktur für wissenschaftliche Arbeiten
+- ChromaDB für Vektor-Speicherung
+- RAG-basierte Metadatenextraktion
+
 ### Document Characteristics
 - **Language**: 97.2% German, 2.8% English
 - **Type**: Scientific papers (Zeitschriftenartikel, Konferenzbeiträge, Forschungsberichte, etc.)
