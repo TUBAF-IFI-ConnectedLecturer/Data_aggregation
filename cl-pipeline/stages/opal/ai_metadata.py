@@ -31,6 +31,7 @@ from ai_metadata_core.processors.affiliation_processor import AffiliationProcess
 from ai_metadata_core.processors.keyword_extractor import KeywordExtractor
 from ai_metadata_core.processors.dewey_classifier import DeweyClassifier
 from ai_metadata_core.processors.summary_processor import SummaryProcessor
+from ai_metadata_core.processors.education_processor import EducationProcessor
 
 # Import zentrale Logging-Konfiguration
 import sys
@@ -86,6 +87,10 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
         # Optional: Retrieval strategy for selecting relevant chunks
         # Options: "all" (default), "first_and_last_pages", "first_pages_only"
         self.retrieval_strategy = stage_param.get('retrieval_strategy', 'all')
+
+        # Batch processing configuration
+        # Save results every N documents to reduce I/O overhead and improve crash recovery
+        self.batch_size = stage_param.get('batch_size', 50)
     
     def _initialize_core_components(self, stage_param):
         """Initialize core utility components"""
@@ -103,19 +108,22 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
         """Initialize specialized metadata processors"""
         # Document metadata processor
         self.document_processor = DocumentProcessor(self.prompt_manager, self.llm_interface)
-        
+
         # Affiliation processor
         self.affiliation_processor = AffiliationProcessor(self.prompt_manager, self.llm_interface)
-        
+
         # Keywords processor
         self.keyword_extractor = KeywordExtractor(self.prompt_manager, self.llm_interface)
-        
+
         # Dewey classification processor
         dewey_file = getattr(self, 'dewey_classification_file', 'dewey_classification.txt')
         self.dewey_classifier = DeweyClassifier(self.prompt_manager, self.llm_interface, dewey_file)
-        
+
         # Summary processor
         self.summary_processor = SummaryProcessor(self.prompt_manager, self.llm_interface)
+
+        # Education processor
+        self.education_processor = EducationProcessor(self.prompt_manager, self.llm_interface)
     
     def _setup_logging(self):
         """Configure logging to reduce noise from dependencies"""
@@ -337,6 +345,10 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
                 return self.dewey_classifier.process_dewey_classification(file, chain)
             elif field_name == 'ai:summary':
                 return self.summary_processor.process_summary(file, chain)
+            elif field_name == 'ai:education_level':
+                return self.education_processor.process_education_level(file, chain)
+            elif field_name == 'ai:target_audience':
+                return self.education_processor.process_target_audience(file, chain)
             else:
                 logging.warning("Unknown field type: %s", field_name)
                 return {}
@@ -376,7 +388,7 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
         for field_name in priority_fields:
             if field_name in metadata and metadata[field_name]:
                 label = field_labels[field_name]
-                value = metadata[field_name]
+                value = str(metadata[field_name])  # Convert to string to handle float/NaN values
                 if field_name == 'ai:author' and 'ai:revisedAuthor' in metadata:
                     value += f" / {metadata['ai:revisedAuthor']}"
                 # Special formatting for summary (add separator for better readability)
@@ -462,6 +474,8 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
         total_files = 0
         skipped_files = 0
         processed_files = 0
+        batch_counter = 0
+        batch_buffer = []
 
         for _, row in tqdm(df_files.iterrows(), total=df_files.shape[0]):
             if row['pipe:file_type'] not in self.file_types:
@@ -503,13 +517,26 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
             # Process each field (chain is now created per-field with field-specific strategies)
             needs_processing = False
             for field_name in processing_fields:
-                field_result = self._process_single_field(
-                    field_name, file, vectorstore, pages, collection, existing_metadata
-                )
-                if field_result:
-                    metadata.update(field_result)
+                should_process, process_type = self.config_manager.should_process_field(field_name, existing_metadata)
+
+                if should_process:
+                    field_result = self._process_single_field(
+                        field_name, file, vectorstore, pages, collection, existing_metadata
+                    )
+                    # Always update metadata, even if result is empty
+                    # This marks the field as "processed" to avoid re-processing
+                    if field_result:
+                        metadata.update(field_result)
+                    else:
+                        # Store empty/default value to mark as processed
+                        if field_name in ['ai:dewey']:
+                            metadata[field_name] = []
+                        elif field_name in ['ai:keywords_ext', 'ai:keywords_gen', 'ai:keywords_dnb']:
+                            metadata[field_name] = []
+                        else:
+                            metadata[field_name] = ""
                     needs_processing = True
-            
+
             # Skip if no processing was needed
             if not needs_processing:
                 continue
@@ -519,20 +546,48 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
             # Display results
             output = self._format_output(file, metadata, existing_metadata)
             print(f"\n{output}\n")
-            
-            # Update DataFrame
-            if existing_metadata is not None:
-                df_metadata = df_metadata[df_metadata['pipe:ID'] != row['pipe:ID']]
-            
+
             # Ensure ai:dewey is always a list
             if 'ai:dewey' not in metadata:
                 metadata['ai:dewey'] = []
-            
-            df_aux = pd.DataFrame([metadata])
-            df_metadata = pd.concat([df_metadata, df_aux], ignore_index=True)
-            df_metadata.to_pickle(self.file_name_output)
+
+            # Add to batch buffer
+            batch_buffer.append(metadata)
+            batch_counter += 1
+
+            # Save batch when batch_size is reached
+            if batch_counter >= self.batch_size:
+                # Update DataFrame with batch
+                for batch_metadata in batch_buffer:
+                    # Remove existing entry if present
+                    df_metadata = df_metadata[df_metadata['pipe:ID'] != batch_metadata['pipe:ID']]
+                    # Add new entry
+                    df_aux = pd.DataFrame([batch_metadata])
+                    df_metadata = pd.concat([df_metadata, df_aux], ignore_index=True)
+
+                # Save to disk
+                df_metadata.to_pickle(self.file_name_output)
+                print(f"✓ Batch saved: {batch_counter} documents processed (Total: {len(df_metadata)} in metadata)", flush=True)
+
+                # Reset batch
+                batch_buffer = []
+                batch_counter = 0
         
-        # Final save
+        # Save remaining items in batch buffer
+        if batch_buffer:
+            for batch_metadata in batch_buffer:
+                # Remove existing entry if present
+                df_metadata = df_metadata[df_metadata['pipe:ID'] != batch_metadata['pipe:ID']]
+                # Add new entry
+                df_aux = pd.DataFrame([batch_metadata])
+                df_metadata = pd.concat([df_metadata, df_aux], ignore_index=True)
+
+            # Save final batch
+            df_metadata.reset_index(drop=True, inplace=True)
+            df_metadata.to_pickle(self.file_name_output)
+            print(f"✓ Final batch saved: {len(batch_buffer)} documents", flush=True)
+
+        # Final save (ensure index is clean)
         df_metadata.reset_index(drop=True, inplace=True)
         df_metadata.to_pickle(self.file_name_output)
 
@@ -542,5 +597,6 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
         print(f"Total files checked: {total_files}")
         print(f"Files skipped (complete): {skipped_files}")
         print(f"Files processed: {processed_files}")
+        print(f"Batch size configured: {self.batch_size}")
         print(f"Final metadata count: {len(df_metadata)}")
         print(f"{'='*70}\n")

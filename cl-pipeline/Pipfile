@@ -28,6 +28,7 @@ numpy = "*"
 langchain-chroma = "*"
 msoffcrypto-tool = "*"
 markdown = "*"
+plotly = "*"
 
 [dev-packages]
 

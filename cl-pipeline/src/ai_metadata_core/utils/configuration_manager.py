@@ -48,14 +48,6 @@ class ProcessingConfigManager:
         if existing_metadata is None:
             return False
 
-        # If force processing is enabled for any field, never skip
-        if len(self.force_processing_fields) > 0:
-            return False
-
-        # If skipping is disabled, never skip
-        if not self.allow_skip_when_all_conditional_filled:
-            return False
-
         # NEW: Skip if ANY field exists (document has been analyzed before)
         # This mode skips all documents that have been processed, even if incomplete
         if self.skip_if_any_field_exists:
@@ -65,18 +57,19 @@ class ProcessingConfigManager:
                     return True  # Skip because document has been analyzed (at least one field exists)
             return False  # Don't skip - no AI fields exist yet
 
-        # Special case: If conditional_processing is empty, skip all documents with existing metadata
-        # This means: "Skip all documents that have been analyzed before, regardless of completeness"
-        if len(self.conditional_processing_fields) == 0:
-            return True  # Skip because document exists in metadata
+        # CRITICAL FIX: If force_processing fields are configured, NEVER skip
+        # Force processing fields must ALWAYS be re-processed
+        if len(self.force_processing_fields) > 0:
+            return False  # Never skip when force_processing is configured
 
-        # Default: Check if all conditional fields are filled
+        # Only check conditional fields if no force_processing is configured
+        # Check if ANY conditional field needs processing
         for field_name in self.conditional_processing_fields:
             should_process, _ = self.should_process_field(field_name, existing_metadata)
             if should_process:
-                return False  # At least one field needs processing
+                return False  # At least one conditional field needs processing
 
-        return True  # All conditional fields filled and no force processing
+        return True  # All conditional fields are complete and no force_processing configured
     
     def _is_empty(self, value: Any) -> bool:
         """Check if a value is considered empty"""
