@@ -103,6 +103,14 @@ stages:
       lia_metadata_name: &LIAMETADATA_DF LiaScript_metadata.p
       force_run: False
 
+  - name: Analyze LiaScript feature usage
+    class: AnalyzeLiaScriptFeatures
+    parameters:
+      lia_files_name_input: *LIAFILES_VALIDATED_DF
+      feature_analysis_name: &LIAFEATURES_DF LiaScript_features.p
+      feature_stats_name: &LIAFEATURESTATS LiaScript_feature_statistics.p
+      force_run: False
+
   - name: Extract content from markdown files
     class: ExtractFileContent
     parameters:
@@ -136,18 +144,23 @@ stages:
       # LLM and Vector Store Configuration
       llm_config: *LLM_CONFIG
 
+      # Batch processing configuration
+      batch_size: 50  # Save every 50 documents to reduce I/O overhead
+
       # Processing mode configuration
       processing_mode:
         # Force processing: These fields are ALWAYS processed (overwrite existing data)
         force_processing:
-          - ai:keywords_ext    # Re-process with "exactly 15" prompt
-          - ai:keywords_gen    # Re-process with "exactly 15" prompt
-          - ai:dewey          # Re-process with improved classification rules
+          - ai:education_level     # Force re-process: Update education level classification
+          - ai:target_audience     # Force re-process: Update target audience description
 
         # Conditional processing: These fields are only processed if empty/missing
         conditional_processing:
-          - ai:title
-          - ai:summary
+          - ai:keywords_ext        # Only process if missing/empty or invalid count
+          - ai:keywords_gen        # Only process if missing/empty or invalid count
+          - ai:dewey               # Only process if missing/empty
+          - ai:title               # Only process if missing/empty
+          - ai:summary             # Only process if missing/empty
 
         # Skip configuration: Skip file if NO conditional fields need processing
-        allow_skip_when_all_conditional_filled: false  # Enable skipping when all fields are filled
+        allow_skip_when_all_conditional_filled: false  # Process all files for force_processing fields
