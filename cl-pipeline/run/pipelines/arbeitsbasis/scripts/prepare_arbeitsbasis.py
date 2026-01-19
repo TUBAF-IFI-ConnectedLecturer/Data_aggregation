@@ -76,6 +76,20 @@ def extract_bibtex_field(entry, field_name):
     return None
 
 
+def extract_year_from_entry_key(entry_key):
+    """
+    Extract year from BibTeX entry key like 'hermann_editorial_2016' or 'noauthor_rezensionen_2017-1'.
+    Returns year string or None.
+    """
+    if not entry_key:
+        return None
+    # Match 4-digit year (19xx or 20xx) at the end or before a suffix like -1
+    match = re.search(r'[_-]((?:19|20)\d{2})(?:-\d+)?$', entry_key)
+    if match:
+        return match.group(1)
+    return None
+
+
 def parse_bibtex(bibtex_file):
     """
     Parse a single BibTeX file and extract metadata.
@@ -93,10 +107,19 @@ def parse_bibtex(bibtex_file):
         print(f"  ⚠ Error reading {bibtex_file}: {e}")
         return {}
 
-    # Split into entries (each entry starts with @)
-    entries = re.split(r'@\w+\{', content)[1:]  # Skip first empty part
+    # Split into entries, keeping the @type{ prefix to extract entry key
+    raw_entries = re.split(r'(@\w+\{)', content)[1:]
 
-    for entry in entries:
+    for i in range(0, len(raw_entries), 2):
+        if i + 1 >= len(raw_entries):
+            break
+
+        entry_header = raw_entries[i]  # e.g., "@article{"
+        entry = raw_entries[i + 1]
+
+        # Extract entry key (first thing after @type{, before comma)
+        key_match = re.match(r'([^,\s]+)', entry)
+        entry_key = key_match.group(1) if key_match else None
         # Extract file ID from the file field
         # Pattern: file = {Full Text PDF:files/6513/Filename.pdf:application/pdf}
         file_match = re.search(r'file\s*=\s*\{[^:]*:files/(\d+)/', entry)
@@ -123,15 +146,21 @@ def parse_bibtex(bibtex_file):
         if keywords:
             metadata['keywords'] = keywords
 
-        # Year/Date
-        date_value = extract_bibtex_field(entry, 'date')
+        # Year extraction - priority: year field > entry_key > '0000'
+        # Note: The 'date' field is intentionally ignored because Zotero populates it
+        # with the export/sync date (e.g., 2025-11-18), not the publication date.
+        # The 'year' field and entry_key contain the actual publication year.
+        # Missing years are marked as '0000'.
         year_value = extract_bibtex_field(entry, 'year')
-        if date_value:
-            # Extract year from date (format: 2016-03 or 2016)
-            year_part = date_value.split('-')[0]
-            metadata['year'] = year_part
-        elif year_value:
+        key_year = extract_year_from_entry_key(entry_key)
+
+        # Priority: year field > entry_key > '0000'
+        if year_value:
             metadata['year'] = year_value
+        elif key_year:
+            metadata['year'] = key_year
+        else:
+            metadata['year'] = '0000'
 
         # DOI
         doi = extract_bibtex_field(entry, 'doi')
