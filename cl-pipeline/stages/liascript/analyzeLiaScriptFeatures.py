@@ -151,8 +151,12 @@ class AnalyzeLiaScriptFeatures(TaskWithInputFileMonitor):
         features['feature:has_tables'] = table_headers > 0
 
         # Count different quiz types
-        # Text input quiz: [[solution text]]
-        text_quiz_count = len(re.findall(r'\[\[[^\[\]]+\]\]', content))
+        # Text input quiz: [[solution text]] - exclude MC markers [[X]], [[ ]], hints [[?]], and script output [[...]]
+        # Pattern excludes: [[X]], [[ ]], [[?]], and lines starting with [[ that are MC quiz items
+        text_quiz_count = len(re.findall(r'\[\[(?![Xx ]\]\]|\?\]\])[^\[\]]+\]\]', content))
+        # Subtract MC quiz items that may have been matched (those at line start are MC)
+        mc_quiz_items = len(re.findall(r'^\s*\[\[[^\[\]]+\]\]', content, re.MULTILINE))
+        text_quiz_count = max(0, text_quiz_count - mc_quiz_items)
         features['feature:text_quiz_count'] = text_quiz_count
         features['feature:has_text_quiz'] = text_quiz_count > 0
 
@@ -176,10 +180,16 @@ class AnalyzeLiaScriptFeatures(TaskWithInputFileMonitor):
         features['feature:total_quiz_count'] = total_quiz_count
         features['feature:has_quiz'] = total_quiz_count > 0
 
-        # Count code blocks (``` language)
-        code_block_count = len(re.findall(r'^```\w+', content, re.MULTILINE))
+        # Count code blocks (``` with or without language specification)
+        # Matches: ```python, ```js, ``` (without language), ```+ (LiaScript project marker)
+        code_block_count = len(re.findall(r'^```[\w+]*\s*$', content, re.MULTILINE))
         features['feature:code_block_count'] = code_block_count
         features['feature:has_code_blocks'] = code_block_count > 0
+
+        # Count code projects specifically (```+ or @file.ext markers)
+        code_project_count = len(re.findall(r'^```\w*\+', content, re.MULTILINE))
+        features['feature:code_project_count'] = code_project_count
+        features['feature:has_code_projects'] = code_project_count > 0
 
         # Count script tags (<script>...</script>)
         script_tag_count = len(re.findall(r'<script[^>]*>.*?</script>', content, re.DOTALL | re.IGNORECASE))
@@ -193,18 +203,32 @@ class AnalyzeLiaScriptFeatures(TaskWithInputFileMonitor):
         features['feature:imported_templates'] = templates if templates else None
 
         # Check for narrator (TTS configuration in header)
-        has_narrator = bool(re.search(r'narrator\s*:', content[:2000], re.IGNORECASE))
+        has_narrator = self._has_header_field(content, 'narrator')
         features['feature:has_narrator'] = has_narrator
 
-        # Count TTS narrator comments (--{{number}}-- syntax)
-        tts_comment_count = len(re.findall(r'--\{\{\d+\}\}--', content))
-        features['feature:tts_comment_count'] = tts_comment_count
-        features['feature:has_tts_comments'] = tts_comment_count > 0
+        # Count TTS narrator fragments (--{{number}}-- or --{{number-number}}-- syntax)
+        # Matches: --{{1}}--, --{{2}}--, --{{1-3}}-- etc.
+        tts_fragment_count = len(re.findall(r'--\{\{\d+(?:-\d+)?\}\}--', content))
+        features['feature:tts_fragment_count'] = tts_fragment_count
+        features['feature:has_tts_fragments'] = tts_fragment_count > 0
 
-        # Count animation fragments ({{number}} syntax - not preceded by --)
-        animation_fragment_count = len(re.findall(r'(?<!--)\{\{\d+\}\}', content))
+        # Count TTS narrator blocks (multiline blocks with **** delimiters)
+        # Pattern: --{{number}}-- or --{{number-number}}-- followed by newline and ****
+        tts_block_count = len(re.findall(r'--\{\{\d+(?:-\d+)?\}\}--\s*\n\*{4,}', content))
+        features['feature:tts_block_count'] = tts_block_count
+        features['feature:has_tts_blocks'] = tts_block_count > 0
+
+        # Count animation fragments ({{number}} or {{number-number}} syntax - not preceded by --)
+        # Matches: {{1}}, {{2}}, {{1-3}}, {{0-5}} etc.
+        animation_fragment_count = len(re.findall(r'(?<!--)\{\{\d+(?:-\d+)?\}\}', content))
         features['feature:animation_fragment_count'] = animation_fragment_count
         features['feature:has_animation_fragments'] = animation_fragment_count > 0
+
+        # Count animation blocks (multiline blocks with **** delimiters)
+        # Pattern: {{number}} or {{number-number}} followed by newline and ****
+        animation_block_count = len(re.findall(r'\{\{\d+(?:-\d+)?\}\}\s*\n\*{4,}', content))
+        features['feature:animation_block_count'] = animation_block_count
+        features['feature:has_animation_blocks'] = animation_block_count > 0
 
         # Count animate.css animations (class="animated ..." or animate__)
         animated_css_count = len(re.findall(r'class=["\'"][^"\']*\banimated\b|animate__\w+', content))
@@ -226,31 +250,126 @@ class AnalyzeLiaScriptFeatures(TaskWithInputFileMonitor):
         features['feature:external_css_count'] = header_links
         features['feature:has_external_css'] = header_links > 0
 
-        # Count QR codes ([qr-code](url))
-        qr_code_count = len(re.findall(r'\[qr-code\]\(.*?\)', content, re.IGNORECASE))
-        features['feature:qr_code_count'] = qr_code_count
-        features['feature:has_qr_codes'] = qr_code_count > 0
-
-        # Count preview-lia links ([preview-lia](url))
-        preview_lia_count = len(re.findall(r'\[preview-lia\]\(.*?\)', content, re.IGNORECASE))
-        features['feature:preview_lia_count'] = preview_lia_count
-        features['feature:has_preview_lia'] = preview_lia_count > 0
-
         # Count formulas ($ ... $ and $$ ... $$)
-        inline_math_count = len(re.findall(r'\$[^$]+\$', content))
-        display_math_count = len(re.findall(r'\$\$[^$]+\$\$', content, re.DOTALL))
+        # First remove code blocks to avoid false positives from shell variables ($PATH, $HOME)
+        content_no_code = re.sub(r'```.*?```', '', content, flags=re.DOTALL)
+        # Also remove inline code to avoid false positives
+        content_no_code = re.sub(r'`[^`]+`', '', content_no_code)
+        # Inline math: $...$ but not $$ and not currency like $10.99
+        inline_math_count = len(re.findall(r'(?<!\$)\$(?!\$)[^$\n]+\$(?!\$)', content_no_code))
+        # Display math: $$...$$
+        display_math_count = len(re.findall(r'\$\$[^$]+\$\$', content_no_code, re.DOTALL))
         features['feature:inline_math_count'] = inline_math_count
         features['feature:display_math_count'] = display_math_count
         features['feature:has_math'] = (inline_math_count + display_math_count) > 0
 
+        # Check for logo in header (logo: URL)
+        has_logo = self._has_header_field(content, 'logo')
+        features['feature:has_logo'] = has_logo
+
+        # Check for icon in header (icon: URL)
+        has_icon = self._has_header_field(content, 'icon')
+        features['feature:has_icon'] = has_icon
+
+        # ===== NEW FEATURES =====
+
+        # Count QR codes ([qr-code](data) or qr-code syntax)
+        qr_code_count = len(re.findall(r'\[qr-code\]|\[qr-code\s*\(', content, re.IGNORECASE))
+        features['feature:qr_code_count'] = qr_code_count
+        features['feature:has_qr_codes'] = qr_code_count > 0
+
+        # Count surveys/polls ([(text)] where text is not X or space - Likert scale items)
+        # Survey items have text descriptions instead of X/ for selection
+        survey_count = len(re.findall(r'^\s*\[\([^Xx ][^\)]+\)\]', content, re.MULTILINE))
+        features['feature:survey_count'] = survey_count
+        features['feature:has_surveys'] = survey_count > 0
+
+        # Count footnotes ([^1], [^note], etc.)
+        footnote_ref_count = len(re.findall(r'\[\^[^\]]+\]', content))
+        footnote_def_count = len(re.findall(r'^\[\^[^\]]+\]:', content, re.MULTILINE))
+        features['feature:footnote_count'] = footnote_ref_count
+        features['feature:footnote_def_count'] = footnote_def_count
+        features['feature:has_footnotes'] = footnote_ref_count > 0
+
+        # Count macro calls (@macroname or @macroname(...))
+        # Exclude common false positives like email addresses
+        macro_count = len(re.findall(r'(?<![a-zA-Z0-9.])@[a-zA-Z_][a-zA-Z0-9_]*(?:\s*\(|(?=\s|$|[^a-zA-Z0-9_@.]))', content))
+        features['feature:macro_count'] = macro_count
+        features['feature:has_macros'] = macro_count > 0
+
+        # Count effect annotations (<!-- effect="..." --> or data-effect)
+        effect_count = len(re.findall(r'effect\s*=\s*["\']|data-effect\s*=', content, re.IGNORECASE))
+        features['feature:effect_count'] = effect_count
+        features['feature:has_effects'] = effect_count > 0
+
+        # Count classroom/collaborative features (@classroom)
+        classroom_count = len(re.findall(r'@classroom', content, re.IGNORECASE))
+        features['feature:classroom_count'] = classroom_count
+        features['feature:has_classroom'] = classroom_count > 0
+
+        # Count ASCII art diagrams (``` followed by ascii, diagram, art etc.)
+        ascii_diagram_count = len(re.findall(r'^```\s*(ascii|diagram|art|svgbob)\s*$', content, re.MULTILINE | re.IGNORECASE))
+        features['feature:ascii_diagram_count'] = ascii_diagram_count
+        features['feature:has_ascii_diagrams'] = ascii_diagram_count > 0
+
+        # Count matrix quizzes (complex quiz patterns with multiple rows)
+        # Matrix quiz: multiple [[...]] on consecutive lines with same structure
+        matrix_quiz_count = len(re.findall(r'(\[\[[^\]]+\]\]\s*)+\n(\[\[[^\]]+\]\]\s*)+', content))
+        features['feature:matrix_quiz_count'] = matrix_quiz_count
+        features['feature:has_matrix_quiz'] = matrix_quiz_count > 0
+
+        # Count headings for structural analysis
+        h1_count = len(re.findall(r'^#\s+[^#]', content, re.MULTILINE))
+        h2_count = len(re.findall(r'^##\s+[^#]', content, re.MULTILINE))
+        h3_count = len(re.findall(r'^###\s+[^#]', content, re.MULTILINE))
+        features['feature:h1_count'] = h1_count
+        features['feature:h2_count'] = h2_count
+        features['feature:h3_count'] = h3_count
+        features['feature:total_headings'] = h1_count + h2_count + h3_count
+
+        # Count links (for reference density analysis)
+        link_count = len(re.findall(r'\[([^\]]+)\]\(([^\)]+)\)', content))
+        features['feature:link_count'] = link_count
+        features['feature:has_links'] = link_count > 0
+
+        # Count comments (<!-- ... --> in body, not header)
+        # Find all comments, then subtract header comment
+        all_comments = re.findall(r'<!--.*?-->', content, re.DOTALL)
+        # First comment is usually the header
+        body_comment_count = max(0, len(all_comments) - 1)
+        features['feature:comment_count'] = body_comment_count
+        features['feature:has_comments'] = body_comment_count > 0
+
+        # Count galleries (multiple images in same paragraph/line)
+        # Pattern: two or more images on same or adjacent lines
+        gallery_count = len(re.findall(r'!\[.*?\]\(.*?\)\s*!\[.*?\]\(.*?\)', content))
+        features['feature:gallery_count'] = gallery_count
+        features['feature:has_galleries'] = gallery_count > 0
+
         return features
 
+
+    def _normalize_template_url(self, url):
+        """
+        Normalize template URL to avoid duplicates from different URL variants.
+
+        Handles:
+        - Case differences (LiaScript vs liascript)
+        - refs/heads/main vs main
+        - Different GitHub URL formats
+        """
+        normalized = url.lower()
+        # Remove refs/heads/ prefix
+        normalized = re.sub(r'/refs/heads/', '/', normalized)
+        # Standardize raw.githubusercontent.com URLs
+        normalized = re.sub(r'github\.com/([^/]+)/([^/]+)/blob/', r'raw.githubusercontent.com/\1/\2/', normalized)
+        return normalized
 
     def _extract_templates(self, content):
         """
         Extract all imported templates from the header.
 
-        Returns a list of template URLs.
+        Returns a list of template URLs (normalized for deduplication in statistics).
         """
         # Extract header comment block
         start = content.find("<!--")
@@ -274,7 +393,7 @@ class AnalyzeLiaScriptFeatures(TaskWithInputFileMonitor):
                 # Get value after colon
                 value = stripped.split(':', 1)[1].strip()
                 if value and value.startswith('http'):
-                    templates.append(value)
+                    templates.append(self._normalize_template_url(value))
                 continue
 
             # If we're in import and line continues (URL on next line)
@@ -282,7 +401,7 @@ class AnalyzeLiaScriptFeatures(TaskWithInputFileMonitor):
                 if stripped == '' or ':' in stripped:
                     in_import = False
                 elif stripped.startswith('http'):
-                    templates.append(stripped)
+                    templates.append(self._normalize_template_url(stripped))
 
         return templates
 
@@ -291,7 +410,11 @@ class AnalyzeLiaScriptFeatures(TaskWithInputFileMonitor):
         """
         Count occurrences of a field in the header (e.g., 'script:', 'link:').
 
-        Returns count of field occurrences.
+        Handles multi-line definitions where URLs continue on following lines:
+        script: https://example.com/lib1.js
+                https://example.com/lib2.js
+
+        Returns count of URLs found.
         """
         # Extract header comment block
         start = content.find("<!--")
@@ -301,10 +424,50 @@ class AnalyzeLiaScriptFeatures(TaskWithInputFileMonitor):
 
         header = content[start:end]
 
-        # Count field occurrences
-        pattern = rf'^{field_name}\s*:'
-        matches = re.findall(pattern, header, re.MULTILINE | re.IGNORECASE)
-        return len(matches)
+        # Count URLs in field (including continuation lines)
+        url_count = 0
+        lines = header.split('\n')
+        in_field = False
+
+        for line in lines:
+            stripped = line.strip()
+
+            # Check if this line starts the field
+            if stripped.lower().startswith(f'{field_name}:'):
+                in_field = True
+                # Get value after colon
+                value = stripped.split(':', 1)[1].strip()
+                if value and value.startswith('http'):
+                    url_count += 1
+                continue
+
+            # If we're in field and line continues (URL on next line)
+            if in_field:
+                if stripped == '' or ':' in stripped:
+                    in_field = False
+                elif stripped.startswith('http'):
+                    url_count += 1
+
+        return url_count
+
+
+    def _has_header_field(self, content, field_name):
+        """
+        Check if a field exists in the header (e.g., 'logo:', 'icon:').
+
+        Returns True if field is present, False otherwise.
+        """
+        # Extract header comment block
+        start = content.find("<!--")
+        end = content.find("-->")
+        if start == -1 or end == -1:
+            return False
+
+        header = content[start:end]
+
+        # Check if field exists
+        pattern = rf'^\s*{field_name}\s*:'
+        return bool(re.search(pattern, header, re.MULTILINE | re.IGNORECASE))
 
 
     def _update_statistics(self, feature_data, feature_counts, template_usage):
@@ -336,10 +499,14 @@ class AnalyzeLiaScriptFeatures(TaskWithInputFileMonitor):
             feature_counts['script_tags'] += 1
         if feature_data.get('feature:has_narrator', False):
             feature_counts['narrator'] += 1
-        if feature_data.get('feature:has_tts_comments', False):
-            feature_counts['tts_comments'] += 1
+        if feature_data.get('feature:has_tts_fragments', False):
+            feature_counts['tts_fragments'] += 1
+        if feature_data.get('feature:has_tts_blocks', False):
+            feature_counts['tts_blocks'] += 1
         if feature_data.get('feature:has_animation_fragments', False):
             feature_counts['animation_fragments'] += 1
+        if feature_data.get('feature:has_animation_blocks', False):
+            feature_counts['animation_blocks'] += 1
         if feature_data.get('feature:has_animated_css', False):
             feature_counts['animated_css'] += 1
         if feature_data.get('feature:has_images', False):
@@ -348,12 +515,38 @@ class AnalyzeLiaScriptFeatures(TaskWithInputFileMonitor):
             feature_counts['external_scripts'] += 1
         if feature_data.get('feature:has_external_css', False):
             feature_counts['external_css'] += 1
-        if feature_data.get('feature:has_qr_codes', False):
-            feature_counts['qr_codes'] += 1
-        if feature_data.get('feature:has_preview_lia', False):
-            feature_counts['preview_lia'] += 1
         if feature_data.get('feature:has_math', False):
             feature_counts['math'] += 1
+        if feature_data.get('feature:has_logo', False):
+            feature_counts['logo'] += 1
+        if feature_data.get('feature:has_icon', False):
+            feature_counts['icon'] += 1
+
+        # NEW FEATURES
+        if feature_data.get('feature:has_qr_codes', False):
+            feature_counts['qr_codes'] += 1
+        if feature_data.get('feature:has_surveys', False):
+            feature_counts['surveys'] += 1
+        if feature_data.get('feature:has_footnotes', False):
+            feature_counts['footnotes'] += 1
+        if feature_data.get('feature:has_macros', False):
+            feature_counts['macros'] += 1
+        if feature_data.get('feature:has_effects', False):
+            feature_counts['effects'] += 1
+        if feature_data.get('feature:has_classroom', False):
+            feature_counts['classroom'] += 1
+        if feature_data.get('feature:has_ascii_diagrams', False):
+            feature_counts['ascii_diagrams'] += 1
+        if feature_data.get('feature:has_matrix_quiz', False):
+            feature_counts['matrix_quiz'] += 1
+        if feature_data.get('feature:has_links', False):
+            feature_counts['links'] += 1
+        if feature_data.get('feature:has_comments', False):
+            feature_counts['comments'] += 1
+        if feature_data.get('feature:has_galleries', False):
+            feature_counts['galleries'] += 1
+        if feature_data.get('feature:has_code_projects', False):
+            feature_counts['code_projects'] += 1
 
         # Count template usage
         templates = feature_data.get('feature:imported_templates', [])
