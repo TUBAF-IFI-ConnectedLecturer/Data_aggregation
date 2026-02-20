@@ -52,15 +52,20 @@ def format_author_list(authors):
     return str(authors)
 
 
-def format_keywords(keywords):
-    """Format keywords for BibTeX."""
+def format_keywords(keywords, max_count=None):
+    """Format keywords for BibTeX, optionally limiting the number."""
     if not keywords or (isinstance(keywords, float) and np.isnan(keywords)):
         return ""
 
     if isinstance(keywords, list):
-        return ", ".join([str(k) for k in keywords if k])
+        items = [str(k) for k in keywords if k]
+    else:
+        items = [k.strip() for k in str(keywords).split(",") if k.strip()]
 
-    return str(keywords)
+    if max_count is not None:
+        items = items[:max_count]
+
+    return ", ".join(items)
 
 
 def format_dewey(dewey):
@@ -141,30 +146,15 @@ def create_bibtex_entry(doc_id, base_data, ai_data, keyword_data):
 
     lines = [f"@{entry_type}{{{doc_id},"]
 
-    # === Standard BibTeX fields (using best available source) ===
+    # === Standard BibTeX fields (preserve original values) ===
 
-    # Title (prefer AI-extracted, fallback to original)
-    title = None
-    if ai_data is not None and 'ai:title' in ai_data and is_valid_value(ai_data['ai:title']):
-        title = ai_data['ai:title']
-    elif 'bibtex:title' in base_data and is_valid_value(base_data['bibtex:title']):
-        title = base_data['bibtex:title']
+    # Title (use original BibTeX value; AI title goes to title_ai)
+    if 'bibtex:title' in base_data and is_valid_value(base_data['bibtex:title']):
+        lines.append(f"  title = {{{escape_bibtex_special_chars(base_data['bibtex:title'])}}},")
 
-    if title:
-        lines.append(f"  title = {{{escape_bibtex_special_chars(title)}}},")
-
-    # Author (prefer revised author from AI, fallback to original)
-    author = None
-    if ai_data is not None:
-        if 'ai:revisedAuthor' in ai_data and is_valid_value(ai_data['ai:revisedAuthor']):
-            author = format_author_list(ai_data['ai:revisedAuthor'])
-        if not author and 'ai:author' in ai_data and is_valid_value(ai_data['ai:author']):
-            author = format_author_list(ai_data['ai:author'])
-    if not author and 'bibtex:author' in base_data and is_valid_value(base_data['bibtex:author']):
-        author = base_data['bibtex:author']
-
-    if author:
-        lines.append(f"  author = {{{escape_bibtex_special_chars(author)}}},")
+    # Author (use original BibTeX value; AI author goes to author_ai)
+    if 'bibtex:author' in base_data and is_valid_value(base_data['bibtex:author']):
+        lines.append(f"  author = {{{escape_bibtex_special_chars(base_data['bibtex:author'])}}},")
 
     # Year
     year = None
@@ -219,7 +209,6 @@ def create_bibtex_entry(doc_id, base_data, ai_data, keyword_data):
         lines.append(f"  file = {{{base_data['pipe:original_filename']}.pdf}},")
 
     # === AI-extracted metadata section ===
-    lines.append("  % --- AI-extracted metadata below ---")
 
     # AI Author
     if ai_data is not None:
@@ -237,18 +226,28 @@ def create_bibtex_entry(doc_id, base_data, ai_data, keyword_data):
     if ai_data is not None and 'ai:title' in ai_data and is_valid_value(ai_data['ai:title']):
         lines.append(f"  title_ai = {{{escape_bibtex_special_chars(ai_data['ai:title'])}}},")
 
-    # AI Keywords (combined: extracted + generated + DNB/GND)
+    # AI Keywords (combined: extracted + generated + DNB/GND, max 7)
     if ai_data is not None:
-        ai_keywords = []
-        if 'ai:keywords_ext' in ai_data and is_valid_value(ai_data['ai:keywords_ext']):
-            ai_keywords.append(format_keywords(ai_data['ai:keywords_ext']))
-        if 'ai:keywords_gen' in ai_data and is_valid_value(ai_data['ai:keywords_gen']):
-            ai_keywords.append(format_keywords(ai_data['ai:keywords_gen']))
-        if 'ai:keywords_dnb' in ai_data and is_valid_value(ai_data['ai:keywords_dnb']):
-            ai_keywords.append(format_keywords(ai_data['ai:keywords_dnb']))
+        all_ai_kw = []
+        for kw_field in ['ai:keywords_ext', 'ai:keywords_gen', 'ai:keywords_dnb']:
+            if kw_field in ai_data and is_valid_value(ai_data[kw_field]):
+                kw_val = ai_data[kw_field]
+                if isinstance(kw_val, list):
+                    all_ai_kw.extend([str(k) for k in kw_val if k])
+                elif isinstance(kw_val, str):
+                    all_ai_kw.extend([k.strip() for k in kw_val.split(",") if k.strip()])
 
-        if ai_keywords:
-            combined_ai_kw = ", ".join([kw for kw in ai_keywords if kw])
+        # Deduplicate while preserving order, then limit to 7
+        seen = set()
+        unique_ai_kw = []
+        for kw in all_ai_kw:
+            if kw.lower() not in seen:
+                seen.add(kw.lower())
+                unique_ai_kw.append(kw)
+        unique_ai_kw = unique_ai_kw[:7]
+
+        if unique_ai_kw:
+            combined_ai_kw = ", ".join(unique_ai_kw)
             lines.append(f"  keywords_ai = {{{escape_bibtex_special_chars(combined_ai_kw)}}},")
 
     # AI Summary
@@ -272,7 +271,6 @@ def create_bibtex_entry(doc_id, base_data, ai_data, keyword_data):
             lines.append(f"  affiliation_ai = {{{escape_bibtex_special_chars(affiliation)}}},")
 
     # === PDF/File metadata section ===
-    lines.append("  % --- PDF/File metadata below ---")
 
     # File Author
     if 'file:author' in base_data and is_valid_value(base_data['file:author']):
@@ -287,7 +285,6 @@ def create_bibtex_entry(doc_id, base_data, ai_data, keyword_data):
         lines.append(f"  year_file = {{{base_data['file:year']}}},")
 
     # === File ID ===
-    lines.append("  % --- File ID ---")
     lines.append(f"  file_id = {{{doc_id}}}")
 
     # Close entry (remove trailing comma from last field)
@@ -357,18 +354,6 @@ def export_journal_bibtex():
 
         # Write to file
         with open(output_file, 'w', encoding='utf-8') as f:
-            f.write(f"% Enriched BibTeX export for journal: {journal}\n")
-            f.write(f"% Generated from Arbeitsbasis pipeline with AI metadata extraction\n")
-            f.write(f"% Total entries: {len(entries)}\n")
-            f.write(f"%\n")
-            f.write(f"% Fields include:\n")
-            f.write(f"%   - Original BibTeX metadata\n")
-            f.write(f"%   - AI-extracted metadata (author, title, type, summary, affiliation)\n")
-            f.write(f"%   - AI-extracted and generated keywords\n")
-            f.write(f"%   - GND/DNB validated keywords (Lobid API)\n")
-            f.write(f"%   - Dewey Decimal Classification\n")
-            f.write(f"%\n\n")
-
             f.write("\n".join(entries))
 
         print(f"  ✓ Exported {len(entries)} entries to {output_file.name}")
