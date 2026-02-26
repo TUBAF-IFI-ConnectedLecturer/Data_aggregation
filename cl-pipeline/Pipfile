@@ -29,6 +29,8 @@ langchain-chroma = "*"
 msoffcrypto-tool = "*"
 markdown = "*"
 plotly = "*"
+pymupdf4llm = "*"
+pypandoc = "*"
 
 [dev-packages]
 

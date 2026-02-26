@@ -135,7 +135,8 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
         """Setup ChromaDB vector store and embeddings"""
         embeddings = OllamaEmbeddings(
             base_url=self.base_url,
-            model=self.embedding_model
+            model=self.embedding_model,
+            num_gpu=0
         )
         
         vectorstore = Chroma(
@@ -159,50 +160,36 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
             field_name: Optional field name for field-specific strategies
 
         Returns:
-            tuple: (k_chunks, page_filter)
+            tuple: (k_chunks, page_filter, use_hybrid)
                 - k_chunks: Maximum number of chunks to retrieve
                 - page_filter: Optional list of page filters for ChromaDB query
+                - use_hybrid: Whether to use hybrid positional+similarity retrieval
         """
-        # Field-specific strategy override: author and title should only use first pages
+        # Field-specific strategy: author/title/affiliation use hybrid retrieval
+        # Always include first N chunks by position + additional by similarity
         if field_name in ['ai:author', 'ai:title', 'ai:affiliation']:
-            # Authors, titles, and affiliations are almost always on first 1-2 pages
-            page_filter = [
-                {"page": 0},
-                {"page": 1},
-            ]
-            k_chunks = 5  # Limit to 5 chunks from first pages
-            return k_chunks, page_filter
+            k_chunks = 8
+            return k_chunks, None, True
 
         # Strategy: all (default - backwards compatible)
         if self.retrieval_strategy == "all":
             k_chunks = min(available_chunks, self.max_retrieval_chunks) if self.max_retrieval_chunks else available_chunks
-            return k_chunks, None
+            return k_chunks, None, False
 
         # Strategy: first_and_last_pages (for metadata extraction)
         elif self.retrieval_strategy == "first_and_last_pages":
-            # Get chunks from page 0 (first) and last page
-            # We don't know total pages here, so we'll use collection query
-            page_filter = [
-                {"page": 0},  # First page
-                {"page": 1},  # Second page (for overflow)
-            ]
-            # Also try to get last pages - we'll rely on k_chunks limit
             k_chunks = self.max_retrieval_chunks if self.max_retrieval_chunks else 10
-            return k_chunks, None  # For now, just limit chunks
+            return k_chunks, None, False
 
         # Strategy: first_pages_only (for metadata extraction)
         elif self.retrieval_strategy == "first_pages_only":
-            page_filter = [
-                {"page": 0},
-                {"page": 1},
-            ]
             k_chunks = self.max_retrieval_chunks if self.max_retrieval_chunks else 5
-            return k_chunks, None  # For now, just limit chunks
+            return k_chunks, None, False
 
         # Fallback to all
         else:
             k_chunks = min(available_chunks, self.max_retrieval_chunks) if self.max_retrieval_chunks else available_chunks
-            return k_chunks, None
+            return k_chunks, None, False
 
     def _create_retrieval_chain(self, vectorstore, file, pages, field_name=None):
         """
@@ -218,21 +205,17 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
             RetrievalQA chain
         """
         # Apply retrieval strategy with intelligent chunk selection
-        k_chunks, page_filter = self._apply_retrieval_strategy(file, pages, field_name)
+        k_chunks, page_filter, use_hybrid = self._apply_retrieval_strategy(file, pages, field_name)
 
-        # Build search filter - ChromaDB doesn't support $or operator
-        # For page filtering, we need to use a different approach
         search_filter = {"filename": file}
 
-        # If we need page filtering for specific fields (author, title, affiliation),
-        # we use a custom retriever that filters by page after retrieval
-        if page_filter and field_name in ['ai:author', 'ai:title', 'ai:affiliation']:
-            # Use custom document retriever with page filtering
-            retriever_with_filter = self._create_page_filtered_retriever(
-                vectorstore, file, k_chunks, page_filter
+        if use_hybrid and field_name in ['ai:author', 'ai:title', 'ai:affiliation']:
+            # Hybrid retrieval: first N chunks by position + additional by similarity
+            retriever_with_filter = self._create_hybrid_retriever(
+                vectorstore, file, n_positional=3, n_similarity=5
             )
         else:
-            # Standard retriever without page filtering
+            # Standard similarity retriever
             retriever_with_filter = vectorstore.as_retriever(
                 search_kwargs={"filter": search_filter, "k": k_chunks}
             )
@@ -245,35 +228,42 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
             prompt
         )
 
-    def _create_page_filtered_retriever(self, vectorstore, file, k_chunks, page_filter):
+    def _create_hybrid_retriever(self, vectorstore, file, n_positional=3, n_similarity=5):
         """
-        Create a custom retriever that filters documents by page numbers.
+        Create a hybrid retriever that combines positional and similarity-based retrieval.
+
+        For title/author/affiliation extraction, the first chunks of a document (by position)
+        are critical because they contain the title page. Pure similarity-based retrieval
+        may miss these chunks in large documents. This retriever guarantees that the first
+        N chunks by chunk_index are always included, plus additional chunks by similarity.
 
         Args:
             vectorstore: ChromaDB vector store
             file: Filename to filter
-            k_chunks: Number of chunks to retrieve
-            page_filter: List of page dictionaries (e.g., [{"page": 0}, {"page": 1}])
+            n_positional: Number of first chunks to always include (by chunk_index)
+            n_similarity: Number of additional chunks to retrieve by similarity
 
         Returns:
-            Custom retriever that only returns chunks from specified pages
+            HybridPositionalRetriever instance
         """
         from langchain_core.retrievers import BaseRetriever
         from langchain_core.callbacks import CallbackManagerForRetrieverRun
         from langchain_core.documents import Document
         from typing import List
 
-        class PageFilteredRetriever(BaseRetriever):
-            """Custom retriever that filters by page numbers"""
+        class HybridPositionalRetriever(BaseRetriever):
+            """Retriever combining positional (first N chunks) with similarity retrieval.
 
-            def __init__(self, vectorstore, filename: str, k: int, pages: list):
-                """Initialize the retriever with explicit storage of parameters"""
+            Ensures the document beginning (title, author, affiliation) is always in context,
+            while also including semantically relevant chunks from the rest of the document.
+            """
+
+            def __init__(self, vectorstore, filename: str, n_pos: int, n_sim: int):
                 super().__init__()
-                # Store parameters without using Pydantic fields
                 object.__setattr__(self, '_vectorstore', vectorstore)
                 object.__setattr__(self, '_filename', filename)
-                object.__setattr__(self, '_k', k)
-                object.__setattr__(self, '_allowed_pages', set(p["page"] for p in pages))
+                object.__setattr__(self, '_n_pos', n_pos)
+                object.__setattr__(self, '_n_sim', n_sim)
 
             def _get_relevant_documents(
                 self,
@@ -281,27 +271,54 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
                 *,
                 run_manager: CallbackManagerForRetrieverRun = None
             ) -> List[Document]:
-                """Retrieve documents and filter by page number"""
-                # Get more documents than needed, then filter
-                search_filter = {"filename": self._filename}
-                # Request more documents to account for filtering
-                retriever = self._vectorstore.as_retriever(
-                    search_kwargs={"filter": search_filter, "k": self._k * 3}
+                """Retrieve first N chunks by position + additional by similarity."""
+                # 1. Get first N chunks by chunk_index (positional)
+                try:
+                    positional_docs = self._vectorstore.similarity_search(
+                        query,
+                        k=self._n_pos,
+                        filter={
+                            "$and": [
+                                {"filename": self._filename},
+                                {"chunk_index": {"$lte": self._n_pos - 1}}
+                            ]
+                        }
+                    )
+                except Exception:
+                    # Fallback if chunk_index metadata not available (old embeddings)
+                    positional_docs = []
+
+                # 2. Get additional chunks by similarity (from entire document)
+                similarity_docs = self._vectorstore.similarity_search(
+                    query,
+                    k=self._n_pos + self._n_sim,
+                    filter={"filename": self._filename}
                 )
 
-                all_docs = retriever.invoke(query)
+                # 3. Combine: positional first, then similarity (deduplicated)
+                seen_content = set()
+                combined = []
 
-                # Filter by page number
-                filtered_docs = []
-                for doc in all_docs:
-                    if "page" in doc.metadata and doc.metadata["page"] in self._allowed_pages:
-                        filtered_docs.append(doc)
-                        if len(filtered_docs) >= self._k:
-                            break
+                # Add positional chunks first (sorted by chunk_index)
+                positional_docs.sort(
+                    key=lambda d: d.metadata.get('chunk_index', 999)
+                )
+                for doc in positional_docs:
+                    content_hash = hash(doc.page_content[:200])
+                    if content_hash not in seen_content:
+                        seen_content.add(content_hash)
+                        combined.append(doc)
 
-                return filtered_docs[:self._k]
+                # Add similarity chunks (skip duplicates)
+                for doc in similarity_docs:
+                    content_hash = hash(doc.page_content[:200])
+                    if content_hash not in seen_content:
+                        seen_content.add(content_hash)
+                        combined.append(doc)
 
-        return PageFilteredRetriever(vectorstore, file, k_chunks, page_filter)
+                return combined[:self._n_pos + self._n_sim]
+
+        return HybridPositionalRetriever(vectorstore, file, n_positional, n_similarity)
     
     def _process_single_field(self, field_name, file, vectorstore, pages, collection, existing_metadata):
         """
@@ -560,7 +577,8 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
                 # Update DataFrame with batch
                 for batch_metadata in batch_buffer:
                     # Remove existing entry if present
-                    df_metadata = df_metadata[df_metadata['pipe:ID'] != batch_metadata['pipe:ID']]
+                    if 'pipe:ID' in df_metadata.columns:
+                        df_metadata = df_metadata[df_metadata['pipe:ID'] != batch_metadata['pipe:ID']]
                     # Add new entry
                     df_aux = pd.DataFrame([batch_metadata])
                     df_metadata = pd.concat([df_metadata, df_aux], ignore_index=True)
@@ -577,7 +595,8 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
         if batch_buffer:
             for batch_metadata in batch_buffer:
                 # Remove existing entry if present
-                df_metadata = df_metadata[df_metadata['pipe:ID'] != batch_metadata['pipe:ID']]
+                if 'pipe:ID' in df_metadata.columns:
+                    df_metadata = df_metadata[df_metadata['pipe:ID'] != batch_metadata['pipe:ID']]
                 # Add new entry
                 df_aux = pd.DataFrame([batch_metadata])
                 df_metadata = pd.concat([df_metadata, df_aux], ignore_index=True)

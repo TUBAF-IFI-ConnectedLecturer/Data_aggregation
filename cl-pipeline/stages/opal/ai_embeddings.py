@@ -1,24 +1,16 @@
-from langchain_community.llms import Ollama
 try:
     from langchain_ollama import OllamaEmbeddings
 except ImportError:
     from langchain_community.embeddings import OllamaEmbeddings
-from langchain_community.document_loaders import (UnstructuredPowerPointLoader, 
-                                                  UnstructuredExcelLoader,
-                                                  UnstructuredMarkdownLoader,
-                                                  UnstructuredWordDocumentLoader,
-                                                  PyMuPDFLoader,
-                                                  DirectoryLoader)
 import chromadb
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_text_splitters import RecursiveCharacterTextSplitter, MarkdownHeaderTextSplitter
+from langchain_core.documents import Document
 
 import pandas as pd
 from pathlib import Path
 from tqdm import tqdm
 import logging
 from wrapt_timeout_decorator import *
-import pickle
 import re
 
 from pipeline.taskfactory import TaskWithInputFileMonitor
@@ -29,80 +21,85 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'src'))
 from pipeline_logging import setup_stage_logging
 
 
-# Define a dictionary to map file extensions to their respective loaders
-loaders = {
-    'pdf': PyMuPDFLoader,
-    'pptx': UnstructuredPowerPointLoader,
-    'md': UnstructuredMarkdownLoader,
-    'docx': UnstructuredWordDocumentLoader,
-    'xlsx': UnstructuredExcelLoader
-}
-
-def get_loader_for_file_type(file_path): 
-    loader_class = loaders[file_path.suffix[1:]]
-    # Baseloader seams not to work with current Pathlib objects
-    return loader_class(file_path=str(file_path))
-
-# Nach der load_and_split_document Funktion hinzufügen
 def clean_text_content(text):
-    """Bereinigt Text von unnötigen Elementen."""
-    # Leerzeichen normalisieren
-    text = re.sub(r'\s+', ' ', text)
+    """Bereinigt Text von unnötigen Elementen, erhält Markdown-Struktur."""
+    # Horizontale Leerzeichen normalisieren (Zeilenumbrüche beibehalten)
+    text = re.sub(r'[ \t]+', ' ', text)
+    # Übermäßige Leerzeilen reduzieren
+    text = re.sub(r'\n{3,}', '\n\n', text)
     # Entfernen von typischen Header/Footer-Mustern
     text = re.sub(r'(?i)(confidential|intern|seite \d+|page \d+|www\.[\w\.]+)', '', text)
-    # Sonderzeichen bereinigen, deutsche Umlaute beibehalten
-    text = re.sub(r'[^\w\s\.,;:!?\(\)\[\]\{\}äöüÄÖÜß-]', '', text)
+    # Sonderzeichen bereinigen, Markdown-Zeichen (#, *, |, >) und deutsche Umlaute beibehalten
+    text = re.sub(r'[^\w\s\.,;:!?\(\)\[\]\{\}äöüÄÖÜß#*|>\-]', '', text)
     return text.strip()
+
 
 def is_useful_chunk(text, min_length=100, min_words=15):
     """Prüft, ob ein Textabschnitt nützlichen Inhalt enthält."""
     if len(text) < min_length:
         return False
-        
-    # Prüfen, ob genügend Wörter vorhanden sind
+
     word_count = len(text.split())
     if word_count < min_words:
         return False
-    
+
     # Prüfen auf Vorhandensein vollständiger Sätze
     if not re.search(r'[A-ZÄÖÜ][^.!?]+[.!?]', text):
         return False
-        
+
     return True
 
-# In load_and_split_document modifizieren
-@timeout(60)
-def load_and_split_document(file_path, text_splitter):
-    if file_path.suffix[1:] not in loaders:
-        logger.warning(f"Unsupported file type: {file_path.suffix} for {file_path.name}")
-        return None
-        
-    loader = get_loader_for_file_type(file_path)
-    try:
-        docs = loader.load()
-        chunks = text_splitter.split_documents(docs)
-        
-        # Filtern und Bereinigen der Chunks
-        filtered_chunks = []
-        for chunk in chunks:
-            chunk.page_content = clean_text_content(chunk.page_content)
-            if is_useful_chunk(chunk.page_content):
-                chunk.metadata['filename'] = file_path.name
-                filtered_chunks.append(chunk)
-                
-        return filtered_chunks
 
+@timeout(60)
+def load_and_split_markdown(md_file_path, header_splitter, text_splitter, source_filename):
+    """
+    Liest eine Markdown-Datei und splittet sie in zwei Stufen:
+    Stufe 1: MarkdownHeaderTextSplitter — splittet an Überschriften
+    Stufe 2: RecursiveCharacterTextSplitter — für zu große Abschnitte
+    """
+    try:
+        with open(str(md_file_path), 'r', encoding='utf-8') as f:
+            md_content = f.read()
     except Exception as e:
-        logger.error(f"Error processing {file_path}: {str(e)}")
+        logging.error(f"Error reading {md_file_path}: {e}")
         return None
+
+    if not md_content.strip():
+        return None
+
+    # Stufe 1: Split nach Markdown-Überschriften
+    header_docs = header_splitter.split_text(md_content)
+
+    # Stufe 2: Zu große Abschnitte weiter splitten
+    final_chunks = []
+    for doc in header_docs:
+        if len(doc.page_content) > text_splitter._chunk_size:
+            sub_chunks = text_splitter.split_text(doc.page_content)
+            for chunk_text in sub_chunks:
+                chunk_text = clean_text_content(chunk_text)
+                if is_useful_chunk(chunk_text):
+                    metadata = dict(doc.metadata)
+                    metadata['filename'] = source_filename
+                    metadata['page'] = 0
+                    final_chunks.append(Document(page_content=chunk_text, metadata=metadata))
+        else:
+            cleaned = clean_text_content(doc.page_content)
+            if is_useful_chunk(cleaned):
+                metadata = dict(doc.metadata)
+                metadata['filename'] = source_filename
+                metadata['page'] = 0
+                final_chunks.append(Document(page_content=cleaned, metadata=metadata))
+
+    return final_chunks if final_chunks else None
+
 
 class AIEmbeddingsGeneration(TaskWithInputFileMonitor):
     def __init__(self, config_stage, config_global):
         super().__init__(config_stage, config_global)
-        
+
         # Setup zentrale Logging-Konfiguration
         self.logger_configurator = setup_stage_logging(config_global)
-        
+
         stage_param = config_stage['parameters']
         self.file_name_inputs =  Path(config_global['raw_data_folder']) / stage_param['file_name_input']
         self.file_name_output =  Path(config_global['raw_data_folder']) / stage_param['file_name_output']
@@ -111,7 +108,7 @@ class AIEmbeddingsGeneration(TaskWithInputFileMonitor):
         self.content_folder = Path(config_global['content_folder'])
         self.processed_data_folder = config_global['processed_data_folder']
         self.chroma_file = Path(config_global['processed_data_folder']) / "chroma_db"
-        
+
         # LLM configuration from config file
         self.llm_config = stage_param.get('llm_config', {})
         self.base_url = self.llm_config.get('base_url', 'http://localhost:11434')
@@ -131,18 +128,28 @@ class AIEmbeddingsGeneration(TaskWithInputFileMonitor):
             logging.info(f"Filtered files: {initial_count} -> {filtered_count} (removed {initial_count - filtered_count} invalid files)")
 
         df_files = df_files[df_files['pipe:file_type'].isin(self.file_types)]
-        #df_files = df_files.iloc[0:100]
         logging.info(f"Found {len(df_files)} files of type {self.file_types}")
 
         embeddings = OllamaEmbeddings(
             base_url=self.base_url,
-            model=self.embedding_model
+            model=self.embedding_model,
         )
 
-        # Verbesserte Textsplitter-Konfiguration
+        # Stufe 1: Markdown-bewusstes Splitting nach Überschriften
+        headers_to_split_on = [
+            ("#", "Header 1"),
+            ("##", "Header 2"),
+            ("###", "Header 3"),
+        ]
+        header_splitter = MarkdownHeaderTextSplitter(
+            headers_to_split_on=headers_to_split_on,
+            strip_headers=False,
+        )
+
+        # Stufe 2: Größenbasiertes Splitting für zu große Abschnitte
         text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=800,               # Größere Chunks für mehr Kontext
-            chunk_overlap=150,            # Größerer Überlapp für Kontexterhalt
+            chunk_size=800,
+            chunk_overlap=150,
             length_function=len,
             separators=[
                 "\n\n",                   # Absätze bevorzugen
@@ -161,7 +168,7 @@ class AIEmbeddingsGeneration(TaskWithInputFileMonitor):
         logging.info(f"{len(processed_files)} in database found")
 
         # Batch-Größe definieren
-        BATCH_SIZE = 16  # Anpassen basierend auf verfügbarem RAM
+        BATCH_SIZE = 16
 
         # Batch-Container initialisieren
         batch_ids = []
@@ -170,27 +177,33 @@ class AIEmbeddingsGeneration(TaskWithInputFileMonitor):
 
         # Process each file in the DataFrame
         for id, row in tqdm(df_files.iterrows(), total=len(df_files)):
-            file_path = self.file_folder / (row['pipe:ID'] + "." + row['pipe:file_type'])
-            if file_path.name in processed_files:
+            source_filename = row['pipe:ID'] + "." + row['pipe:file_type']
+            if source_filename in processed_files:
+                continue
+
+            # Markdown-Datei aus content_folder lesen (statt Originaldatei erneut zu laden)
+            md_file_path = self.content_folder / (row['pipe:ID'] + ".md")
+            if not md_file_path.exists():
+                logging.warning(f"Markdown content file not found: {md_file_path}")
                 continue
 
             try:
-                split_docs = load_and_split_document(file_path, text_splitter)
+                split_docs = load_and_split_markdown(
+                    md_file_path, header_splitter, text_splitter, source_filename
+                )
             except:
                 print("Stopped due to timeout!")
                 continue
 
             if split_docs:
                 for idx, doc in enumerate(split_docs):
-                    if "page" not in doc.metadata:
-                        doc.metadata["page"] = 0
-
                     # Zum Batch hinzufügen
                     batch_ids.append(str(id) + "_" + str(idx))
                     batch_documents.append(doc.page_content)
                     batch_metadatas.append({
                         "filename": doc.metadata['filename'],
                         "page": doc.metadata['page'],
+                        "chunk_index": idx,
                     })
 
                     # Wenn Batch-Größe erreicht ist, verarbeiten
@@ -220,4 +233,3 @@ class AIEmbeddingsGeneration(TaskWithInputFileMonitor):
                 embeddings=batch_embeddings,
                 metadatas=batch_metadatas
             )
-            
