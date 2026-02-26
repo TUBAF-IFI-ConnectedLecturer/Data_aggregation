@@ -151,12 +151,26 @@ class AnalyzeLiaScriptFeatures(TaskWithInputFileMonitor):
         features['feature:has_tables'] = table_headers > 0
 
         # Count different quiz types
-        # Text input quiz: [[solution text]] - exclude MC markers [[X]], [[ ]], hints [[?]], and script output [[...]]
+
+        # Selection/dropdown quiz: [[ option1 | (correct) | option2 ]]
+        # Distinguished from text quiz by pipe characters inside [[ ]]
+        selection_quiz_count = len(re.findall(r'\[\[[^\[\]]*\|[^\[\]]*\]\]', content))
+        features['feature:selection_quiz_count'] = selection_quiz_count
+        features['feature:has_selection_quiz'] = selection_quiz_count > 0
+
+        # Survey text input: [[___]] (underscores inside double brackets)
+        survey_text_count = len(re.findall(r'\[\[_{2,}\]\]', content))
+        features['feature:survey_text_count'] = survey_text_count
+        features['feature:has_survey_text'] = survey_text_count > 0
+
+        # Text input quiz: [[solution text]] - exclude MC markers [[X]], [[ ]], hints [[?]]
         # Pattern excludes: [[X]], [[ ]], [[?]], and lines starting with [[ that are MC quiz items
         text_quiz_count = len(re.findall(r'\[\[(?![Xx ]\]\]|\?\]\])[^\[\]]+\]\]', content))
         # Subtract MC quiz items that may have been matched (those at line start are MC)
         mc_quiz_items = len(re.findall(r'^\s*\[\[[^\[\]]+\]\]', content, re.MULTILINE))
         text_quiz_count = max(0, text_quiz_count - mc_quiz_items)
+        # Subtract selection quizzes and survey text inputs (matched by text_quiz pattern)
+        text_quiz_count = max(0, text_quiz_count - selection_quiz_count - survey_text_count)
         features['feature:text_quiz_count'] = text_quiz_count
         features['feature:has_text_quiz'] = text_quiz_count > 0
 
@@ -175,8 +189,8 @@ class AnalyzeLiaScriptFeatures(TaskWithInputFileMonitor):
         features['feature:quiz_hint_count'] = quiz_hint_count
         features['feature:has_quiz_hints'] = quiz_hint_count > 0
 
-        # Total quiz elements (any type)
-        total_quiz_count = text_quiz_count + single_choice_count + multiple_choice_count
+        # Total quiz elements (any type, including selection)
+        total_quiz_count = text_quiz_count + single_choice_count + multiple_choice_count + selection_quiz_count
         features['feature:total_quiz_count'] = total_quiz_count
         features['feature:has_quiz'] = total_quiz_count > 0
 
@@ -191,6 +205,24 @@ class AnalyzeLiaScriptFeatures(TaskWithInputFileMonitor):
         features['feature:code_project_count'] = code_project_count
         features['feature:has_code_projects'] = code_project_count > 0
 
+        # Executable code: code block closing ``` followed by <script> containing @input
+        executable_code_count = len(re.findall(
+            r'```\s*\n<script[^>]*>.*?@input.*?</script>',
+            content, re.DOTALL
+        ))
+        features['feature:executable_code_count'] = executable_code_count
+        features['feature:has_executable_code'] = executable_code_count > 0
+
+        # Code language distribution: extract language identifiers from ``` markers
+        code_languages = re.findall(r'^```(\w+)', content, re.MULTILINE)
+        lang_counts = {}
+        for lang in code_languages:
+            normalized = lang.lower().strip('+')
+            if normalized:
+                lang_counts[normalized] = lang_counts.get(normalized, 0) + 1
+        features['feature:code_languages'] = lang_counts if lang_counts else None
+        features['feature:code_language_count'] = len(lang_counts)
+
         # Count script tags (<script>...</script>)
         script_tag_count = len(re.findall(r'<script[^>]*>.*?</script>', content, re.DOTALL | re.IGNORECASE))
         features['feature:script_tag_count'] = script_tag_count
@@ -201,6 +233,21 @@ class AnalyzeLiaScriptFeatures(TaskWithInputFileMonitor):
         features['feature:import_count'] = len(templates)
         features['feature:has_imports'] = len(templates) > 0
         features['feature:imported_templates'] = templates if templates else None
+
+        # Template categorization
+        if templates:
+            categories = self._categorize_templates(templates)
+            features['feature:template_categories'] = categories if categories else None
+            features['feature:template_category_count'] = len(categories)
+        else:
+            features['feature:template_categories'] = None
+            features['feature:template_category_count'] = 0
+
+        # Custom macro definitions in header (@macroName: definition)
+        custom_macros = self._extract_custom_macros(content)
+        features['feature:custom_macro_def_count'] = len(custom_macros)
+        features['feature:has_custom_macro_defs'] = len(custom_macros) > 0
+        features['feature:custom_macro_names'] = custom_macros if custom_macros else None
 
         # Check for narrator (TTS configuration in header)
         has_narrator = self._has_header_field(content, 'narrator')
@@ -284,6 +331,11 @@ class AnalyzeLiaScriptFeatures(TaskWithInputFileMonitor):
         features['feature:survey_count'] = survey_count
         features['feature:has_surveys'] = survey_count > 0
 
+        # Total surveys (Likert + text input from A.2)
+        total_survey_count = survey_count + survey_text_count
+        features['feature:total_survey_count'] = total_survey_count
+        features['feature:has_any_survey'] = total_survey_count > 0
+
         # Count footnotes ([^1], [^note], etc.)
         footnote_ref_count = len(re.findall(r'\[\^[^\]]+\]', content))
         footnote_def_count = len(re.findall(r'^\[\^[^\]]+\]:', content, re.MULTILINE))
@@ -345,6 +397,21 @@ class AnalyzeLiaScriptFeatures(TaskWithInputFileMonitor):
         gallery_count = len(re.findall(r'!\[.*?\]\(.*?\)\s*!\[.*?\]\(.*?\)', content))
         features['feature:gallery_count'] = gallery_count
         features['feature:has_galleries'] = gallery_count > 0
+
+        # Task lists: - [x] or - [ ] checkboxes
+        task_list_count = len(re.findall(r'^\s*[-*]\s+\[[xX ]\]', content, re.MULTILINE))
+        features['feature:task_list_count'] = task_list_count
+        features['feature:has_task_lists'] = task_list_count > 0
+
+        # HTML embedding: iframe, svg, details tags
+        iframe_count = len(re.findall(r'<iframe\b', content, re.IGNORECASE))
+        svg_count = len(re.findall(r'<svg\b', content, re.IGNORECASE))
+        details_count = len(re.findall(r'<details\b', content, re.IGNORECASE))
+        features['feature:iframe_count'] = iframe_count
+        features['feature:svg_count'] = svg_count
+        features['feature:details_count'] = details_count
+        features['feature:html_embed_count'] = iframe_count + svg_count + details_count
+        features['feature:has_html_embeds'] = (iframe_count + svg_count + details_count) > 0
 
         return features
 
@@ -470,6 +537,63 @@ class AnalyzeLiaScriptFeatures(TaskWithInputFileMonitor):
         return bool(re.search(pattern, header, re.MULTILINE | re.IGNORECASE))
 
 
+    # Template category mapping
+    TEMPLATE_CATEGORIES = {
+        'code_execution': ['pyodide', 'coderunner', 'rextester', 'avr8js', 'jscpp',
+                           'pyscript', 'biwascheme', 'tiny-turtle', 'processingjs'],
+        'math_visualization': ['tikz-jax', 'algebrite', 'jsxgraph', 'ggbscript'],
+        'diagrams': ['mermaid_template', 'plantuml', 'mermaid'],
+        'visualization_3d': ['vtk', 'jscad'],
+        'domain_specific': ['kekulejs', 'abcjs', 'textanalysis', 'citations', 'alasql'],
+        'interactive_ui': ['collaborativedrawing', 'webdev', 'speech-recognition-quiz',
+                           'netswarm-simulator'],
+    }
+
+    def _categorize_templates(self, template_urls):
+        """Categorize imported templates into functional groups."""
+        categories = set()
+        for url in template_urls:
+            url_lower = url.lower()
+            for category, keywords in self.TEMPLATE_CATEGORIES.items():
+                for keyword in keywords:
+                    if keyword in url_lower:
+                        categories.add(category)
+                        break
+        return list(categories)
+
+    def _extract_custom_macros(self, content):
+        """
+        Extract custom macro definitions from the header.
+
+        Custom macros are lines like @macroName: definition
+        inside the header comment block. Excludes standard LiaScript
+        header fields (author, narrator, import, script, link, etc.).
+        """
+        start = content.find("<!--")
+        end = content.find("-->")
+        if start == -1 or end == -1:
+            return []
+
+        header = content[start:end]
+
+        # Standard LiaScript header fields to exclude
+        standard_fields = {
+            'author', 'email', 'version', 'language', 'narrator',
+            'icon', 'logo', 'mode', 'translation', 'attribute',
+            'date', 'title', 'comment', 'import', 'link', 'script',
+            'tags', 'edit', 'repository', 'classroom', 'debug',
+        }
+
+        macros = []
+        for line in header.split('\n'):
+            stripped = line.strip()
+            match = re.match(r'^@([a-zA-Z_][a-zA-Z0-9_]*)\s*:', stripped)
+            if match:
+                macro_name = match.group(1).lower()
+                if macro_name not in standard_fields:
+                    macros.append(match.group(1))
+        return macros
+
     def _update_statistics(self, feature_data, feature_counts, template_usage):
         """Update aggregated statistics from a single document's features."""
         # Count documents using each feature
@@ -547,6 +671,20 @@ class AnalyzeLiaScriptFeatures(TaskWithInputFileMonitor):
             feature_counts['galleries'] += 1
         if feature_data.get('feature:has_code_projects', False):
             feature_counts['code_projects'] += 1
+        if feature_data.get('feature:has_selection_quiz', False):
+            feature_counts['selection_quiz'] += 1
+        if feature_data.get('feature:has_survey_text', False):
+            feature_counts['survey_text'] += 1
+        if feature_data.get('feature:has_any_survey', False):
+            feature_counts['any_survey'] += 1
+        if feature_data.get('feature:has_executable_code', False):
+            feature_counts['executable_code'] += 1
+        if feature_data.get('feature:has_task_lists', False):
+            feature_counts['task_lists'] += 1
+        if feature_data.get('feature:has_html_embeds', False):
+            feature_counts['html_embeds'] += 1
+        if feature_data.get('feature:has_custom_macro_defs', False):
+            feature_counts['custom_macro_defs'] += 1
 
         # Count template usage
         templates = feature_data.get('feature:imported_templates', [])

@@ -63,6 +63,7 @@ def get_repo_meta_data(repo):
        'user': repo.owner.login,
        'name': repo.name,
        'repo_url': repo.html_url,
+       'description': repo.description,
        'created_at': repo.created_at,
        'updated_at': repo.updated_at,
        'stars': repo.stargazers_count,
@@ -72,7 +73,19 @@ def get_repo_meta_data(repo):
        'contributors_per_repo': repo.get_contributors().totalCount,
        'license_spdx': repo.license.spdx_id if repo.license else None,
        'license_name': repo.license.name if repo.license else None,
+       'default_branch': repo.default_branch,
+       'size_kb': repo.size,
+       'open_issues_count': repo.open_issues_count,
     }
+    # Additional API calls with error handling for rate limits
+    try:
+        repository['topics'] = repo.get_topics()
+    except Exception:
+        repository['topics'] = []
+    try:
+        repository['languages'] = repo.get_languages()
+    except Exception:
+        repository['languages'] = {}
     return repository
 
 def search_repositories_by_year(github_handle, base_query, year):
@@ -101,7 +114,7 @@ def search_repositories_by_year(github_handle, base_query, year):
 def search_repositories(github_handle, queries):
     # Step one: search for repositories
     repository_list = []
-    current_year = 2025  # Current year
+    current_year = 2026  # Current year
     start_year = 2017    # Start year for LiaScript-related repositories
     
     for query_param in queries:

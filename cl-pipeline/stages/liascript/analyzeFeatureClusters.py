@@ -40,12 +40,16 @@ class AnalyzeFeatureClusters(TaskWithInputFileMonitor):
 
         # Feature groups for clustering
         self.feature_groups = {
-            'mint': ['feature:has_math', 'feature:has_code_blocks', 'feature:has_lia_viz_tables'],
+            'mint': ['feature:has_math', 'feature:has_code_blocks', 'feature:has_lia_viz_tables',
+                     'feature:has_executable_code'],
             'presentation': ['feature:has_animation_fragments', 'feature:has_narrator', 'feature:has_images'],
-            'assessment': ['feature:has_quiz', 'feature:has_quiz_hints', 'feature:has_single_choice', 'feature:has_multiple_choice'],
+            'assessment': ['feature:has_quiz', 'feature:has_quiz_hints', 'feature:has_single_choice',
+                           'feature:has_multiple_choice', 'feature:has_selection_quiz', 'feature:has_any_survey'],
             'multimedia': ['feature:has_video', 'feature:has_audio', 'feature:has_webapp', 'feature:has_images'],
-            'advanced': ['feature:has_imports', 'feature:has_external_scripts', 'feature:has_macros'],
-            'interactive': ['feature:has_script_tags', 'feature:has_effects', 'feature:has_classroom']
+            'advanced': ['feature:has_imports', 'feature:has_external_scripts', 'feature:has_macros',
+                         'feature:has_custom_macro_defs'],
+            'interactive': ['feature:has_script_tags', 'feature:has_effects', 'feature:has_classroom',
+                            'feature:has_executable_code', 'feature:has_task_lists', 'feature:has_html_embeds']
         }
 
         # Official LiaTemplates categorization
@@ -182,11 +186,13 @@ class AnalyzeFeatureClusters(TaskWithInputFileMonitor):
             if presenter_score >= 2 and quiz_count < 5:
                 clusters.append('presenter')
 
-            # Assessment-Focus: High quiz density
+            # Assessment-Focus: High quiz density or surveys
             has_quiz = row.get('feature:has_quiz', False)
             has_hints = row.get('feature:has_quiz_hints', False)
             has_mc = row.get('feature:has_multiple_choice', False) or row.get('feature:has_single_choice', False)
-            if has_quiz and (has_hints or has_mc):
+            has_selection = row.get('feature:has_selection_quiz', False)
+            has_surveys = row.get('feature:has_any_survey', False)
+            if has_quiz and (has_hints or has_mc or has_selection) or has_surveys:
                 clusters.append('assessment_focus')
 
             # Multimedia-Course: Video/Audio/Webapp
@@ -807,7 +813,13 @@ class AnalyzeFeatureClusters(TaskWithInputFileMonitor):
             'ascii_diagrams': 'Specialized use case; requires specific tooling knowledge',
             'matrix_quiz': 'Complex quiz type; documentation may be insufficient',
             'surveys': 'Distinct from quizzes; may be confused with single-choice',
-            'galleries': 'Implicit feature; users may not know about automatic gallery rendering'
+            'galleries': 'Implicit feature; users may not know about automatic gallery rendering',
+            'selection_quiz': 'Dropdown/selection syntax may be less known than MC/SC patterns',
+            'survey_text': 'Survey text input (underscores) may be confused with text quizzes',
+            'executable_code': 'Requires understanding of @input/@output mechanism; steep learning curve',
+            'task_lists': 'Simple checkbox syntax; may not be widely known as LiaScript feature',
+            'html_embeds': 'Advanced HTML embedding; typical for power users with web dev background',
+            'custom_macro_defs': 'Advanced templating feature; steep learning curve',
         }
 
         if feature_name in hypotheses:

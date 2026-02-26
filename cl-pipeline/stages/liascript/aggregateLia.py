@@ -236,6 +236,22 @@ def explore_potential_lia_files(github_handle, data_folder,
             print("")
 
     df_courses.reset_index(drop=True, inplace=True)
+
+    # Propagate repository-level metadata to file-level data
+    repo_extra_cols = ['description', 'topics', 'languages', 'default_branch', 'size_kb', 'open_issues_count']
+    available_extra = [c for c in repo_extra_cols if c in df_repos.columns]
+    if available_extra:
+        repo_meta = df_repos[['user', 'name'] + available_extra].drop_duplicates(subset=['user', 'name'])
+        df_courses = df_courses.merge(
+            repo_meta,
+            left_on=['repo_user', 'repo_name'],
+            right_on=['user', 'name'],
+            how='left',
+            suffixes=('', '_repo')
+        )
+        df_courses.drop(columns=['user', 'name'], errors='ignore', inplace=True)
+        print(f"Propagated repo metadata ({', '.join(available_extra)}) to {len(df_courses)} files")
+
     df_courses.to_pickle(Path(course_data_file))
     
 

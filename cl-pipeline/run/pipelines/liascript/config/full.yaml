@@ -111,6 +111,16 @@ stages:
       feature_stats_name: &LIAFEATURESTATS LiaScript_feature_statistics.p
       force_run: False
 
+  - name: Merge LiaScript data sources
+    class: MergeLiaScriptData
+    parameters:
+      lia_files_name_input: *LIAFILES_VALIDATED_DF
+      lia_metadata_name_input: *LIAMETADATA_DF
+      lia_features_name_input: *LIAFEATURES_DF
+      lia_commits_name_input: *LIACOMMITS_DF
+      merged_output_name: &LIACONSOLIDATED_DF LiaScript_consolidated.p
+      force_run: True
+
   - name: Extract content from markdown files
     class: ExtractFileContent
     parameters:
