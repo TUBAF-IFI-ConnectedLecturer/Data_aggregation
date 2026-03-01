@@ -206,7 +206,7 @@ def explore_potential_lia_files(github_handle, data_folder,
 
     for i, row in df_repos.iterrows():
         #print(f"{i}/{df_repos.shape[0]} - {row['user'] + '/' + row['name']} - ", end='')
-        print(f"{i}/{df_repos.index.max()} - {row['user'] + '/' + row['name']} - ", end='')
+        print(f"{i}/{df_repos.index.max()} - {row['user'] + '/' + row['name']} - ", end='', flush=True)
 
         # Prüfe Blacklist
         repo_full_name = row['user'] + '/' + row['name']
