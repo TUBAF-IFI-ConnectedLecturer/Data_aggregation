@@ -70,8 +70,7 @@ if __name__ == '__main__':
 
     load_dotenv(Path(__file__).parent / '.env')
     print(Path(__file__).parent )
-    # Only print GITHUB_API_KEY if it exists (not needed for local PDF pipeline)
     if "GITHUB_API_KEY" in os.environ:
-        print(f"GITHUB_API_KEY: {os.environ['GITHUB_API_KEY']}")
+        print("GITHUB_API_KEY: [set]")
     print("----------------------------------------------------")
     run_pipeline(Path(args.config_path))

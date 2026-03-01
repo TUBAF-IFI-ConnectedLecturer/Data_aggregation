@@ -351,7 +351,7 @@ if __name__ == "__main__":
         print("Please check your .env file in the run directory.")
         exit(1)
     
-    print(f"Using GitHub token: {github_api_token[:10]}...")
+    print("Using GitHub token: [set]")
     
     try:
         auth = Auth.Token(github_api_token)
