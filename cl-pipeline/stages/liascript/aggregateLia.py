@@ -3,7 +3,7 @@ from pathlib import Path
 from tqdm import tqdm
 import os
 import hashlib
-from github import Github
+from github import Github, GithubException
 from github import Auth
 
 from pipeline.taskfactory import Task, TaskWithInputFileMonitor, loggedExecution
@@ -62,9 +62,15 @@ def extract_liafile_meta_data(file):
 
     if not file.name.endswith(".md"):
         print("-", end="")
-        return None, None 
-    
-    if file.encoding != "base64":
+        return None, None
+
+    try:
+        encoding = file.encoding
+    except GithubException:
+        print("404", end="")
+        return None, None
+
+    if encoding != "base64":
         print( "b", end="")
         return None, None
     
