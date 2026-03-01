@@ -172,39 +172,53 @@ def extract_data(file, content):
 
 
 def explore_potential_lia_files(github_handle, data_folder,
-         repo_data_file_name, course_data_file_name, file_folder, blacklist_indices=None):
+         repo_data_file_name, course_data_file_name, file_folder, blacklist_repos=None):
 
     repo_data_file = Path(data_folder) / repo_data_file_name
     course_data_file = Path(data_folder) / course_data_file_name
     storage_folder = Path(file_folder)
 
+    # Set of already checked repos (including those without LiaScript files)
+    checked_repos_file = Path(course_data_file).with_suffix('.checked.p')
+    if checked_repos_file.exists():
+        checked_repos = pd.read_pickle(checked_repos_file)
+    else:
+        checked_repos = set()
+
     df_repos = pd.read_pickle(Path(repo_data_file))
-    
-    # Blacklist für Repository-Indizes
-    if blacklist_indices is None:
-        blacklist_indices = []
+
+    # Blacklist für Repositories (user/repo Format)
+    if blacklist_repos is None:
+        blacklist_repos = []
+    blacklist_set = set(blacklist_repos)
 
     if Path(course_data_file).exists():
         df_courses = pd.read_pickle(Path(course_data_file))
     else:
         df_courses = pd.DataFrame()
 
+    # Initialisiere checked_repos mit bereits aggregierten Repos
+    if df_courses.shape[0] > 0:
+        existing = set(zip(df_courses['repo_user'], df_courses['repo_name']))
+        checked_repos = checked_repos | existing
+
     print()
 
     for i, row in df_repos.iterrows():
         #print(f"{i}/{df_repos.shape[0]} - {row['user'] + '/' + row['name']} - ", end='')
         print(f"{i}/{df_repos.index.max()} - {row['user'] + '/' + row['name']} - ", end='')
-        
+
         # Prüfe Blacklist
-        if i in blacklist_indices:
+        repo_full_name = row['user'] + '/' + row['name']
+        if repo_full_name in blacklist_set:
             print("skipped (blacklisted)")
             continue
-            
-        if df_courses.shape[0] > 0:
-            if df_courses[(df_courses['repo_user'] == row['user']) &
-                          (df_courses['repo_name'] == row['name'])].shape[0] > 0:
-                print(" already aggregated")
-                continue
+
+        repo_key = (row['user'], row['name'])
+        if repo_key in checked_repos:
+            print(" already aggregated")
+            continue
+
         repo = github_handle.get_repo(row['user'] + '/' + row['name'])
         # aggregate all files in repo recursively
         # https://pygithub.readthedocs.io/en/latest/examples/Repository.html#get-all-of-the-contents-of-the-repository-recursively
@@ -219,6 +233,8 @@ def explore_potential_lia_files(github_handle, data_folder,
                     files.append(file_content)
         except:
             print("no files")
+            checked_repos.add(repo_key)
+            pd.to_pickle(checked_repos, checked_repos_file)
             continue
         # identify liascript files and extract meta data
         if len(files):
@@ -234,12 +250,16 @@ def explore_potential_lia_files(github_handle, data_folder,
                         f.write(content)
                     course_list.append(repo_data)
 
-            if len(course_list) > 0:     
-                df_aux = pd.DataFrame(course_list)        
+            if len(course_list) > 0:
+                df_aux = pd.DataFrame(course_list)
                 df_courses = pd.concat([ df_courses, df_aux])
                 df_courses.to_pickle(Path(course_data_file))
                 df_courses.to_csv(Path(course_data_file).with_suffix('.csv'))
             print("")
+
+        # Repo als geprüft markieren (auch wenn keine LiaScript-Dateien gefunden)
+        checked_repos.add(repo_key)
+        pd.to_pickle(checked_repos, checked_repos_file)
 
     df_courses.reset_index(drop=True, inplace=True)
 
@@ -272,8 +292,8 @@ class AggregateLiaScriptFiles(TaskWithInputFileMonitor):
         self.file_name =  Path(config_global['raw_data_folder']) / stage_param['repo_data_file_name_input']
         self.lia_files_name =  Path(config_global['raw_data_folder']) / stage_param['lia_files_name']
 
-        # Optional: Repository indices to exclude from processing
-        self.exclude_repo_indices = stage_param.get('exclude_repo_indices', [])
+        # Optional: Repository names to exclude from processing (user/repo format)
+        self.exclude_repos = stage_param.get('exclude_repos', [])
         
         # Get GitHub API token (should be loaded by run_pipeline.py)
         github_api_token = os.environ.get("GITHUB_API_KEY")
@@ -296,6 +316,6 @@ class AggregateLiaScriptFiles(TaskWithInputFileMonitor):
             repo_data_file_name=self.repo_data_file_name,
             course_data_file_name=self.lia_files_name,
             file_folder=self.file_folder,
-            blacklist_indices=self.exclude_repo_indices
+            blacklist_repos=self.exclude_repos
         )
 

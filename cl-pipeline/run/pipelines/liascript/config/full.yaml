@@ -69,12 +69,9 @@ stages:
       lia_files_name: &LIAFILES_DF LiaScript_files.p
       force_run: False
 
-      # Optional: Exclude specific repository indices from processing
-      exclude_repo_indices:
-        - 439
-        - 481
-        - 497
-        - 575
+      # Optional: Exclude specific repositories from processing (user/repo format)
+      exclude_repos:
+        - AlexDev404/dotnet-docs_gitbook
 
   - name: Validate LiaScript files with AI
     class: ValidateLiaScriptFiles
