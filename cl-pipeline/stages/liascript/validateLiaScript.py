@@ -349,6 +349,9 @@ Antwort:"""
         # Validate each file
         print("\n=== LiaScript Validation ===\n")
 
+        ai_calls_since_save = 0
+        save_interval = 100  # Save intermediate results every 100 AI validations
+
         for idx, row in tqdm(df_files.iterrows(), total=len(df_files), desc="Validating files"):
             # Skip if already validated (unless validate_all is True)
             if not self.validate_all and row.get('pipe:is_valid_liascript') is not None:
@@ -374,7 +377,15 @@ Antwort:"""
             elif method == 'ai_rejected':
                 logging.info(f"✗ AI rejected: {filename} (repo: {repo_path})")
 
-        # Save results
+            # Save intermediate results periodically after AI calls
+            if method in ('ai_validated', 'ai_rejected'):
+                ai_calls_since_save += 1
+                if ai_calls_since_save >= save_interval:
+                    df_files.to_pickle(self.file_name_output)
+                    logging.info(f"Intermediate save ({stats['ai_validated'] + stats['ai_rejected']} AI validations so far)")
+                    ai_calls_since_save = 0
+
+        # Save final results
         df_files.to_pickle(self.file_name_output)
 
         # Print statistics
