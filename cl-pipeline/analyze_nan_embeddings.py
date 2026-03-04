@@ -9,6 +9,9 @@ Usage:
 Defaults:
     pickle_path:    /home/crosslab/Desktop/CL/liascript/raw/LiaScript_files_validated.p
     content_folder: /home/crosslab/Desktop/CL/liascript/raw/content
+
+Note: Document indices match the original DataFrame index used by the pipeline
+      (from iterrows()), not a reset sequential index.
 """
 
 import pandas as pd
@@ -26,17 +29,22 @@ CONTENT_FOLDER = Path(sys.argv[2]) if len(sys.argv) > 2 else Path("/home/crossla
 BASE_URL = "http://localhost:11434"
 MODEL = "qwen3-embedding"
 
+# Document indices from pipeline error log (e.g. "520_1" -> index 520)
+FAILED_INDICES = [520, 522, 528, 529, 533, 534, 536, 537, 539, 540]
+
 print(f"Pickle:  {PICKLE_PATH}")
 print(f"Content: {CONTENT_FOLDER}")
 print(f"Model:   {MODEL}")
 print()
 
-# Load data
+# Load data - keep original index (no reset!)
 df = pd.read_pickle(PICKLE_PATH)
 if 'pipe:is_valid_liascript' in df.columns:
     df = df[df['pipe:is_valid_liascript'] == True]
-df = df[df['pipe:file_type'] == 'md'].reset_index(drop=True)
+df = df[df['pipe:file_type'] == 'md']
 print(f"Total valid MD files: {len(df)}")
+print(f"DataFrame index range: {df.index.min()} - {df.index.max()}")
+print()
 
 # Setup embeddings
 embeddings = OllamaEmbeddings(base_url=BASE_URL, model=MODEL)
@@ -50,25 +58,30 @@ except Exception as e:
     print(f"Warmup failed: {e}")
     sys.exit(1)
 
-# Test problematic range
+# Test range around failed indices
+test_start = min(FAILED_INDICES) - 5
+test_end = max(FAILED_INDICES) + 5
+
 print("=" * 80)
-print("Testing documents in range 515-545 (where NaN errors occurred)")
+print(f"Testing documents with original DataFrame index {test_start}-{test_end}")
+print(f"Failed indices from pipeline log: {FAILED_INDICES}")
 print("=" * 80)
 
 failed_docs = []
 
-for idx in range(515, 546):
-    if idx >= len(df):
-        break
-    row = df.iloc[idx]
+for idx in range(test_start, test_end + 1):
+    if idx not in df.index:
+        continue
+    row = df.loc[idx]
     doc_id = row['pipe:ID']
     content_file = CONTENT_FOLDER / f"{doc_id}.md"
+    is_known_failure = idx in FAILED_INDICES
 
     user = row.get('user', '?')
     repo = row.get('repo', '?')
 
     if not content_file.exists():
-        print(f"  [{idx}] {doc_id} - FILE NOT FOUND")
+        print(f"  [{idx}]{'*' if is_known_failure else ' '} {doc_id} - FILE NOT FOUND")
         continue
 
     with open(content_file, 'r', errors='replace') as f:
@@ -95,18 +108,21 @@ for idx in range(515, 546):
     if has_non_ascii and not lang_info: lang_info.append("non-ASCII")
     lang_str = f" [{', '.join(lang_info)}]" if lang_info else ""
 
-    print(f"  [{idx}] {doc_id} ({user}/{repo}){lang_str} len={len(text)} - {status}")
+    marker = "*" if is_known_failure else " "
+    print(f"  [{idx}]{marker} {doc_id} ({user}/{repo}){lang_str} len={len(text)} - {status}")
 
 print()
+print("  * = failed in pipeline run")
 
 # Deep analysis of failed documents
 if failed_docs:
+    print()
     print("=" * 80)
     print(f"Deep analysis of {len(failed_docs)} failed documents")
     print("=" * 80)
 
     for idx in failed_docs:
-        row = df.iloc[idx]
+        row = df.loc[idx]
         doc_id = row['pipe:ID']
         content_file = CONTENT_FOLDER / f"{doc_id}.md"
 
@@ -127,7 +143,6 @@ if failed_docs:
             print(f"  First {chunk_size} chars: {result}")
 
         # Test if it's specific characters
-        # Try with only ASCII
         ascii_text = text[:500].encode('ascii', errors='ignore').decode('ascii')
         try:
             embeddings.embed_query(ascii_text)
