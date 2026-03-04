@@ -115,6 +115,30 @@ class AIEmbeddingsGeneration(TaskWithInputFileMonitor):
         self.embedding_model = self.llm_config.get('embedding_model', 'jina/jina-embeddings-v2-base-de')
         self.collection_name = self.llm_config.get('collection_name', 'oer_connected_lecturer')
 
+    def _embed_and_store(self, embeddings, collection, batch_ids, batch_documents, batch_metadatas):
+        """Embed documents and store in ChromaDB, with fallback to single-document processing on error."""
+        try:
+            batch_embeddings = embeddings.embed_documents(batch_documents)
+            collection.add(
+                ids=batch_ids,
+                documents=batch_documents,
+                embeddings=batch_embeddings,
+                metadatas=batch_metadatas
+            )
+        except Exception as e:
+            logging.warning(f"Batch embedding failed ({e}), processing documents individually...")
+            for i in range(len(batch_ids)):
+                try:
+                    single_embedding = embeddings.embed_documents([batch_documents[i]])
+                    collection.add(
+                        ids=[batch_ids[i]],
+                        documents=[batch_documents[i]],
+                        embeddings=single_embedding,
+                        metadatas=[batch_metadatas[i]]
+                    )
+                except Exception as e2:
+                    logging.error(f"Skipping document {batch_ids[i]} (len={len(batch_documents[i])}): {e2}")
+
     def execute_task(self):
         # Logging wird jetzt zentral konfiguriert - keine lokalen Einstellungen mehr nötig
 
@@ -231,16 +255,7 @@ class AIEmbeddingsGeneration(TaskWithInputFileMonitor):
 
                     # Wenn Batch-Größe erreicht ist, verarbeiten
                     if len(batch_ids) >= BATCH_SIZE:
-                        # Batch-Embeddings erzeugen
-                        batch_embeddings = embeddings.embed_documents(batch_documents)
-
-                        # In Datenbank einfügen
-                        collection.add(
-                            ids=batch_ids,
-                            documents=batch_documents,
-                            embeddings=batch_embeddings,
-                            metadatas=batch_metadatas
-                        )
+                        self._embed_and_store(embeddings, collection, batch_ids, batch_documents, batch_metadatas)
 
                         # Batch zurücksetzen
                         batch_ids = []
@@ -249,10 +264,4 @@ class AIEmbeddingsGeneration(TaskWithInputFileMonitor):
 
         # Restliche Dokumente verarbeiten
         if batch_ids:
-            batch_embeddings = embeddings.embed_documents(batch_documents)
-            collection.add(
-                ids=batch_ids,
-                documents=batch_documents,
-                embeddings=batch_embeddings,
-                metadatas=batch_metadatas
-            )
+            self._embed_and_store(embeddings, collection, batch_ids, batch_documents, batch_metadatas)
