@@ -67,6 +67,14 @@ def load_and_split_markdown(md_file_path, header_splitter, text_splitter, source
     if not md_content.strip():
         return None
 
+    # Remove LiaScript header (HTML comment block at start) and import lines
+    md_content = re.sub(r'\A\s*<!--.*?-->', '', md_content, count=1, flags=re.DOTALL)
+    md_content = re.sub(r'^import:.*$', '', md_content, flags=re.MULTILINE)
+    md_content = md_content.strip()
+
+    if not md_content:
+        return None
+
     # Stufe 1: Split nach Markdown-Überschriften
     header_docs = header_splitter.split_text(md_content)
 
@@ -133,32 +141,47 @@ class AIEmbeddingsGeneration(TaskWithInputFileMonitor):
             logging.warning(f"Model reload attempt: {e}")
 
     def _embed_and_store_file(self, embeddings, collection, file_ids, file_documents, file_metadatas, source_filename):
-        """Embed all chunks of a single file and store in ChromaDB. All-or-nothing per file."""
+        """Embed all chunks of a single file and store in ChromaDB. Splits into sub-batches for large files."""
         import time
 
-        for attempt in range(3):
-            try:
-                file_embeddings = embeddings.embed_documents(file_documents)
-                collection.add(
-                    ids=file_ids,
-                    documents=file_documents,
-                    embeddings=file_embeddings,
-                    metadatas=file_metadatas
-                )
-                self._consecutive_failures = 0
-                return True
-            except Exception as e:
-                if attempt < 2:
-                    logging.warning(f"Embedding attempt {attempt + 1}/3 failed for {source_filename} ({e}), retrying in 5s...")
-                    time.sleep(5)
-                else:
-                    self._consecutive_failures = getattr(self, '_consecutive_failures', 0) + 1
-                    if self._consecutive_failures >= 3:
-                        logging.warning(f"3 consecutive file failures — reloading embedding model...")
-                        self._reload_embedding_model(embeddings)
-                        self._consecutive_failures = 0
-                    logging.error(f"Skipping file {source_filename} ({len(file_ids)} chunks) after 3 retries: {e}")
-                    return False
+        MAX_BATCH = 100  # Max chunks per API call to avoid timeouts
+
+        # Split into sub-batches for large files
+        all_embeddings = []
+        for batch_start in range(0, len(file_documents), MAX_BATCH):
+            batch_end = min(batch_start + MAX_BATCH, len(file_documents))
+            batch_docs = file_documents[batch_start:batch_end]
+
+            success = False
+            for attempt in range(3):
+                try:
+                    batch_embeddings = embeddings.embed_documents(batch_docs)
+                    all_embeddings.extend(batch_embeddings)
+                    success = True
+                    break
+                except Exception as e:
+                    if attempt < 2:
+                        logging.warning(f"Embedding attempt {attempt + 1}/3 failed for {source_filename} batch {batch_start}-{batch_end} ({e}), retrying in 5s...")
+                        time.sleep(5)
+
+            if not success:
+                self._consecutive_failures = getattr(self, '_consecutive_failures', 0) + 1
+                if self._consecutive_failures >= 3:
+                    logging.warning(f"3 consecutive file failures — reloading embedding model...")
+                    self._reload_embedding_model(embeddings)
+                    self._consecutive_failures = 0
+                logging.error(f"Skipping file {source_filename} ({len(file_ids)} chunks) after 3 retries: {e}")
+                return False
+
+        # All batches succeeded — store everything
+        collection.add(
+            ids=file_ids,
+            documents=file_documents,
+            embeddings=all_embeddings,
+            metadatas=file_metadatas
+        )
+        self._consecutive_failures = 0
+        return True
 
     def execute_task(self):
         # Logging wird jetzt zentral konfiguriert - keine lokalen Einstellungen mehr nötig
