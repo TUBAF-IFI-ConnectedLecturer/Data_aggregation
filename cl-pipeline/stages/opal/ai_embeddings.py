@@ -153,6 +153,7 @@ class AIEmbeddingsGeneration(TaskWithInputFileMonitor):
             batch_docs = file_documents[batch_start:batch_end]
 
             success = False
+            last_error = None
             for attempt in range(3):
                 try:
                     batch_embeddings = embeddings.embed_documents(batch_docs)
@@ -160,6 +161,7 @@ class AIEmbeddingsGeneration(TaskWithInputFileMonitor):
                     success = True
                     break
                 except Exception as e:
+                    last_error = e
                     if attempt < 2:
                         logging.warning(f"Embedding attempt {attempt + 1}/3 failed for {source_filename} batch {batch_start}-{batch_end} ({e}), retrying in 5s...")
                         time.sleep(5)
@@ -170,7 +172,7 @@ class AIEmbeddingsGeneration(TaskWithInputFileMonitor):
                     logging.warning(f"3 consecutive file failures — reloading embedding model...")
                     self._reload_embedding_model(embeddings)
                     self._consecutive_failures = 0
-                logging.error(f"Skipping file {source_filename} ({len(file_ids)} chunks) after 3 retries: {e}")
+                logging.error(f"Skipping file {source_filename} ({len(file_ids)} chunks) after 3 retries: {last_error}")
                 return False
 
         # All batches succeeded — store everything
