@@ -282,12 +282,12 @@ def search_lia_repos(github_handle, data_folder, data_file):
         print(f"Deduplication: {df.shape[0]} results -> {df_droped.shape[0]} unique repositories")
         df = df_droped
 
-        # Filter out internal/development repositories
-        # These are primarily LiaScript core developers and test repositories
+        # Filter out developer repositories (not user-created courses)
+        # Only exclude core LiaScript developers and their tool/template repos
         black_list = [
-            'LiaScript', 'TUBAF-IfI-LiaScript', 'LiaPlayground', 'SebastianZug',
-            'andre-dietrich', 'LiaBooks', 'LiaTemplates', 'TUBAF-IUZ-LiaScript',
-            'markjjacob', 'HueblerPatricia'
+            'SebastianZug', 'andre-dietrich',
+            'LiaScript', 'LiaBooks', 'LiaTemplates', 'LiaPlayground',
+            'TUBAF-IfI-LiaScript',
         ]
 
         df['internal'] = False
