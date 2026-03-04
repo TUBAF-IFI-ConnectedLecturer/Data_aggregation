@@ -115,6 +115,23 @@ class AIEmbeddingsGeneration(TaskWithInputFileMonitor):
         self.embedding_model = self.llm_config.get('embedding_model', 'jina/jina-embeddings-v2-base-de')
         self.collection_name = self.llm_config.get('collection_name', 'oer_connected_lecturer')
 
+    def _reload_embedding_model(self, embeddings):
+        """Force Ollama to reload the embedding model by sending a warmup request after unload."""
+        import time
+        import requests
+        try:
+            # Unload model by setting keep_alive to 0
+            requests.post(
+                f"{self.base_url}/api/embeddings",
+                json={"model": self.embedding_model, "prompt": "unload", "keep_alive": 0}
+            )
+            time.sleep(3)
+            # Reload by sending a warmup request
+            embeddings.embed_query("warmup after reload")
+            logging.info("Embedding model reloaded successfully.")
+        except Exception as e:
+            logging.warning(f"Model reload attempt: {e}")
+
     def _embed_and_store_file(self, embeddings, collection, file_ids, file_documents, file_metadatas, source_filename):
         """Embed all chunks of a single file and store in ChromaDB. All-or-nothing per file."""
         import time
@@ -128,12 +145,18 @@ class AIEmbeddingsGeneration(TaskWithInputFileMonitor):
                     embeddings=file_embeddings,
                     metadatas=file_metadatas
                 )
+                self._consecutive_failures = 0
                 return True
             except Exception as e:
                 if attempt < 2:
                     logging.warning(f"Embedding attempt {attempt + 1}/3 failed for {source_filename} ({e}), retrying in 5s...")
                     time.sleep(5)
                 else:
+                    self._consecutive_failures = getattr(self, '_consecutive_failures', 0) + 1
+                    if self._consecutive_failures >= 3:
+                        logging.warning(f"3 consecutive file failures — reloading embedding model...")
+                        self._reload_embedding_model(embeddings)
+                        self._consecutive_failures = 0
                     logging.error(f"Skipping file {source_filename} ({len(file_ids)} chunks) after 3 retries: {e}")
                     return False
 
