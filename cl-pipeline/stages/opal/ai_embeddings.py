@@ -135,6 +135,18 @@ class AIEmbeddingsGeneration(TaskWithInputFileMonitor):
             model=self.embedding_model,
         )
 
+        # Warmup: ensure model is loaded before processing
+        logging.info(f"Warming up embedding model '{self.embedding_model}'...")
+        for attempt in range(3):
+            try:
+                embeddings.embed_query("warmup")
+                logging.info("Embedding model ready.")
+                break
+            except Exception as e:
+                logging.warning(f"Warmup attempt {attempt + 1}/3 failed: {e}")
+                import time
+                time.sleep(5)
+
         # Stufe 1: Markdown-bewusstes Splitting nach Überschriften
         headers_to_split_on = [
             ("#", "Header 1"),
@@ -163,19 +175,19 @@ class AIEmbeddingsGeneration(TaskWithInputFileMonitor):
 
         chroma_client = chromadb.PersistentClient(path=str(self.chroma_file))
         collection = chroma_client.get_or_create_collection(name=self.collection_name)
-        # Paginated get to avoid SQLite variable limit
-        all_metadatas = []
-        batch_size = 5000
-        offset = 0
-        while True:
-            result = collection.get(limit=batch_size, offset=offset, include=["metadatas"])
-            if not result['metadatas']:
-                break
-            all_metadatas.extend(result['metadatas'])
-            if len(result['metadatas']) < batch_size:
-                break
-            offset += batch_size
-        processed_files = set(x["filename"] for x in all_metadatas)
+        # Get already processed filenames (paginated to avoid SQLite variable limit)
+        total_chunks = collection.count()
+        logging.info(f"{total_chunks} chunks in database")
+        processed_files = set()
+        if total_chunks > 0:
+            batch_size = 10000
+            offset = 0
+            while offset < total_chunks:
+                result = collection.get(limit=batch_size, offset=offset, include=["metadatas"])
+                if not result['metadatas']:
+                    break
+                processed_files.update(x["filename"] for x in result['metadatas'])
+                offset += len(result['metadatas'])
         logging.info(f"{len(processed_files)} in database found")
 
         # Batch-Größe definieren

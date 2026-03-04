@@ -138,16 +138,41 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
             model=self.embedding_model,
             num_gpu=0
         )
-        
+
+        # Warmup: ensure embedding model is loaded before processing
+        logging.info(f"Warming up embedding model '{self.embedding_model}'...")
+        for attempt in range(3):
+            try:
+                embeddings.embed_query("warmup")
+                logging.info("Embedding model ready.")
+                break
+            except Exception as e:
+                logging.warning(f"Warmup attempt {attempt + 1}/3 failed: {e}")
+                import time
+                time.sleep(5)
+
+        # Warmup: ensure LLM model is loaded before processing
+        logging.info(f"Warming up LLM model '{self.llm_model}'...")
+        for attempt in range(3):
+            try:
+                llm = OllamaLLM(model=self.llm_model, temperature=0)
+                llm.invoke("warmup")
+                logging.info("LLM model ready.")
+                break
+            except Exception as e:
+                logging.warning(f"LLM warmup attempt {attempt + 1}/3 failed: {e}")
+                import time
+                time.sleep(15)
+
         vectorstore = Chroma(
             collection_name=self.collection_name,
             embedding_function=embeddings,
             persist_directory=str(self.chroma_file)
         )
-        
+
         chroma_client = chromadb.PersistentClient(path=str(self.chroma_file))
         collection = chroma_client.get_or_create_collection(name=self.collection_name)
-        
+
         return vectorstore, collection
 
     def _apply_retrieval_strategy(self, file, available_chunks, field_name=None):
