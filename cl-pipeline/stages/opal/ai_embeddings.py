@@ -163,8 +163,19 @@ class AIEmbeddingsGeneration(TaskWithInputFileMonitor):
 
         chroma_client = chromadb.PersistentClient(path=str(self.chroma_file))
         collection = chroma_client.get_or_create_collection(name=self.collection_name)
-        result = collection.get()
-        processed_files = set([x["filename"] for x in result['metadatas']])
+        # Paginated get to avoid SQLite variable limit
+        all_metadatas = []
+        batch_size = 5000
+        offset = 0
+        while True:
+            result = collection.get(limit=batch_size, offset=offset, include=["metadatas"])
+            if not result['metadatas']:
+                break
+            all_metadatas.extend(result['metadatas'])
+            if len(result['metadatas']) < batch_size:
+                break
+            offset += batch_size
+        processed_files = set(x["filename"] for x in all_metadatas)
         logging.info(f"{len(processed_files)} in database found")
 
         # Batch-Größe definieren
