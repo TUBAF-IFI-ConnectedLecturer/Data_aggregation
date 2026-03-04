@@ -479,9 +479,18 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
         # Setup vector store
         vectorstore, collection = self._setup_vector_store()
         
-        # Get file chunk counts
-        name_result = collection.get()
-        filenames_list = [x["filename"] for x in name_result['metadatas']]
+        # Get file chunk counts (paginated to avoid SQLite variable limit)
+        filenames_list = []
+        batch_size = 5000
+        offset = 0
+        while True:
+            name_result = collection.get(limit=batch_size, offset=offset, include=["metadatas"])
+            if not name_result['metadatas']:
+                break
+            filenames_list.extend(x["filename"] for x in name_result['metadatas'])
+            if len(name_result['metadatas']) < batch_size:
+                break
+            offset += batch_size
         chunk_counter = Counter(filenames_list)
         
         # Process each file
