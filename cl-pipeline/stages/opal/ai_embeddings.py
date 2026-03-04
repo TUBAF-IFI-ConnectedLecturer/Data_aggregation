@@ -115,29 +115,27 @@ class AIEmbeddingsGeneration(TaskWithInputFileMonitor):
         self.embedding_model = self.llm_config.get('embedding_model', 'jina/jina-embeddings-v2-base-de')
         self.collection_name = self.llm_config.get('collection_name', 'oer_connected_lecturer')
 
-    def _embed_and_store(self, embeddings, collection, batch_ids, batch_documents, batch_metadatas):
-        """Embed documents and store in ChromaDB, with fallback to single-document processing on error."""
-        try:
-            batch_embeddings = embeddings.embed_documents(batch_documents)
-            collection.add(
-                ids=batch_ids,
-                documents=batch_documents,
-                embeddings=batch_embeddings,
-                metadatas=batch_metadatas
-            )
-        except Exception as e:
-            logging.warning(f"Batch embedding failed ({e}), processing documents individually...")
-            for i in range(len(batch_ids)):
-                try:
-                    single_embedding = embeddings.embed_documents([batch_documents[i]])
-                    collection.add(
-                        ids=[batch_ids[i]],
-                        documents=[batch_documents[i]],
-                        embeddings=single_embedding,
-                        metadatas=[batch_metadatas[i]]
-                    )
-                except Exception as e2:
-                    logging.error(f"Skipping document {batch_ids[i]} (len={len(batch_documents[i])}): {e2}")
+    def _embed_and_store_file(self, embeddings, collection, file_ids, file_documents, file_metadatas, source_filename):
+        """Embed all chunks of a single file and store in ChromaDB. All-or-nothing per file."""
+        import time
+
+        for attempt in range(3):
+            try:
+                file_embeddings = embeddings.embed_documents(file_documents)
+                collection.add(
+                    ids=file_ids,
+                    documents=file_documents,
+                    embeddings=file_embeddings,
+                    metadatas=file_metadatas
+                )
+                return True
+            except Exception as e:
+                if attempt < 2:
+                    logging.warning(f"Embedding attempt {attempt + 1}/3 failed for {source_filename} ({e}), retrying in 5s...")
+                    time.sleep(5)
+                else:
+                    logging.error(f"Skipping file {source_filename} ({len(file_ids)} chunks) after 3 retries: {e}")
+                    return False
 
     def execute_task(self):
         # Logging wird jetzt zentral konfiguriert - keine lokalen Einstellungen mehr nötig
@@ -214,21 +212,13 @@ class AIEmbeddingsGeneration(TaskWithInputFileMonitor):
                 offset += len(result['metadatas'])
         logging.info(f"{len(processed_files)} in database found")
 
-        # Batch-Größe definieren
-        BATCH_SIZE = 16
-
-        # Batch-Container initialisieren
-        batch_ids = []
-        batch_documents = []
-        batch_metadatas = []
-
-        # Process each file in the DataFrame
+        # Process each file in the DataFrame (all-or-nothing per file)
         for id, row in tqdm(df_files.iterrows(), total=len(df_files)):
             source_filename = row['pipe:ID'] + "." + row['pipe:file_type']
             if source_filename in processed_files:
                 continue
 
-            # Markdown-Datei aus content_folder lesen (statt Originaldatei erneut zu laden)
+            # Markdown-Datei aus content_folder lesen
             md_file_path = self.content_folder / (row['pipe:ID'] + ".md")
             if not md_file_path.exists():
                 logging.warning(f"Markdown content file not found: {md_file_path}")
@@ -243,25 +233,19 @@ class AIEmbeddingsGeneration(TaskWithInputFileMonitor):
                 continue
 
             if split_docs:
+                file_ids = []
+                file_documents = []
+                file_metadatas = []
+
                 for idx, doc in enumerate(split_docs):
-                    # Zum Batch hinzufügen
-                    batch_ids.append(str(id) + "_" + str(idx))
-                    batch_documents.append(doc.page_content)
-                    batch_metadatas.append({
+                    file_ids.append(str(id) + "_" + str(idx))
+                    file_documents.append(doc.page_content)
+                    file_metadatas.append({
                         "filename": doc.metadata['filename'],
                         "page": doc.metadata['page'],
                         "chunk_index": idx,
                     })
 
-                    # Wenn Batch-Größe erreicht ist, verarbeiten
-                    if len(batch_ids) >= BATCH_SIZE:
-                        self._embed_and_store(embeddings, collection, batch_ids, batch_documents, batch_metadatas)
-
-                        # Batch zurücksetzen
-                        batch_ids = []
-                        batch_documents = []
-                        batch_metadatas = []
-
-        # Restliche Dokumente verarbeiten
-        if batch_ids:
-            self._embed_and_store(embeddings, collection, batch_ids, batch_documents, batch_metadatas)
+                self._embed_and_store_file(
+                    embeddings, collection, file_ids, file_documents, file_metadatas, source_filename
+                )
