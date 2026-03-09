@@ -138,7 +138,7 @@ stages:
     parameters:
       file_name_input: *LIAFILES_VALIDATED_DF
       file_name_output: &LIACHROMAFILES LiaScript_embeddings_files.p
-      force_run: True
+      force_run: False
       file_types: ['md']
 
       # LLM and Vector Store Configuration
@@ -152,7 +152,7 @@ stages:
       prompts_file_name: pipelines/liascript/prompts/prompts.yaml
       dewey_classification_file: dewey_classification.txt
       model_name: llama3.3:70b
-      force_run: True
+      force_run: False
       file_types: ['md']
 
       # LLM and Vector Store Configuration
@@ -163,13 +163,10 @@ stages:
 
       # Processing mode configuration
       processing_mode:
-        # Force processing: These fields are ALWAYS processed (overwrite existing data)
-        force_processing:
-          - ai:education_level     # Force re-process: Update education level classification
-          - ai:target_audience     # Force re-process: Update target audience description
-
         # Conditional processing: These fields are only processed if empty/missing
         conditional_processing:
+          - ai:education_level     # Only process if missing/empty
+          - ai:target_audience     # Only process if missing/empty
           - ai:keywords_ext        # Only process if missing/empty or invalid count
           - ai:keywords_gen        # Only process if missing/empty or invalid count
           - ai:dewey               # Only process if missing/empty
@@ -177,4 +174,4 @@ stages:
           - ai:summary             # Only process if missing/empty
 
         # Skip configuration: Skip file if NO conditional fields need processing
-        allow_skip_when_all_conditional_filled: false  # Process all files for force_processing fields
+        allow_skip_when_all_conditional_filled: true  # Skip files where all fields are already filled
