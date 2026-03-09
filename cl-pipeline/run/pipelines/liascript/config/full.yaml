@@ -62,6 +62,13 @@ stages:
       force_run: False
       #internal: ['LiaScript','TUBAF-IfI-LiaScript','LiaPlayground','SebastianZug','andre-dietrich','LiaBooks','LiaTemplates','TUBAF-IUZ-LiaScript','markjjacob','HueblerPatricia']
 
+  - name: Collect GitHub user profiles
+    class: CollectGithubUserProfiles
+    parameters:
+      repo_data_file_name_input: *REPOSITORIES_DF
+      user_profiles_name: &USERPROFILES_DF LiaScript_user_profiles.p
+      force_run: False
+
   - name: Aggregate LiaScript files
     class: AggregateLiaScriptFiles
     parameters:
