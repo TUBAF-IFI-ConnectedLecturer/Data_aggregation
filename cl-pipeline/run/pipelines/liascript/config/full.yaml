@@ -170,6 +170,10 @@ stages:
 
       # Processing mode configuration
       processing_mode:
+        # Force processing: empty list to avoid default ['ai:affiliation', 'ai:dewey']
+        # which would cause all documents to be re-processed every run
+        force_processing: []
+
         # Conditional processing: These fields are only processed if empty/missing
         conditional_processing:
           - ai:education_level     # Only process if missing/empty
