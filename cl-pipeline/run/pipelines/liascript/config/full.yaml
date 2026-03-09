@@ -92,7 +92,7 @@ stages:
     parameters:
       file_name_input: *LIAFILES_DF
       file_name_output: &LIAFILES_VALIDATED_DF LiaScript_files_validated.p
-      force_run: False
+      force_run: True
       model_name: llama3.3:70b
       max_content_length: 8000  # Characters to send to AI for validation
       validate_all: False  # Only validate files without validation result
@@ -105,14 +105,14 @@ stages:
     parameters:
       lia_files_name_input: *LIAFILES_VALIDATED_DF
       lia_commits_name: &LIACOMMITS_DF LiaScript_commits.p
-      force_run: False
+      force_run: True
 
   - name: Extract LiaScript metadata from headers
     class: ExtractLiaScriptMetadata
     parameters:
       lia_files_name_input: *LIAFILES_VALIDATED_DF
       lia_metadata_name: &LIAMETADATA_DF LiaScript_metadata.p
-      force_run: False
+      force_run: True
 
   - name: Analyze LiaScript feature usage
     class: AnalyzeLiaScriptFeatures
@@ -120,7 +120,7 @@ stages:
       lia_files_name_input: *LIAFILES_VALIDATED_DF
       feature_analysis_name: &LIAFEATURES_DF LiaScript_features.p
       feature_stats_name: &LIAFEATURESTATS LiaScript_feature_statistics.p
-      force_run: False
+      force_run: True
 
   - name: Merge LiaScript data sources
     class: MergeLiaScriptData
@@ -130,14 +130,14 @@ stages:
       lia_features_name_input: *LIAFEATURES_DF
       lia_commits_name_input: *LIACOMMITS_DF
       merged_output_name: &LIACONSOLIDATED_DF LiaScript_consolidated.p
-      force_run: False
+      force_run: True
 
   - name: Extract content from markdown files
     class: ExtractFileContent
     parameters:
       file_name_input: *LIAFILES_VALIDATED_DF
       file_name_output: &LIASCONTENT_DF LiaScript_content.p
-      force_run: False
+      force_run: True
       file_types: ['md']
 
   - name: Provide embeddings
@@ -145,7 +145,7 @@ stages:
     parameters:
       file_name_input: *LIAFILES_VALIDATED_DF
       file_name_output: &LIACHROMAFILES LiaScript_embeddings_files.p
-      force_run: False
+      force_run: True
       file_types: ['md']
 
       # LLM and Vector Store Configuration
@@ -159,7 +159,7 @@ stages:
       prompts_file_name: pipelines/liascript/prompts/prompts.yaml
       dewey_classification_file: dewey_classification.txt
       model_name: llama3.3:70b
-      force_run: False
+      force_run: True
       file_types: ['md']
 
       # LLM and Vector Store Configuration
