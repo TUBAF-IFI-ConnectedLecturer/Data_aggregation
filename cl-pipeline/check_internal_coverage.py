@@ -10,6 +10,11 @@ import pandas as pd
 import argparse
 from pathlib import Path
 from collections import Counter
+try:
+    import chromadb
+    HAS_CHROMADB = True
+except ImportError:
+    HAS_CHROMADB = False
 
 INTERNAL_ACCOUNTS = [
     'SebastianZug', 'andre-dietrich', 'LiaScript', 'LiaBooks',
@@ -102,7 +107,6 @@ def main():
         ('metadata', 'pipe:ID'),
         ('features', 'pipe:ID'),
         ('content', 'pipe:ID'),
-        ('embeddings', 'pipe:ID'),
         ('ai_meta', 'pipe:ID'),
         ('consolidated', 'pipe:ID'),
     ]
@@ -126,6 +130,40 @@ def main():
         missing = valid_ids - set(df[id_col])
         coverage = f"{len(in_stage)/len(valid_ids)*100:.1f}%" if valid_ids else "N/A"
         print(f"  {stage_name:<20} {len(df):>8} {len(in_stage):>10} {len(missing):>10} {coverage:>10}")
+
+    # --- Embeddings: check ChromaDB directly ---
+    processed_folder = data_root.parent / 'processed'
+    chroma_path = processed_folder / 'chroma_db'
+    if HAS_CHROMADB and chroma_path.exists():
+        try:
+            chroma_client = chromadb.PersistentClient(path=str(chroma_path))
+            collection = chroma_client.get_or_create_collection(name='liascript_courses')
+            total_chunks = collection.count()
+
+            # Get all filenames from ChromaDB (paginated)
+            chroma_files = set()
+            batch_size = 10000
+            offset = 0
+            while offset < total_chunks:
+                result = collection.get(limit=batch_size, offset=offset, include=["metadatas"])
+                if not result['metadatas']:
+                    break
+                chroma_files.update(x["filename"] for x in result['metadatas'])
+                offset += len(result['metadatas'])
+
+            # Match against valid internal file IDs
+            # ChromaDB filenames are "pipe:ID.file_type"
+            chroma_ids = {f.rsplit('.', 1)[0] for f in chroma_files}
+            in_chroma = valid_ids & chroma_ids
+            missing_chroma = valid_ids - chroma_ids
+            coverage = f"{len(in_chroma)/len(valid_ids)*100:.1f}%" if valid_ids else "N/A"
+            print(f"  {'embeddings (chroma)':<20} {len(chroma_files):>8} {len(in_chroma):>10} {len(missing_chroma):>10} {coverage:>10}")
+        except Exception as e:
+            print(f"  {'embeddings (chroma)':<20} ERROR: {e}")
+    elif not HAS_CHROMADB:
+        print(f"  {'embeddings (chroma)':<20} chromadb not installed")
+    else:
+        print(f"  {'embeddings (chroma)':<20} {chroma_path} not found")
 
     # --- Step 5: Check commits separately (uses different key) ---
     commits_path = data_root / PICKLE_FILES['commits']
