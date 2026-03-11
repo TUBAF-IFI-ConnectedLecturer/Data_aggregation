@@ -22,6 +22,9 @@ cl-pipeline/
 │       ├── liascript/         # LiaScript pipeline (GitHub repositories)
 │       ├── local_pdfs/        # Local PDFs pipeline (scientific papers)
 │       └── shared/            # Shared resources (Dewey classification, etc.)
+├── scripts/                    # Utility scripts
+│   ├── migrate_error_tracking.py  # Initialize error tracking for existing datasets
+│   └── monitor_dgx.sh            # Live GPU monitoring for DGX
 ├── src/                        # Core pipeline framework and utilities
 │   ├── ai_metadata_core/      # AI metadata extraction framework
 │   └── pipeline_logging/      # Logging infrastructure
@@ -120,6 +123,7 @@ Each pipeline implements a staged processing architecture:
 
 - **YAML-based configuration**: Each pipeline has `test.yaml` and `full.yaml` configs
 - **Force/conditional processing**: Control which stages always run vs. skip if data exists
+- **Error tracking**: Per-field error counting with configurable `max_error_retries` to avoid endless retries on failing documents
 - **Stratified sampling**: Balanced file type distribution for testing
 - **Logging**: Timestamped log files with rotation
 
@@ -241,6 +245,7 @@ See [run/pipelines/shared/README.md](run/pipelines/shared/README.md) for details
 **LLM Connection Errors**:
 - Verify Ollama is running: `ollama list`
 - Check model availability: `ollama pull llama3.3:70b`
+- Persistent LLM errors are tracked per field in `ai:_errors` and skipped after `max_error_retries` attempts
 
 **ChromaDB Errors**:
 - Clear test database: Delete ChromaDB directory and rerun

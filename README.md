@@ -300,8 +300,12 @@ Data_aggregation/
 │   │   │   ├── liascript/
 │   │   │   └── shared/   # Gemeinsame Ressourcen
 │   │   └── run_pipeline.py
+│   ├── scripts/          # Utility-Skripte (Migration, Monitoring)
 │   ├── src/              # Pipeline Stage Implementierungen
 │   └── stages/           # Stage-spezifische Module
+├── evaluation/            # Evaluations- und Test-Tools
+│   ├── eval_sample_prep.py     # Evaluation-Datensatz-Generator
+│   └── prompt_tuning_test.py   # Prompt-Regressionstests
 └── pipeline/             # Core Pipeline Framework
     └── pipeline/         # Base Classes
 ```

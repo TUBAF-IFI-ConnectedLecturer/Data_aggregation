@@ -256,11 +256,36 @@ OPAL uses `prompts.yaml` (generic educational materials) vs. Local PDFs uses `pr
 
 ## Processing Mode
 
-**Force Processing**: (always overwrite)
-- Configurable per stage
+The AI metadata extraction stage supports three processing modes, configured in the YAML config under `processing_mode`:
 
-**Conditional Processing**: (only if empty)
-- Most metadata fields
+**Force Processing** (`force_processing`): Fields that are always reprocessed, overwriting existing data.
+
+**Conditional Processing** (`conditional_processing`): Fields that are only processed if empty/missing. Filled fields are skipped.
+
+**Error Tracking** (`max_error_retries`): Maximum number of LLM errors (timeouts, connection failures) before a field is permanently skipped for a document. Set to `0` for unlimited retries (old behavior), recommended default is `3`.
+
+The pipeline distinguishes between:
+- **LLM errors** (Ollama timeout, connection failure) → tracked in `ai:_errors`, retried up to `max_error_retries` times
+- **Legitimate empty results** (LLM returns no data) → accepted as final, field marked as processed
+
+```yaml
+processing_mode:
+  force_processing:
+    - ai:affiliation
+    - ai:dewey
+  conditional_processing:
+    - ai:author
+    - ai:keywords_gen
+    - ai:title
+    - ai:type
+  allow_skip_when_all_conditional_filled: false
+  max_error_retries: 3
+```
+
+For existing datasets with stuck documents, use the migration script to initialize error tracking:
+```bash
+python cl-pipeline/scripts/migrate_error_tracking.py <pickle_path> --max-retries 3 --dry-run
+```
 
 ## Logging
 

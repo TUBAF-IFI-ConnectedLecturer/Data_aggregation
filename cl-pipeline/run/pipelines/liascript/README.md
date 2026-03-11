@@ -132,6 +132,10 @@ This classification enables targeted filtering and recommendation of educational
 Complete pipeline configuration for LiaScript collection
 - Data path: `/media/sz/Data/Connected_Lecturers/LiaScript`
 - Processes all discovered repositories
+- AI metadata extraction with `max_error_retries: 3` to skip documents after repeated LLM failures
+
+### `config/metadata_only.yaml`
+Runs only the AI metadata extraction and keyword check stages (skips GitHub crawling, file aggregation, etc.). Useful for re-running metadata extraction on an existing dataset without re-crawling GitHub.
 
 ## Data Paths
 
@@ -202,6 +206,7 @@ Complete pipeline configuration for LiaScript collection
 | `ai:keywords_gen` | str | 15 generated descriptive keywords |
 | `ai:education_level` | str | Primary educational level (e.g., "Hochschulbildung", "Sekundarstufe I") |
 | `ai:target_audience` | str | Detailed target audience description (1-2 sentences) |
+| `ai:_errors` | dict | Per-field error tracking (count, last_error, last_attempt) |
 
 ### Feature Analysis (`LiaScript_features.p`)
 | Field | Type | Description |
