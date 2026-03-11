@@ -358,12 +358,19 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
             existing_metadata: Existing metadata for the file
 
         Returns:
-            Dictionary with processed field data
+            Dictionary with processed field data (empty dict on error/skip).
+            After calling this method, check self.llm_interface.last_error
+            to determine if the empty result was due to an LLM error.
         """
         should_process, process_type = self.config_manager.should_process_field(field_name, existing_metadata)
 
         if not should_process:
+            if process_type == "max_retries_exceeded":
+                logging.info("Skipping field %s for %s: max error retries exceeded", field_name, file)
             return {}
+
+        # Reset error state before processing
+        self.llm_interface.last_error = None
 
         try:
             # Create field-specific retrieval chain
@@ -397,6 +404,7 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
 
         except Exception as e:
             logging.error("Error processing field %s for file %s: %s", field_name, file, e)
+            self.llm_interface.last_error = "llm_error"
             return {}
     
     def _get_processing_fields(self):
@@ -559,11 +567,14 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
                 'pipe:file_type': row['pipe:file_type']
             }
             
-            # Copy existing metadata
+            # Copy existing metadata (including error tracking)
             if existing_metadata is not None:
                 for key in existing_metadata.index:
                     if key.startswith('ai:'):
                         metadata[key] = existing_metadata[key]
+                # Ensure ai:_errors is a proper dict (may be NaN from pickle)
+                if 'ai:_errors' in metadata and not isinstance(metadata.get('ai:_errors'), dict):
+                    metadata['ai:_errors'] = {}
 
             # Process each field (chain is now created per-field with field-specific strategies)
             needs_processing = False
@@ -574,18 +585,31 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
                     field_result = self._process_single_field(
                         field_name, file, vectorstore, pages, collection, existing_metadata
                     )
-                    # Always update metadata, even if result is empty
-                    # This marks the field as "processed" to avoid re-processing
+
+                    # Check if there was an LLM error for this field
+                    last_error = self.llm_interface.last_error
+
                     if field_result:
                         metadata.update(field_result)
+                        # Successful extraction — clear any previous error for this field
+                        self.config_manager.clear_field_error(metadata, field_name)
+                    elif last_error:
+                        # LLM error (timeout or other) — record it, do NOT mark field as processed
+                        self.config_manager.record_field_error(metadata, field_name, last_error)
+                        logging.warning(
+                            "Error '%s' for field %s on file %s (attempt %d)",
+                            last_error, field_name, file,
+                            metadata.get('ai:_errors', {}).get(field_name, {}).get('count', 0)
+                        )
                     else:
-                        # Store empty/default value to mark as processed
+                        # No error but empty result — legitimate empty value, mark as processed
                         if field_name in ['ai:dewey']:
                             metadata[field_name] = []
                         elif field_name in ['ai:keywords_ext', 'ai:keywords_gen', 'ai:keywords_dnb']:
                             metadata[field_name] = []
                         else:
                             metadata[field_name] = ""
+                        self.config_manager.clear_field_error(metadata, field_name)
                     needs_processing = True
 
             # Skip if no processing was needed
@@ -652,4 +676,27 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
         print(f"Files processed: {processed_files}")
         print(f"Batch size configured: {self.batch_size}")
         print(f"Final metadata count: {len(df_metadata)}")
+
+        # Error retry statistics
+        if self.config_manager.max_error_retries > 0 and 'ai:_errors' in df_metadata.columns:
+            docs_with_errors = df_metadata['ai:_errors'].apply(
+                lambda x: isinstance(x, dict) and len(x) > 0
+            ).sum()
+            if docs_with_errors > 0:
+                print(f"\n--- Error Tracking (max_error_retries: {self.config_manager.max_error_retries}) ---")
+                print(f"Documents with field errors: {docs_with_errors}")
+                # Count errors by field
+                field_error_counts = {}
+                for errors in df_metadata['ai:_errors']:
+                    if isinstance(errors, dict):
+                        for field, info in errors.items():
+                            if field not in field_error_counts:
+                                field_error_counts[field] = {'total': 0, 'max_retries_reached': 0}
+                            field_error_counts[field]['total'] += 1
+                            if info.get('count', 0) >= self.config_manager.max_error_retries:
+                                field_error_counts[field]['max_retries_reached'] += 1
+                for field, counts in sorted(field_error_counts.items()):
+                    print(f"  {field}: {counts['total']} docs with errors, "
+                          f"{counts['max_retries_reached']} at max retries")
+
         print(f"{'='*70}\n")

@@ -18,36 +18,51 @@ except ImportError:
 
 class LLMInterface:
     """Handles LLM communication with timeout management"""
-    
+
     def __init__(self, timeout_seconds: int = 240):
         self.timeout_seconds = timeout_seconds
-    
+        self.last_error = None
+
     @timeout(240)
     def _get_response_with_timeout(self, query: str, chain: Any) -> str:
         """Get response from chain with timeout protection"""
-        try:
-            response = chain.invoke({'query': query})
-            return response['result']
-        except Exception as e:
-            logging.error("Error processing query %s: %s", query, str(e))
-            return ""
-    
+        response = chain.invoke({'query': query})
+        return response['result']
+
     def get_monitored_response(self, query: str, chain: Any) -> str:
-        """Get response with timeout and error monitoring"""
+        """Get response with timeout and error monitoring.
+
+        Sets self.last_error to indicate error type:
+            - None: Success (or empty response from LLM)
+            - "timeout": Request timed out
+            - "llm_error": LLM/Ollama returned an error
+        """
         try:
-            return self._get_response_with_timeout(query, chain)
-        except Exception as e:
+            result = self._get_response_with_timeout(query, chain)
+            self.last_error = None
+            return result
+        except TimeoutError as e:
             logging.error("Timeout of %ds for query %s: %s", self.timeout_seconds, query, str(e))
+            self.last_error = "timeout"
             return ""
-    
+        except Exception as e:
+            error_str = str(e).lower()
+            if "timeout" in error_str or "timed out" in error_str:
+                logging.error("Timeout of %ds for query %s: %s", self.timeout_seconds, query, str(e))
+                self.last_error = "timeout"
+                return ""
+            logging.error("LLM error for query %s: %s", query, str(e))
+            self.last_error = "llm_error"
+            return ""
+
     def create_qa_chain(self, retriever: Any, llm: Any, prompt: Any) -> Any:
         """Create RetrievalQA chain"""
         from langchain_classic.chains import RetrievalQA
-        
+
         return RetrievalQA.from_chain_type(
             llm=llm,
-            retriever=retriever, 
+            retriever=retriever,
             chain_type="stuff",
-            return_source_documents=True, 
-            chain_type_kwargs={'prompt': prompt} 
+            return_source_documents=True,
+            chain_type_kwargs={'prompt': prompt}
         )

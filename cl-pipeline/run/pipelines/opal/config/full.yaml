@@ -133,8 +133,8 @@ stages:
         force_processing:    # [] Empty list = no force processing
           - ai:affiliation
           - ai:dewey
-          - ai:author     
-        
+          - ai:author
+
         # Conditional processing: These fields are only processed if empty/missing
         conditional_processing:
           - ai:author
@@ -143,11 +143,16 @@ stages:
           - ai:type
           - ai:keywords_ext
           - ai:keywords_dnb
-          - ai:summary     
-        
+          - ai:summary
+
         # Skip configuration: Skip file if NO conditional fields need processing
         # AND force_processing is disabled (which it now is)
         allow_skip_when_all_conditional_filled: false  # Enable skipping when all fields are filled
+
+        # Error retry limit: Maximum number of LLM errors (timeout, connection error)
+        # before a field is permanently skipped for a document.
+        # 0 = unlimited retries (old behavior), 3 = recommended default
+        max_error_retries: 3
 
   - name: Check Keywords
     class: GNDKeywordCheck

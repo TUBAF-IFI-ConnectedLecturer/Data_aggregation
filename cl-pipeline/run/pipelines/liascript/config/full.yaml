@@ -186,3 +186,8 @@ stages:
 
         # Skip configuration: Skip file if NO conditional fields need processing
         allow_skip_when_all_conditional_filled: true  # Skip files where all fields are already filled
+
+        # Error retry limit: Maximum number of LLM errors (timeout, connection error)
+        # before a field is permanently skipped for a document.
+        # 0 = unlimited retries (old behavior), 3 = recommended default
+        max_error_retries: 3
