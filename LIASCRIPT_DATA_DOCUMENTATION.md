@@ -420,7 +420,7 @@ Multi-line values continue until:
 
 This dataset quantifies the usage of LiaScript-specific features in each course.
 
-**Feature-Dokumentation:** Alle erkannten Muster, Regex-Ausdrücke und zugehörigen Daten-Label sind dokumentiert in [`LiaScript_Features_Patterns.md`](cl-pipeline/run/pipelines/liascript/docs/LiaScript_Features_Patterns.md).
+**Feature-Dokumentation:** Alle erkannten Muster, Regex-Ausdrücke und zugehörigen Daten-Label sind dokumentiert in [`LiaScript_Features_Patterns.md`](https://github.com/TUBAF-IFI-ConnectedLecturer/Data_aggregation/blob/main/cl-pipeline/run/pipelines/liascript/docs/LiaScript_Features_Patterns.md).
 
 #### Core Identification Fields
 
