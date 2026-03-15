@@ -11,6 +11,7 @@ Diese Dokumentation beschreibt alle Features, die in der Feature-Extraktion erka
 - **Beschreibung:** LiaScript Movie-Embeds
 - **Syntax:** `!?[alt](url)`
 - **Regex-Muster:** `!\?\[`
+- **Daten-Label:** `feature:video_count`, `feature:has_video`
 - **Beispiel:**
   ```markdown
   !?[Video-Titel](https://www.youtube.com/watch?v=xyz)
@@ -21,6 +22,7 @@ Diese Dokumentation beschreibt alle Features, die in der Feature-Extraktion erka
 - **Beschreibung:** Audio-Einbettungen
 - **Syntax:** `?[alt](url)`
 - **Regex-Muster:** `(?<!\?)\?\[` (Negativer Lookbehind, um `??[` auszuschließen)
+- **Daten-Label:** `feature:audio_count`, `feature:has_audio`
 - **Beispiel:**
   ```markdown
   ?[Audio-Titel](https://example.com/audio.mp3)
@@ -31,6 +33,7 @@ Diese Dokumentation beschreibt alle Features, die in der Feature-Extraktion erka
 - **Beschreibung:** Interaktive Embeds/Webapps
 - **Syntax:** `??[alt](url)`
 - **Regex-Muster:** `\?\?\[`
+- **Daten-Label:** `feature:webapp_count`, `feature:has_webapp`
 - **Beispiel:**
   ```markdown
   ??[Interaktive Simulation](https://example.com/simulation)
@@ -41,6 +44,7 @@ Diese Dokumentation beschreibt alle Features, die in der Feature-Extraktion erka
 - **Beschreibung:** Standard Markdown-Bilder
 - **Syntax:** `![alt](url)`
 - **Regex-Muster:** `(?<!\?)\!\[.*?\]\(.*?\)` (schließt Videos `!?[` aus)
+- **Daten-Label:** `feature:image_count`, `feature:has_images`
 - **Beispiel:**
   ```markdown
   ![Beschreibung](https://example.com/bild.png)
@@ -56,6 +60,7 @@ Diese Dokumentation beschreibt alle Features, die in der Feature-Extraktion erka
 - **Syntax:** `[[Lösungstext]]`
 - **Regex-Muster:** `\[\[(?![Xx ]\]\]|\?\]\])[^\[\]]+\]\]` (schließt MC-Marker und Hints aus)
 - **Zusätzlich:** MC-Quiz-Items am Zeilenanfang werden subtrahiert
+- **Daten-Label:** `feature:text_quiz_count`, `feature:has_text_quiz`
 - **Beispiel:**
   ```markdown
   Was ist die Hauptstadt von Deutschland?
@@ -68,6 +73,7 @@ Diese Dokumentation beschreibt alle Features, die in der Feature-Extraktion erka
 - **Beschreibung:** Einfachauswahl
 - **Syntax:** `[( )]` oder `[(X)]`
 - **Regex-Muster:** `^\s*\[\([Xx ]\)\]` (am Zeilenanfang)
+- **Daten-Label:** `feature:single_choice_count`, `feature:has_single_choice`
 - **Beispiel:**
   ```markdown
   Welche Farbe hat der Himmel?
@@ -82,6 +88,7 @@ Diese Dokumentation beschreibt alle Features, die in der Feature-Extraktion erka
 - **Beschreibung:** Mehrfachauswahl
 - **Syntax:** `[[ ]]` oder `[[X]]`
 - **Regex-Muster:** `^\s*\[\[[Xx ]\]\]` (am Zeilenanfang)
+- **Daten-Label:** `feature:multiple_choice_count`, `feature:has_multiple_choice`
 - **Beispiel:**
   ```markdown
   Welche sind Primzahlen?
@@ -97,6 +104,7 @@ Diese Dokumentation beschreibt alle Features, die in der Feature-Extraktion erka
 - **Beschreibung:** Hinweise für Quiz-Fragen
 - **Syntax:** `[[?]]`
 - **Regex-Muster:** `\[\[\?\]\]`
+- **Daten-Label:** `feature:quiz_hint_count`, `feature:has_quiz_hints`
 - **Beispiel:**
   ```markdown
   [[Berlin]]
@@ -112,6 +120,7 @@ Diese Dokumentation beschreibt alle Features, die in der Feature-Extraktion erka
 - **Beschreibung:** Tabellen mit LiaScript-Datentyp-Annotationen für Charts/Visualisierungen
 - **Erkennungsmuster:** HTML-Kommentar `-->` gefolgt von Tabelle
 - **Regex-Muster:** `-->\s*\n\s*\|`
+- **Daten-Label:** `feature:lia_viz_table_count`, `feature:has_lia_viz_tables`
 - **Beispiel:**
   ```markdown
   <!-- data-type="BarChart" -->
@@ -125,6 +134,7 @@ Diese Dokumentation beschreibt alle Features, die in der Feature-Extraktion erka
 
 - **Beschreibung:** Reguläre Markdown-Tabellen
 - **Regex-Muster:** `^\s*\|[\s\-:|]+\|\s*$` (Tabellen-Header-Separator)
+- **Daten-Label:** `feature:table_count`, `feature:has_tables`
 - **Beispiel:**
   ```markdown
   | Spalte 1 | Spalte 2 |
@@ -140,6 +150,7 @@ Diese Dokumentation beschreibt alle Features, die in der Feature-Extraktion erka
 
 - **Beschreibung:** Fenced Code Blocks mit oder ohne Sprachangabe
 - **Regex-Muster:** `^```[\w+]*\s*$` (am Zeilenanfang, mit optionaler Sprache)
+- **Daten-Label:** `feature:code_block_count`, `feature:has_code_blocks`, `feature:code_languages`, `feature:code_language_count`
 - **Beispiel:**
   ````markdown
   ```python
@@ -152,6 +163,7 @@ Diese Dokumentation beschreibt alle Features, die in der Feature-Extraktion erka
 - **Beschreibung:** LiaScript Code-Projekte (mehrere verknüpfte Dateien)
 - **Syntax:** ``` ```language+ ``` (mit + Marker)
 - **Regex-Muster:** `^```\w*\+` (am Zeilenanfang)
+- **Daten-Label:** `feature:code_project_count`, `feature:has_code_projects`
 - **Beispiel:**
   ````markdown
   ```js +main.js
@@ -168,6 +180,7 @@ Diese Dokumentation beschreibt alle Features, die in der Feature-Extraktion erka
 
 - **Beschreibung:** Inline JavaScript-Ausführung
 - **Regex-Muster:** `<script[^>]*>.*?</script>` (case-insensitive, DOTALL)
+- **Daten-Label:** `feature:script_tag_count`, `feature:has_script_tags`
 - **Beispiel:**
   ```markdown
   <script>
@@ -184,6 +197,7 @@ Diese Dokumentation beschreibt alle Features, die in der Feature-Extraktion erka
 - **Beschreibung:** Text-to-Speech Kommentare (inline)
 - **Syntax:** `--{{Nummer}}--` oder `--{{Start-Ende}}--` für Bereiche
 - **Regex-Muster:** `--\{\{\d+(?:-\d+)?\}\}--`
+- **Daten-Label:** `feature:tts_fragment_count`, `feature:has_tts_fragments`
 - **Beispiele:**
   ```markdown
   --{{1}}--
@@ -198,6 +212,7 @@ Diese Dokumentation beschreibt alle Features, die in der Feature-Extraktion erka
 - **Beschreibung:** Mehrzeilige TTS-Blöcke mit Stern-Begrenzung
 - **Syntax:** `--{{Nummer}}--` gefolgt von `****` ... `****`
 - **Regex-Muster:** `--\{\{\d+(?:-\d+)?\}\}--\s*\n\*{4,}`
+- **Daten-Label:** `feature:tts_block_count`, `feature:has_tts_blocks`
 - **Beispiel:**
   ```markdown
                  --{{1}}--
@@ -214,6 +229,7 @@ Diese Dokumentation beschreibt alle Features, die in der Feature-Extraktion erka
 - **Beschreibung:** Schrittweise Einblendungen (inline)
 - **Syntax:** `{{Nummer}}` oder `{{Start-Ende}}` für Bereiche
 - **Regex-Muster:** `(?<!--)\{\{\d+(?:-\d+)?\}\}` (nicht von `--` vorangestellt)
+- **Daten-Label:** `feature:animation_fragment_count`, `feature:has_animation_fragments`
 - **Beispiele:**
   ```markdown
   {{1}} Dieser Text erscheint bei Schritt 1.
@@ -229,6 +245,7 @@ Diese Dokumentation beschreibt alle Features, die in der Feature-Extraktion erka
 - **Beschreibung:** Mehrzeilige animierte Blöcke mit Stern-Begrenzung
 - **Syntax:** `{{Nummer}}` gefolgt von `****` ... `****`
 - **Regex-Muster:** `\{\{\d+(?:-\d+)?\}\}\s*\n\*{4,}`
+- **Daten-Label:** `feature:animation_block_count`, `feature:has_animation_blocks`
 - **Beispiel:**
   ```markdown
                  {{1}}
@@ -244,6 +261,7 @@ Diese Dokumentation beschreibt alle Features, die in der Feature-Extraktion erka
 
 - **Beschreibung:** CSS-Animationsklassen
 - **Regex-Muster:** `class=["'][^"']*\banimated\b|animate__\w+`
+- **Daten-Label:** `feature:animated_css_count`, `feature:has_animated_css`
 - **Beispiel:**
   ```markdown
   <div class="animated fadeIn">Animierter Inhalt</div>
@@ -260,6 +278,7 @@ Der Header-Block (zwischen `<!--` und `-->`) wird automatisch extrahiert. Die fo
 - **Beschreibung:** Importierte LiaScript-Templates
 - **Syntax:** `import: URL` (auch mehrzeilig möglich)
 - **Erkennung:** Zeilen im Header, die mit `import:` beginnen, gefolgt von HTTP-URLs. Fortsetzungszeilen mit URLs werden ebenfalls erfasst.
+- **Daten-Label:** `feature:import_count`, `feature:has_imports`, `feature:imported_templates`, `feature:template_categories`, `feature:template_category_count`
 - **Beispiel:**
   ```markdown
   <!--
@@ -275,6 +294,7 @@ Der Header-Block (zwischen `<!--` und `-->`) wird automatisch extrahiert. Die fo
 - **Beschreibung:** JavaScript-Bibliotheken im Header
 - **Syntax:** `script: URL` (auch mehrzeilig möglich)
 - **Erkennung:** Zeilen im Header, die mit `script:` beginnen, gefolgt von HTTP-URLs. Fortsetzungszeilen mit URLs werden ebenfalls erfasst.
+- **Daten-Label:** `feature:external_script_count`, `feature:has_external_scripts`
 - **Beispiel:**
   ```markdown
   <!--
@@ -289,6 +309,7 @@ Der Header-Block (zwischen `<!--` und `-->`) wird automatisch extrahiert. Die fo
 - **Beschreibung:** CSS-Stylesheets im Header
 - **Syntax:** `link: URL` (auch mehrzeilig möglich)
 - **Erkennung:** Zeilen im Header, die mit `link:` beginnen, gefolgt von HTTP-URLs. Fortsetzungszeilen mit URLs werden ebenfalls erfasst.
+- **Daten-Label:** `feature:external_css_count`, `feature:has_external_css`
 - **Beispiel:**
   ```markdown
   <!--
@@ -303,6 +324,7 @@ Der Header-Block (zwischen `<!--` und `-->`) wird automatisch extrahiert. Die fo
 - **Beschreibung:** Kurs-Logo im Header
 - **Syntax:** `logo: URL`
 - **Regex-Muster:** `^\s*logo\s*:` (im Header)
+- **Daten-Label:** `feature:has_logo`
 - **Beispiel:**
   ```markdown
   <!--
@@ -315,6 +337,7 @@ Der Header-Block (zwischen `<!--` und `-->`) wird automatisch extrahiert. Die fo
 - **Beschreibung:** Favicon/Icon im Header
 - **Syntax:** `icon: URL`
 - **Regex-Muster:** `^\s*icon\s*:` (im Header)
+- **Daten-Label:** `feature:has_icon`
 - **Beispiel:**
   ```markdown
   <!--
@@ -327,6 +350,7 @@ Der Header-Block (zwischen `<!--` und `-->`) wird automatisch extrahiert. Die fo
 - **Beschreibung:** TTS-Konfiguration im Header
 - **Syntax:** `narrator: Stimme`
 - **Regex-Muster:** `^\s*narrator\s*:` (im Header)
+- **Daten-Label:** `feature:has_narrator`
 - **Beispiel:**
   ```markdown
   <!--
@@ -346,6 +370,7 @@ Der Header-Block (zwischen `<!--` und `-->`) wird automatisch extrahiert. Die fo
 - **Syntax:** `$ ... $`
 - **Regex-Muster:** `(?<!\$)\$(?!\$)[^$\n]+\$(?!\$)` (nach Entfernung von Code-Blöcken)
 - **Hinweis:** Code-Blöcke und Inline-Code werden vor der Analyse entfernt, um False Positives ($PATH, $HOME) zu vermeiden
+- **Daten-Label:** `feature:inline_math_count`, `feature:has_math`
 - **Beispiel:**
   ```markdown
   Die Formel $E = mc^2$ ist bekannt.
@@ -356,6 +381,7 @@ Der Header-Block (zwischen `<!--` und `-->`) wird automatisch extrahiert. Die fo
 - **Beschreibung:** Abgesetzte Formeln
 - **Syntax:** `$$ ... $$`
 - **Regex-Muster:** `\$\$[^$]+\$\$` (DOTALL, nach Entfernung von Code-Blöcken)
+- **Daten-Label:** `feature:display_math_count`, `feature:has_math`
 - **Beispiel:**
   ```markdown
   $$
@@ -372,6 +398,7 @@ Der Header-Block (zwischen `<!--` und `-->`) wird automatisch extrahiert. Die fo
 - **Beschreibung:** QR-Code-Generierung
 - **Syntax:** `[qr-code](daten)` oder `[qr-code (optionen)](daten)`
 - **Regex-Muster:** `\[qr-code\]|\[qr-code\s*\(` (case-insensitive)
+- **Daten-Label:** `feature:qr_code_count`, `feature:has_qr_codes`
 - **Beispiel:**
   ```markdown
   [qr-code](https://liascript.github.io)
@@ -382,6 +409,7 @@ Der Header-Block (zwischen `<!--` und `-->`) wird automatisch extrahiert. Die fo
 - **Beschreibung:** Likert-Skala und Umfrage-Elemente
 - **Syntax:** `[(Text)]` (wobei Text nicht X oder Leerzeichen ist)
 - **Regex-Muster:** `^\s*\[\([^Xx ][^\)]+\)\]` (am Zeilenanfang)
+- **Daten-Label:** `feature:survey_count`, `feature:has_surveys`, `feature:survey_text_count`, `feature:has_survey_text`, `feature:total_survey_count`, `feature:has_any_survey`
 - **Beispiel:**
   ```markdown
   Wie zufrieden sind Sie?
@@ -399,6 +427,7 @@ Der Header-Block (zwischen `<!--` und `-->`) wird automatisch extrahiert. Die fo
 - **Syntax:** `[^id]` für Referenz, `[^id]: Text` für Definition
 - **Regex-Muster Referenz:** `\[\^[^\]]+\]`
 - **Regex-Muster Definition:** `^\[\^[^\]]+\]:` (am Zeilenanfang)
+- **Daten-Label:** `feature:footnote_count`, `feature:footnote_def_count`, `feature:has_footnotes`
 - **Beispiel:**
   ```markdown
   Dies ist ein Text mit Fußnote[^1].
@@ -411,6 +440,7 @@ Der Header-Block (zwischen `<!--` und `-->`) wird automatisch extrahiert. Die fo
 - **Beschreibung:** LiaScript Makro-Aufrufe (aus Templates)
 - **Syntax:** `@makroname` oder `@makroname(...)`
 - **Regex-Muster:** `(?<![a-zA-Z0-9.])@[a-zA-Z_][a-zA-Z0-9_]*(?:\s*\(|(?=\s|$|[^a-zA-Z0-9_@.]))`
+- **Daten-Label:** `feature:macro_count`, `feature:has_macros`, `feature:custom_macro_def_count`, `feature:has_custom_macro_defs`, `feature:custom_macro_names`
 - **Beispiel:**
   ```markdown
   @runCode
@@ -423,6 +453,7 @@ Der Header-Block (zwischen `<!--` und `-->`) wird automatisch extrahiert. Die fo
 - **Beschreibung:** LiaScript Effekt-Annotationen
 - **Syntax:** `<!-- effect="..." -->` oder `data-effect="..."`
 - **Regex-Muster:** `effect\s*=\s*["\']|data-effect\s*=` (case-insensitive)
+- **Daten-Label:** `feature:effect_count`, `feature:has_effects`
 - **Beispiel:**
   ```markdown
   <!-- effect="bounce" -->
@@ -434,6 +465,7 @@ Der Header-Block (zwischen `<!--` und `-->`) wird automatisch extrahiert. Die fo
 - **Beschreibung:** Kollaborative Classroom-Funktionen
 - **Syntax:** `@classroom`
 - **Regex-Muster:** `@classroom` (case-insensitive)
+- **Daten-Label:** `feature:classroom_count`, `feature:has_classroom`
 - **Beispiel:**
   ```markdown
   @classroom
@@ -444,6 +476,7 @@ Der Header-Block (zwischen `<!--` und `-->`) wird automatisch extrahiert. Die fo
 - **Beschreibung:** ASCII-Art und Diagramme
 - **Syntax:** ``` ```ascii ```, ``` ```diagram ```, ``` ```svgbob ```
 - **Regex-Muster:** `^```\s*(ascii|diagram|art|svgbob)\s*$` (case-insensitive)
+- **Daten-Label:** `feature:ascii_diagram_count`, `feature:has_ascii_diagrams`
 - **Beispiel:**
   ````markdown
   ```ascii
@@ -457,6 +490,7 @@ Der Header-Block (zwischen `<!--` und `-->`) wird automatisch extrahiert. Die fo
 
 - **Beschreibung:** Komplexe Quiz-Matrizen mit mehreren Zeilen
 - **Regex-Muster:** `(\[\[[^\]]+\]\]\s*)+\n(\[\[[^\]]+\]\]\s*)+`
+- **Daten-Label:** `feature:matrix_quiz_count`, `feature:has_matrix_quiz`
 - **Beispiel:**
   ```markdown
   [[Berlin][Paris][London]]
@@ -467,6 +501,7 @@ Der Header-Block (zwischen `<!--` und `-->`) wird automatisch extrahiert. Die fo
 
 - **Beschreibung:** Mehrere Bilder in einer Zeile/Absatz
 - **Regex-Muster:** `!\[.*?\]\(.*?\)\s*!\[.*?\]\(.*?\)`
+- **Daten-Label:** `feature:gallery_count`, `feature:has_galleries`
 - **Beispiel:**
   ```markdown
   ![Bild1](img1.png) ![Bild2](img2.png) ![Bild3](img3.png)
@@ -478,16 +513,55 @@ Der Header-Block (zwischen `<!--` und `-->`) wird automatisch extrahiert. Die fo
 - **H1 Regex:** `^#\s+[^#]`
 - **H2 Regex:** `^##\s+[^#]`
 - **H3 Regex:** `^###\s+[^#]`
+- **Daten-Label:** `feature:h1_count`, `feature:h2_count`, `feature:h3_count`, `feature:total_headings`
 
 ### Links
 
 - **Beschreibung:** Standard Markdown-Links
 - **Regex-Muster:** `\[([^\]]+)\]\(([^\)]+)\)`
+- **Daten-Label:** `feature:link_count`, `feature:has_links`
 
 ### Kommentare im Body
 
 - **Beschreibung:** HTML-Kommentare außerhalb des Headers
 - **Erkennung:** Alle `<!-- ... -->` minus Header-Kommentar
+- **Daten-Label:** `feature:comment_count`, `feature:has_comments`
+
+### Task-Listen
+
+- **Beschreibung:** Markdown-Checklisten
+- **Syntax:** `- [x]` oder `- [ ]`
+- **Regex-Muster:** `^\s*[-*]\s+\[[xX ]\]` (am Zeilenanfang)
+- **Daten-Label:** `feature:task_list_count`, `feature:has_task_lists`
+- **Beispiel:**
+  ```markdown
+  - [x] Aufgabe erledigt
+  - [ ] Aufgabe offen
+  ```
+
+### HTML-Einbettungen
+
+- **Beschreibung:** iframe, SVG und details HTML-Tags
+- **Regex-Muster:** `<iframe\b`, `<svg\b`, `<details\b` (case-insensitive)
+- **Daten-Label:** `feature:iframe_count`, `feature:svg_count`, `feature:details_count`, `feature:html_embed_count`, `feature:has_html_embeds`
+
+### Ausführbarer Code
+
+- **Beschreibung:** Code-Blöcke mit angehängtem `<script>` das `@input` enthält
+- **Regex-Muster:** `` ```\s*\n<script[^>]*>.*?@input.*?</script> `` (DOTALL)
+- **Daten-Label:** `feature:executable_code_count`, `feature:has_executable_code`
+
+### Selection-Quiz (Dropdown)
+
+- **Beschreibung:** Dropdown-Auswahl-Quiz mit Pipe-Trennern
+- **Syntax:** `[[ option1 | (correct) | option2 ]]`
+- **Regex-Muster:** `\[\[[^\[\]]*\|[^\[\]]*\]\]`
+- **Daten-Label:** `feature:selection_quiz_count`, `feature:has_selection_quiz`
+
+### Aggregierte Quiz-Zählung
+
+- **Beschreibung:** Summe aller Quiz-Typen (Text, Single-Choice, Multiple-Choice, Selection)
+- **Daten-Label:** `feature:total_quiz_count`, `feature:has_quiz`
 
 ---
 
@@ -506,4 +580,4 @@ Template-URLs werden normalisiert, um Duplikate zu vermeiden:
 
 ---
 
-*Generiert aus `analyzeLiaScriptFeatures.py` - Aktualisiert: 2026-01-19*
+*Generiert aus `analyzeLiaScriptFeatures.py` - Aktualisiert: 2026-03-15*
