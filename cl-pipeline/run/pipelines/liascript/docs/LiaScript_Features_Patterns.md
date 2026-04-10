@@ -447,6 +447,22 @@ Der Header-Block (zwischen `<!--` und `-->`) wird automatisch extrahiert. Die fo
   @embed(https://example.com)
   ```
 
+#### Block-Macro
+
+- **Beschreibung:** LiaScript Block-Makro Syntax
+- **Syntax:** ```` ``` yaml @macro(optionale parameter ... ````
+- **Regex-Muster:** ```` ```[ \t]*([A-Za-z0-9_-]+)(?:[ \t]+@[^\n]+)?$ ````
+- **Daten-Label:** `feature:macro_count`, `feature:has_macros`, `feature:custom_macro_def_count`, `feature:has_custom_macro_defs`, `feature:custom_macro_names`
+- **Beispiel:**
+  ````markdown
+  ``` yaml @macro(param ...
+  data:
+    - entry: 1
+    - entry: 2
+  ...
+  ```
+  ````
+
 ### ASCII-Diagramme
 
 - **Beschreibung:** ASCII-Art und Diagramme
