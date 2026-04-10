@@ -448,29 +448,6 @@ Der Header-Block (zwischen `<!--` und `-->`) wird automatisch extrahiert. Die fo
   @embed(https://example.com)
   ```
 
-### Effekte
-
-- **Beschreibung:** LiaScript Effekt-Annotationen
-- **Syntax:** `<!-- effect="..." -->` oder `data-effect="..."`
-- **Regex-Muster:** `effect\s*=\s*["\']|data-effect\s*=` (case-insensitive)
-- **Daten-Label:** `feature:effect_count`, `feature:has_effects`
-- **Beispiel:**
-  ```markdown
-  <!-- effect="bounce" -->
-  Dieser Text springt.
-  ```
-
-### Classroom-Features
-
-- **Beschreibung:** Kollaborative Classroom-Funktionen
-- **Syntax:** `@classroom`
-- **Regex-Muster:** `@classroom` (case-insensitive)
-- **Daten-Label:** `feature:classroom_count`, `feature:has_classroom`
-- **Beispiel:**
-  ```markdown
-  @classroom
-  ```
-
 ### ASCII-Diagramme
 
 - **Beschreibung:** ASCII-Art und Diagramme
