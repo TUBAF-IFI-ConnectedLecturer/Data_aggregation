@@ -227,7 +227,7 @@ Diese Dokumentation beschreibt alle Features, die in der Feature-Extraktion erka
 
 - **Beschreibung:** Schrittweise Einblendungen (inline)
 - **Syntax:** `{{Nummer}}` oder `{{Start-Ende}}` für Bereiche
-- **Regex-Muster:** `(?<!--)\{\{\d+(?:-\d+)?\}\}` (nicht von `--` vorangestellt)
+- **Regex-Muster:** `(?<!--\s*)\{\{\d+(?:-\d+)?\}\}` (nicht von `--` vorangestellt)
 - **Daten-Label:** `feature:animation_fragment_count`, `feature:has_animation_fragments`
 - **Beispiele:**
   ```markdown
