@@ -161,8 +161,8 @@ Diese Dokumentation beschreibt alle Features, die in der Feature-Extraktion erka
 ### Code-Projekte
 
 - **Beschreibung:** LiaScript Code-Projekte (mehrere verknüpfte Dateien)
-- **Syntax:** ``` ```language+ ``` (mit + Marker)
-- **Regex-Muster:** `^```\w*\+` (am Zeilenanfang)
+- **Syntax:** ```` ```language +(optionaler marker)```` (mit + Marker)
+- **Regex-Muster:** ```` ```[ \t]*([A-Za-z0-9_-]+)?(?:[ \t]+[^@\n]+)?$```` (am Zeilenanfang)
 - **Daten-Label:** `feature:code_project_count`, `feature:has_code_projects`
 - **Beispiel:**
   ````markdown
@@ -170,7 +170,6 @@ Diese Dokumentation beschreibt alle Features, die in der Feature-Extraktion erka
   import { helper } from './helper.js';
   console.log(helper());
   ```
-
   ```js helper.js
   export function helper() { return "Hello"; }
   ```
