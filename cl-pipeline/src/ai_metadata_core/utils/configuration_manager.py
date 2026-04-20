@@ -13,9 +13,10 @@ class ProcessingConfigManager:
 
     def __init__(self, processing_mode: Dict[str, Any]):
         self.processing_mode = processing_mode
-        self.force_processing_fields = processing_mode.get('force_processing', ['ai:affiliation', 'ai:dewey'])
+        # Raw storage mode: extract raw data without validation (validation in separate stage)
+        self.force_processing_fields = processing_mode.get('force_processing', ['ai:affiliation_raw', 'ai:dewey'])
         self.conditional_processing_fields = processing_mode.get('conditional_processing', [
-            'ai:author', 'ai:keywords_gen', 'ai:title', 'ai:type', 'ai:keywords_ext', 'ai:keywords_dnb', 'ai:summary'
+            'ai:author_raw', 'ai:keywords_gen', 'ai:title', 'ai:type', 'ai:keywords_ext', 'ai:keywords_dnb', 'ai:summary'
         ])
         self.allow_skip_when_all_conditional_filled = processing_mode.get('allow_skip_when_all_conditional_filled', False)
         self.skip_if_any_field_exists = processing_mode.get('skip_if_any_field_exists', False)
