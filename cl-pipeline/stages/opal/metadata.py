@@ -7,16 +7,13 @@ import openpyxl
 import yaml
 import re
 import logging
-from tqdm import tqdm
 from datetime import datetime
+from tqdm import tqdm
 
 from pipeline.taskfactory import TaskWithInputFileMonitor
 
-import sys
-sys.path.append('../src/general/')
-from checkAuthorNames import NameChecker
-
 # Import zentrale Logging-Konfiguration
+import sys
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'src'))
 from pipeline_logging import setup_stage_logging
 
@@ -52,7 +49,7 @@ class pdfMetaExtractor:
         language = self._extract_language_from_xmp(document)
 
         metadata_dict = {
-            'file:author': metadata['author'],
+            'file:author_raw': metadata['author'],  # Standardized naming: *_raw for raw extraction
             'file:keywords': metadata['keywords'],
             'file:subject': metadata['subject'],
             'file:title': metadata['title'],
@@ -153,7 +150,7 @@ class officeMetaExtractor:
             pass
 
         metadata_dict = {
-            'file:author': metadata.author,
+            'file:author_raw': metadata.author,  # Standardized naming: *_raw for raw extraction
             'file:keywords': metadata.keywords,
             'file:subject': metadata.subject,
             'file:title': metadata.title,
@@ -208,7 +205,7 @@ class xlsxMetaExtractor:
         # lastPrinted=None
 
         metadata_dict = {
-            'file:author': metadata.creator,
+            'file:author_raw': metadata.creator,  # Standardized naming: *_raw for raw extraction
             'file:keywords': metadata.keywords,
             'file:subject': metadata.subject,
             'file:title': metadata.title,
@@ -248,7 +245,7 @@ class mdMetaExtractor:
 
             # Initialize metadata dict with file system dates
             metadata_dict = {
-                'file:author': None,
+                'file:author_raw': None,  # Standardized naming: *_raw for raw extraction
                 'file:keywords': None,
                 'file:subject': None,
                 'file:title': None,
@@ -258,13 +255,13 @@ class mdMetaExtractor:
                 'file:size': file_size,
                 'file:page_count': None,
             }
-            
+
             # Override with YAML front matter if available
             if yaml_front_matter:
                 # Map common YAML keys to our metadata format
                 key_mapping = {
-                    'author': 'file:author',
-                    'authors': 'file:author',
+                    'author': 'file:author_raw',
+                    'authors': 'file:author_raw',
                     'title': 'file:title',
                     'subject': 'file:subject',
                     'description': 'file:subject',
@@ -297,11 +294,11 @@ class mdMetaExtractor:
                             else:
                                 metadata_dict[meta_key] = str(value) if value else None
                         elif yaml_key in ['authors']:
-                            # Handle author lists
+                            # Handle author lists - use consistent *_raw naming
                             if isinstance(value, list):
-                                metadata_dict['file:author'] = ', '.join(str(v) for v in value)
+                                metadata_dict['file:author_raw'] = ', '.join(str(v) for v in value)
                             else:
-                                metadata_dict['file:author'] = str(value) if value else None
+                                metadata_dict['file:author_raw'] = str(value) if value else None
                         else:
                             metadata_dict[meta_key] = str(value) if value else None
             
@@ -360,15 +357,17 @@ extractors = {
 class MetaDataExtraction(TaskWithInputFileMonitor):
     def __init__(self, config_stage, config_global):
         super().__init__(config_stage, config_global)
-        
+
         # Setup zentrale Logging-Konfiguration
         self.logger_configurator = setup_stage_logging(config_global)
-        
+
         stage_param = config_stage['parameters']
         self.file_name_inputs =  Path(config_global['raw_data_folder']) / stage_param['file_name_input']
         self.file_name_output =  Path(config_global['raw_data_folder']) / stage_param['file_name_output']
         self.file_folder = Path(config_global['file_folder'])
         self.file_types = stage_param['file_types']
+        # Optional: disable CPU-intensive name checking to test GPU utilization
+        self.skip_name_check = stage_param.get('skip_name_check', False)
 
     def execute_task(self):
 
@@ -397,13 +396,4 @@ class MetaDataExtraction(TaskWithInputFileMonitor):
         df_metadata_list['file:modified'] = pd.to_datetime(df_metadata_list['file:modified'], utc=True)
         df_metadata_list.to_pickle(self.file_name_output)
 
-        # Evaluate author names
-        nc = NameChecker()
-        df_metadata_list.loc[:, 'file:revisedAuthor'] = ""
-        for index, row in tqdm(df_metadata_list.iterrows(), total=df_metadata_list.shape[0]):
-            if row['file:author'] != "":
-                result = nc.get_all_names(row['file:author'])
-                if result != None:
-                    df_metadata_list.at[index, 'file:revisedAuthor'] = result
-                    print(f"{row['file:author']} -- {result}")
         df_metadata_list.to_pickle(self.file_name_output)
