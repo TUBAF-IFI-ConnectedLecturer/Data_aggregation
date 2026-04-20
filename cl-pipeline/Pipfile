@@ -31,8 +31,11 @@ markdown = "*"
 plotly = "*"
 pymupdf4llm = "*"
 pypandoc = "*"
+pdfplumber = "*"
 
 [dev-packages]
+pytest = "*"
+pytest-cov = "*"
 
 [requires]
 python_version = "3.12"
