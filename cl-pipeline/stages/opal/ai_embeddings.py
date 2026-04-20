@@ -20,6 +20,9 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'src'))
 from pipeline_logging import setup_stage_logging
 
+# Import new error handling with retry strategy
+from error_handling.retry_strategy import RetryStrategy, RetryConfig
+
 
 def clean_text_content(text):
     """Bereinigt Text von unnötigen Elementen, erhält Markdown-Struktur."""
@@ -48,6 +51,8 @@ def is_useful_chunk(text, min_length=100, min_words=15):
         return False
 
     return True
+
+
 
 
 @timeout(60)
@@ -144,9 +149,9 @@ class AIEmbeddingsGeneration(TaskWithInputFileMonitor):
         """Embed all chunks of a single file and store in ChromaDB. Splits into sub-batches for large files."""
         import time
 
-        MAX_BATCH = 100  # Max chunks per API call to avoid timeouts
+        MAX_BATCH = 10  # Chunks per batch
 
-        # Split into sub-batches for large files
+        # Split into batches and embed
         all_embeddings = []
         for batch_start in range(0, len(file_documents), MAX_BATCH):
             batch_end = min(batch_start + MAX_BATCH, len(file_documents))
@@ -203,6 +208,7 @@ class AIEmbeddingsGeneration(TaskWithInputFileMonitor):
         embeddings = OllamaEmbeddings(
             base_url=self.base_url,
             model=self.embedding_model,
+            num_gpu=0,  # Force CPU for embeddings (more reliable than GPU)
         )
 
         # Warmup: ensure model is loaded before processing
@@ -276,8 +282,14 @@ class AIEmbeddingsGeneration(TaskWithInputFileMonitor):
                 split_docs = load_and_split_markdown(
                     md_file_path, header_splitter, text_splitter, source_filename
                 )
-            except:
-                print("Stopped due to timeout!")
+            except TimeoutError as e:
+                logging.warning(f"Timeout loading and splitting markdown from {md_file_path}: {e}")
+                continue
+            except (IOError, OSError) as e:
+                logging.warning(f"File I/O error reading {md_file_path}: {e}")
+                continue
+            except Exception as e:
+                logging.error(f"Unexpected error loading and splitting {md_file_path}: {type(e).__name__}: {e}", exc_info=True)
                 continue
 
             if split_docs:
@@ -294,6 +306,7 @@ class AIEmbeddingsGeneration(TaskWithInputFileMonitor):
                         "chunk_index": idx,
                     })
 
-                self._embed_and_store_file(
-                    embeddings, collection, file_ids, file_documents, file_metadatas, source_filename
-                )
+                if file_documents:  # Only embed if we have chunks
+                    self._embed_and_store_file(
+                        embeddings, collection, file_ids, file_documents, file_metadatas, source_filename
+                    )

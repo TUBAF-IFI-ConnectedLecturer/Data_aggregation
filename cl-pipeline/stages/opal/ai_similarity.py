@@ -57,8 +57,7 @@ class DocumentSimilarity(TaskWithInputFileMonitor):
         chroma_client = chromadb.PersistentClient(path=str(self.chroma_file))
         collection = chroma_client.get_collection(
             name=self.collection_name
-        )       
-        results = collection.get(include=["embeddings", "metadatas", "documents"])
+        )
         logging.info("Starting similarity analysis")
         aggregated_embeddings = []
         filenames = []
