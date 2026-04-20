@@ -47,3 +47,77 @@ classification:
   thematic_analysis: "Analyze the content of the document {file} and describe the main themes. Which academic fields are covered? Name 3-5 main themes or academic fields as keywords (e.g., \"Informatik\", \"Mathematik\", \"Pädagogik\", \"Geschichte\", etc.). Respond only with the thematic areas, separated by commas. Answer must be in German."
   
   dewey_mapping: "Based on the identified thematic areas: \"{thematic_areas}\" Map these themes to appropriate Dewey Decimal Classifications. Use ONLY the following official Dewey classifications: {dewey_sample} Select a maximum of 3 suitable classifications from the above list. Respond ONLY with a valid JSON array in the format: [{{\"notation\": \"XXX\", \"label\": \"Beschreibung\", \"score\": 0.X}}] No explanations or additional text. Answer must be in German."
+
+  # Hierarchical Dewey classification (three-step approach)
+  hierarchical_main: |
+    Du bist ein Experte für Dewey-Dezimal-Klassifikation (DDC) in akademischen Bibliotheken.
+
+    AUFGABE: Bestimme die HAUPTKATEGORIE der Dewey-Dezimal-Klassifikation für das Dokument {file}.
+
+    DOKUMENTTYP: {doc_type}
+
+    DDC HAUPTKATEGORIEN:
+    - 000-099: Informatik, Information, allgemeine Werke
+    - 100-199: Philosophie, Psychologie, Paranormales
+    - 200-299: Religion, Theologie
+    - 300-399: Sozialwissenschaften, Soziologie, Pädagogik
+    - 400-499: Sprache, Linguistik
+    - 500-599: Naturwissenschaften, Mathematik, Physik, Chemie
+    - 600-699: Technologie, Ingenieurwesen, angewandte Wissenschaften
+    - 700-799: Künste, Architektur, Design
+    - 800-899: Literatur, Rhetorik, Humor
+    - 900-999: Geschichte, Geographie, Biographien
+
+    ANWEISUNG: Basierend auf dem Dokumenttyp "{doc_type}" und dem Inhalt:
+    1. Bestimme die TOP-KANDIDATEN (maximal 3 Kategorien)
+    2. Wähle die PASSENDSTE Kategorie
+    3. Gib deine Confidence (0.0-1.0) an
+
+    ANTWORTE IM JSON-FORMAT (und NUR das):
+    {{"notation": "XXX", "confidence": 0.X, "reason": "Kurze Begründung"}}
+
+    Wenn sehr unsicher: confidence ≤ 0.5
+    Wenn ziemlich sicher: confidence 0.6-0.8
+    Wenn sehr sicher: confidence ≥ 0.8
+
+  hierarchical_sub: |
+    Du bist ein Experte für Dewey-Dezimal-Klassifikation (DDC).
+
+    AUFGABE: Verfeinere die Hauptkategorie {main_category} zu einer spezifischeren Subkategorie für Dokument {file}.
+
+    HINTERGRUND:
+    - Hauptkategorie: {main_category} (erkannt als relevant)
+    - Mögliche Unterkategorien: {main_category}0 bis {main_category}9 (z.B. bei 370: 370, 371, 372, 373, 374, 375, 376, 377, 378, 379)
+    - Dokumenttyp: {doc_type}
+
+    ANWEISUNG:
+    1. Analysiere Dokumentinhalt und Dokumenttyp
+    2. Wähle die PASSENDSTE Unterkategorie in der Range {main_category}0-{main_category}9
+    3. Gib JSON-Antwort mit Notation UND Confidence
+
+    ANTWORTE IM JSON-FORMAT (und NUR das):
+    {{"notation": "XXX", "confidence": 0.X}}
+
+    Wobei:
+    - notation: Die dreistellige DDC-Notation (z.B. "371" oder optional mit Dezimalen "371.5")
+    - confidence: 0.0 bis 1.0 (0.5 = unsicher, 0.8+ = sehr sicher)
+
+  hierarchical_specific: |
+    AUFGABE: Erstelle die FINALE DDC-Klassifikation für Dokument {file}.
+
+    INFORMATION:
+    - Dokumenttyp: {doc_type}
+    - Identifizierte Subkategorie: {sub_category}
+
+    ANWEISUNG:
+    1. Bestätige dass {sub_category} die beste Notation ist ODER
+    2. Schlage eine minimale Verbesserung vor (falls sinnvoll mit Dezimalzahl)
+    3. Gib das Endergebnis mit finalem Confidence Score
+
+    ANTWORTE IM JSON-FORMAT (und NUR das):
+    {{"notation": "XXX", "label": "Deutsche Beschreibung", "score": 0.X}}
+
+    Wobei:
+    - notation: Die finale DDC-Notation (z.B. "378" oder verkürzt auf passendste)
+    - label: Deutsche Beschreibung der Kategorie
+    - score: Final confidence 0.0-1.0 basierend auf Dokumentinhalt und -typ

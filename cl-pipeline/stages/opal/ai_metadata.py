@@ -30,6 +30,7 @@ from ai_metadata_core.processors.document_processor import DocumentProcessor
 from ai_metadata_core.processors.affiliation_processor import AffiliationProcessor
 from ai_metadata_core.processors.keyword_extractor import KeywordExtractor
 from ai_metadata_core.processors.dewey_classifier import DeweyClassifier
+from ai_metadata_core.processors.dewey_classifier_hierarchical import HierarchicalDeweyClassifier
 from ai_metadata_core.processors.summary_processor import SummaryProcessor
 from ai_metadata_core.processors.education_processor import EducationProcessor
 
@@ -72,7 +73,7 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
         self.processed_data_folder = config_global['processed_data_folder']
         self.chroma_file = Path(config_global['processed_data_folder']) / "chroma_db"
         self.llm_model = stage_param['model_name']
-        
+
         # LLM configuration from config file
         self.llm_config = stage_param.get('llm_config', {})
         self.base_url = self.llm_config.get('base_url', 'http://localhost:11434')
@@ -91,6 +92,10 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
         # Batch processing configuration
         # Save results every N documents to reduce I/O overhead and improve crash recovery
         self.batch_size = stage_param.get('batch_size', 50)
+
+        # Dewey classification configuration
+        self.use_hierarchical_dewey = stage_param.get('use_hierarchical_dewey', True)
+        self.dewey_classification_file = stage_param.get('dewey_classification_file', 'dewey_classification.txt')
     
     def _initialize_core_components(self, stage_param):
         """Initialize core utility components"""
@@ -115,9 +120,25 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
         # Keywords processor
         self.keyword_extractor = KeywordExtractor(self.prompt_manager, self.llm_interface)
 
-        # Dewey classification processor
+        # Dewey classification processor - use hierarchical by default
         dewey_file = getattr(self, 'dewey_classification_file', 'dewey_classification.txt')
-        self.dewey_classifier = DeweyClassifier(self.prompt_manager, self.llm_interface, dewey_file)
+
+        # Check if hierarchical Dewey classifier should be used
+        use_hierarchical = getattr(self, 'use_hierarchical_dewey', True)
+
+        if use_hierarchical:
+            try:
+                self.dewey_classifier = HierarchicalDeweyClassifier(
+                    self.prompt_manager,
+                    self.llm_interface,
+                    dewey_file
+                )
+                logging.info("Using HierarchicalDeweyClassifier for improved 3-step classification")
+            except Exception as e:
+                logging.warning(f"Failed to initialize HierarchicalDeweyClassifier: {e}. Falling back to standard DeweyClassifier")
+                self.dewey_classifier = DeweyClassifier(self.prompt_manager, self.llm_interface, dewey_file)
+        else:
+            self.dewey_classifier = DeweyClassifier(self.prompt_manager, self.llm_interface, dewey_file)
 
         # Summary processor
         self.summary_processor = SummaryProcessor(self.prompt_manager, self.llm_interface)
@@ -376,14 +397,24 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
             # Create field-specific retrieval chain
             chain = self._create_retrieval_chain(vectorstore, file, pages, field_name)
 
-            if field_name == 'ai:author':
-                return self.document_processor.process_author(file, chain)
+            if field_name in ['ai:author', 'ai:author_raw']:
+                # Extract raw author string (NO validation - will be done in verification stage)
+                result = self.document_processor.process_author(file, chain)
+                if result and 'ai:author' in result:
+                    # Rename to ai:author_raw for raw storage
+                    return {'ai:author_raw': result['ai:author']}
+                return {}
             elif field_name == 'ai:title':
                 return self.document_processor.process_title(file, chain)
             elif field_name == 'ai:type':
                 return self.document_processor.process_document_type(file, chain)
-            elif field_name == 'ai:affiliation':
-                return self.affiliation_processor.process_affiliation(file, chain, collection)
+            elif field_name in ['ai:affiliation', 'ai:affiliation_raw']:
+                # Extract raw affiliation string (NO normalization - will be done in verification stage)
+                result = self.affiliation_processor.process_affiliation(file, chain, collection)
+                if result and 'ai:affiliation' in result:
+                    # Rename to ai:affiliation_raw for raw storage
+                    return {'ai:affiliation_raw': result['ai:affiliation']}
+                return {}
             elif field_name == 'ai:keywords_ext':
                 return self.keyword_extractor.extract_keywords(file, chain)
             elif field_name == 'ai:keywords_gen':
@@ -417,11 +448,11 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
     def _format_output(self, file_name, metadata, existing_metadata):
         """Format output for display"""
         output_lines = [f"File      : {file_name}"]
-        
+
         # Field display mappings
         field_labels = {
-            'ai:author': 'Author',
-            'ai:affiliation': 'Affiliation', 
+            'ai:author_raw': 'Author (Raw)',
+            'ai:affiliation_raw': 'Affiliation (Raw)',
             'ai:title': 'Title',
             'ai:type': 'Type',
             'ai:keywords_ext': 'Keywords',
@@ -430,17 +461,15 @@ class AIMetaDataExtraction(TaskWithInputFileMonitor):
             'ai:dewey': 'Dewey',
             'ai:summary': 'Summary'
         }
-        
+
         # Priority fields that should always be shown if available
-        priority_fields = ['ai:summary', 'ai:author', 'ai:title']
+        priority_fields = ['ai:summary', 'ai:author_raw', 'ai:title']
         
         # Show priority fields first (always display if available)
         for field_name in priority_fields:
             if field_name in metadata and metadata[field_name]:
                 label = field_labels[field_name]
                 value = str(metadata[field_name])  # Convert to string to handle float/NaN values
-                if field_name == 'ai:author' and 'ai:revisedAuthor' in metadata:
-                    value += f" / {metadata['ai:revisedAuthor']}"
                 # Special formatting for summary (add separator for better readability)
                 if field_name == 'ai:summary':
                     output_lines.append(f"{label:<12}: {value}")
