@@ -1,7 +1,14 @@
+# OPAL Pipeline Configuration - Full Production Run
+# Complete pipeline with all integrated features for full-scale processing:
+# - HierarchicalDeweyClassifier (3-step classification with confidence scores)
+# - PooledHTTPClient (connection pooling + retry strategy)
+# - RetryStrategy (exponential backoff with jitter)
+# - DocumentTypeHints (document-type aware scoring)
+# - Comprehensive error handling and retry logic
+
 # Defining data folder structure
 folder_structure:
-  #data_root_folder: &BASE /home/crosslab/Desktop/Opal
-  data_root_folder: &BASE /media/sz/Data/Connected_Lecturers/Opal
+  data_root_folder: &BASE /home/sebastian-zug/Schreibtisch/cl_lecturers/opal_full
   raw_data_folder: &RAW !join [*BASE, /raw]
   file_folder: &FILE_FOLDER !join [*RAW, /files]
   content_folder: &CONTENT_FOLDER !join [*RAW, /content]
@@ -13,15 +20,32 @@ global_llm_config: &LLM_CONFIG
   embedding_model: "jina/jina-embeddings-v2-base-de"
   collection_name: "oer_connected_lecturer"
   timeout_seconds: 240
-  chroma_db_folder: "chroma_db"  # ChromaDB database folder
+  chroma_db_folder: "chroma_db"
+
+# File Conversion Timeouts Configuration
+file_conversion:
+  timeout_config: &CONVERSION_TIMEOUTS
+    # PDF: Adaptive timeout with MINIMUM baseline (ONNX image extraction is slow)
+    # Formula: max(min_timeout, min(file_size_mb * per_mb, max_timeout))
+    pdf_timeout_per_mb: 4              # Increased from 2 (pymupdf4llm with ONNX is slower)
+    pdf_max_timeout_seconds: 180       # Increased from 120
+    pdf_min_timeout_seconds: 15        # NEW: Minimum for ONNX Runtime (even small files)
+    pdf_enable_fallback: true          # Uses faster text extraction if markdown timeout exceeded
+
+    # DOCX: Fixed timeout for pandoc subprocess
+    docx_timeout_seconds: 180
+
+    # Other formats (PPTX, XLSX, MD): Generally fast, no explicit timeout needed
+    pptx_timeout_seconds: null
+    xlsx_timeout_seconds: null
+    md_timeout_seconds: null
 
 # Global Logging Configuration
 logging:
-  configure_root_logger: false  # Whether to configure the root logger
-  root_level: "ERROR"          # Level for root logger (if enabled)
-  pipeline_level: "INFO"       # Level for pipeline-specific loggers
-  
-  # External logger configuration (overrides default values)
+  configure_root_logger: false
+  root_level: "DEBUG"        # Enable all debug output
+  pipeline_level: "DEBUG"    # Capture detailed conversion logs
+
   external_loggers:
     # HTTP and network - set to CRITICAL for less noise
     httpcore: "CRITICAL"
@@ -30,17 +54,17 @@ logging:
     urllib3: "CRITICAL"
     "urllib3.connectionpool": "CRITICAL"
     requests: "CRITICAL"
-    
+
     # LangChain and AI - set to WARNING for important messages
     langchain: "WARNING"
     langchain_ollama: "WARNING"
     "langchain_text_splitters.base": "ERROR"
     ollama: "WARNING"
-    
+
     # Image processing - set to WARNING
     PIL: "WARNING"
     "PIL.PngImagePlugin": "WARNING"
-    
+
     # Unstructured - set to CRITICAL for less noise
     "unstructured.trace": "CRITICAL"
 
@@ -54,7 +78,7 @@ stages:
   - name: Generate data folder structure
     class: ProvideDataFolders
 
-  - name: Collect raw data from OPAL 
+  - name: Collect raw data from OPAL
     class: CollectOPALOERdocuments
     parameters:
       repo_file_name: OPAL_repos.p
@@ -65,14 +89,14 @@ stages:
 
   - name: Aggregate basic features from OPAL
     class: Preprocessing
-    parameters: 
+    parameters:
       file_name_input: *OPALSINGLEFILES
       file_name_output: &OPALSINGLEFILESATTRIB OPAL_files_attrib.p
-      force_run: False
+      force_run: True
 
   - name: Download files
     class: DownloadOERFromOPAL
-    parameters: 
+    parameters:
       file_name_input: *OPALSINGLEFILESATTRIB
       file_name_output: &OPALSINGLEFILESDOWNLOADS OPAL_files_downloads.p
       file_types: ['pptx', 'pdf', 'docx', 'xlsx', 'md']
@@ -93,6 +117,7 @@ stages:
       file_name_output: &OPALSINGLEAICONTENT OPAL_content.p
       force_run: False
       file_types: ['pptx', 'pdf', 'docx', 'xlsx', 'md']
+      conversion_timeouts: *CONVERSION_TIMEOUTS
 
   - name: Filter file list by content data
     class: FilterFilesByContent
@@ -104,18 +129,18 @@ stages:
 
   - name: Provide embeddings
     class: AIEmbeddingsGeneration
-    parameters: 
+    parameters:
       file_name_input: *OPALSINGLEFILESFILTERED
       file_name_output: &OPALCHROMAFILES OPAL_embeddings_files.p
       force_run: False
       file_types: ['pptx', 'pdf', 'docx', 'xlsx', 'md']
-      
+
       # LLM and Vector Store Configuration
       llm_config: *LLM_CONFIG
 
-  - name: Extract meta data from content
+  - name: Extract AI metadata with HierarchicalDeweyClassifier
     class: AIMetaDataExtraction
-    parameters: 
+    parameters:
       file_name_input: *OPALSINGLEFILESFILTERED
       file_name_output: &OPALSINGLEAIMETA OPAL_ai_meta.p
       prompts_file_name: pipelines/opal/prompts/prompts.yaml
@@ -123,21 +148,24 @@ stages:
       model_name: llama3.3:70b
       force_run: False
       file_types: ['pptx', 'pdf', 'docx', 'xlsx', 'md']
-      
+
+      # NEW: Enable HierarchicalDeweyClassifier for improved 3-step classification
+      use_hierarchical_dewey: true
+
       # LLM and Vector Store Configuration
       llm_config: *LLM_CONFIG
-      
+      max_retrieval_chunks: 10
+      retrieval_strategy: "all"
+
       # Processing mode configuration
       processing_mode:
         # Force processing: These fields are ALWAYS processed (overwrite existing data)
-        force_processing:    # [] Empty list = no force processing
-          - ai:affiliation
-          - ai:dewey
-          - ai:author
+        force_processing:
+          - ai:author_raw        # Extract raw author (no validation)
+          - ai:affiliation_raw   # Extract raw affiliation (no normalization)
 
         # Conditional processing: These fields are only processed if empty/missing
         conditional_processing:
-          - ai:author
           - ai:keywords_gen
           - ai:title
           - ai:type
@@ -146,32 +174,36 @@ stages:
           - ai:summary
 
         # Skip configuration: Skip file if NO conditional fields need processing
-        # AND force_processing is disabled (which it now is)
-        allow_skip_when_all_conditional_filled: false  # Enable skipping when all fields are filled
+        allow_skip_when_all_conditional_filled: true
 
-        # Error retry limit: Maximum number of LLM errors (timeout, connection error)
-        # before a field is permanently skipped for a document.
-        # 0 = unlimited retries (old behavior), 3 = recommended default
-        max_error_retries: 3
+  - name: Verify and merge names/affiliations
+    class: AIVerificationStage
+    parameters:
+      file_name_input: *OPALSINGLEAIMETA
+      file_name_output: &OPALSINGLEAIVERIFIED OPAL_ai_verified.p
+      batch_size: 50
+      force_run: False
+      # Priority for merging: OPAL > AI > File
+      author_priority: ['opal', 'ai', 'file']
+      affiliation_priority: ['ai']  # Only AI currently has data
 
   - name: Check Keywords
     class: GNDKeywordCheck
-    parameters: 
-      file_name_input: *OPALSINGLEAIMETA
+    parameters:
+      file_name_input: *OPALSINGLEAIVERIFIED
       file_name_output: &OPALKEYWORDS OPAL_checked_keywords.p
-      force_run: True
-      use_llm: true         # KI-basierte Schlagwortauswahl aktivieren
-      llm_model: "gemma3:27b"  # Ollama-Modell für Schlagwortauswahl
-      use_full_keyword_context: true  # Alle Keywords eines Dokuments als Kontext verwenden
-      use_document_metadata: true     # Zusätzliche Dokumentmetadaten als Kontext einbeziehen
-
+      force_run: False
+      use_llm: true
+      llm_model: "gemma3:27b"
+      use_full_keyword_context: true
+      use_document_metadata: true
   - name: Determine similarity between files
     class: DocumentSimilarity
-    parameters: 
-      file_name_input: *OPALSINGLEFILESFILTERED
-      file_name_output: &OPALAISIMILARITY OPAL_ai_similaritiy.p
+    parameters:
+      file_name_input: *OPALSINGLEAIVERIFIED
+      file_name_output: &OPALAISIMILARITY OPAL_ai_similarity.p
       force_run: True
-      
+
       # Vector Store Configuration
       llm_config:
         collection_name: "oer_connected_lecturer"
