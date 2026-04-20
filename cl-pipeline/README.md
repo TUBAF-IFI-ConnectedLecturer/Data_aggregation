@@ -102,6 +102,8 @@ All pipelines use Large Language Models (LLMs) for intelligent metadata extracti
 - **Name parsing**: gemma3:27b (author name validation)
 - **Embeddings**: jina-embeddings-v2-base-de (German-optimized)
 
+**Session 5 Enhancement**: Raw extracted data is now stored separately (`*_raw` columns) and validated in a dedicated verification stage, separating extraction from validation concerns.
+
 ### Metadata Schema Standardization
 
 Extracted metadata is mapped to standardized schemas:
@@ -116,8 +118,11 @@ Each pipeline implements a staged processing architecture:
 2. **Content Extraction**: Extract text and embedded metadata
 3. **Quality Filtering**: Remove low-quality or incomplete documents
 4. **Embedding Generation**: Create vector embeddings for RAG
-5. **AI Extraction**: Extract structured metadata using LLMs
-6. **Validation & Enrichment**: Validate keywords against GND, calculate similarity
+5. **AI Extraction**: Extract structured metadata using LLMs (stores raw data with `*_raw` suffix)
+6. **AI Verification**: Consolidate and validate names/affiliations from multiple sources (Session 5+)
+7. **Validation & Enrichment**: Validate keywords against GND, calculate similarity
+
+**Note**: Since Session 5, the pipeline separates data extraction (step 5) from validation (step 6), improving maintainability and allowing reprocessing without recomputation.
 
 ### Flexible Configuration
 
@@ -127,7 +132,31 @@ Each pipeline implements a staged processing architecture:
 - **Stratified sampling**: Balanced file type distribution for testing
 - **Logging**: Timestamped log files with rotation
 
-## Common Workflows
+## Recent Enhancements (Session 5 - 2026-04-08)
+
+### Multi-Source Name & Affiliation Handling
+A new unified architecture consolidates author and affiliation data from multiple sources with priority-based conflict resolution:
+
+- **Raw Data Storage**: All extracted data stored in `*_raw` columns (unprocessed)
+- **Multi-Source Priority**: OPAL (user-entered) > AI (LLM-extracted) > File (metadata)
+- **Unified Validation**: Dedicated `AIVerificationStage` validates and normalizes all sources
+- **Source Tracking**: Output columns record which source was used for each field
+- **No Data Loss**: Existing data preserved, reprocessing without recomputation
+
+**Example Data Flow**:
+```
+OPAL:known_creator → opal:author_raw ────┐
+File:author        → file:author_raw      ├─→ AIVerificationStage → ai:author_final
+LLM extraction     → ai:author_raw  ─────┘                          ai:author_source
+```
+
+### Error Tracking & Resilience
+- Per-field error tracking with configurable `max_error_retries`
+- Persistent LLM errors logged to `ai:_errors` column
+- Failed documents don't block entire pipeline
+- Graceful degradation to empty values for permanently failed fields
+
+---
 
 ### Testing a Pipeline
 

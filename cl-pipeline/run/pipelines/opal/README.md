@@ -44,7 +44,7 @@ The final dataset combines metadata from all three levels and maps them to the c
 | `oer_permalink`    | Permalink           | `opal:oer_permalink`    |
 | `title`            | Title               | `opal:title`            |
 | `comment`          | Description         | `opal:comment`          |
-| `creator`          | Author              | `opal:creator`          |
+| `creator`          | Author              | `opal:author_raw`       |
 | `publisher`        | Publisher           |                         |
 | `source`           | Source              |                         |
 | `city`             | City                |                         |
@@ -68,51 +68,61 @@ The final dataset combines metadata from all three levels and maps them to the c
 
 Metadata is extracted from `docx`, `pptx`, `xlsx` and `pdf` files.
 
-| Office Files     | PDF Files      | CL-Naming       |
-| ---------------- | -------------- | --------------- |
-| `creator`        | `author`       | `file:author`   |
-| `title`          | `title`        | `file:title`    |
-| `description`    |                |                 |
-| `subject`        | `subject`      | `file:subject`  |
-| `identifier`     |                |                 |
-| `language`       | `language`     | `file:language` |
-| `created`        | `creationDate` | `file:created`  |
-| `modified`       | `modDate`      | `file:modified` |
-| `lastModifiedBy` |                |                 |
-| `category`       |                |                 |
-| `contentStatus`  |                |                 |
-| `version`        |                |                 |
-| `revision`       |                |                 |
-| `keywords`       |                | `file:keywords` |
-| `lastPrinted`    |                |                 |
-|                  | `creator`      |                 |
-|                  | `producer`     |                 |
-|                  | `format`       |                 |
+**Note**: Since Session 5 refactoring, all raw extracted metadata uses the `*_raw` suffix for consistency.
+
+| Office Files     | PDF Files      | CL-Naming            | Notes                                |
+| ---------------- | -------------- | -------------------- | ------------------------------------ |
+| `creator`        | `author`       | `file:author_raw`    | Raw author from file metadata        |
+| `title`          | `title`        | `file:title`         | Document title                      |
+| `description`    |                |                      |                                    |
+| `subject`        | `subject`      | `file:subject`       | Document subject/description       |
+| `identifier`     |                |                      |                                    |
+| `language`       | `language`     | `file:language`      | Document language code             |
+| `created`        | `creationDate` | `file:created`       | Creation date                      |
+| `modified`       | `modDate`      | `file:modified`      | Last modification date             |
+| `lastModifiedBy` |                |                      |                                    |
+| `category`       |                |                      |                                    |
+| `contentStatus`  |                |                      |                                    |
+| `version`        |                |                      |                                    |
+| `revision`       |                |                      |                                    |
+| `keywords`       |                | `file:keywords`      | File embedded keywords             |
+| `lastPrinted`    |                |                      |                                    |
+|                  | `creator`      |                      |                                    |
+|                  | `producer`     |                      |                                    |
+|                  | `format`       |                      |                                    |
 
 ### AI-Extracted Metadata
 
-| CL-Naming     | Prompt                                                                                                        |
-| ------------- | ------------------------------------------------------------------------------------------------------------- |
-| `ai:title`    | `f"Give me a title of the document {file}. Just answer by the title. Please answer in German."`              |
-| `ai:author`   | `f"Who is the author of the document {file}. Avoid all additional information, just answer by authors name."` |
-| `ai:keywords` | `f"Please extract 5 Keywords from {file}? Just answer by a list separated by commas. Please answer in German.` |
+**Note**: Since Session 5 refactoring, raw LLM-extracted data is stored separately from validated data.
+
+| CL-Naming (Raw)       | CL-Naming (Validated) | Content                          | Prompt                                                                                                        |
+| --------------------- | -------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `ai:author_raw`       | `ai:author_final`    | Extracted author names           | `f"Who is the author of the document {file}. Avoid all additional information, just answer by authors name."` |
+| `ai:affiliation_raw`  | `ai:affiliation_final`| Extracted affiliation           | (Custom affiliation extraction prompt)                                                                       |
+| `ai:title`            |                      | Extracted title                  | `f"Give me a title of the document {file}. Just answer by the title. Please answer in German."`              |
+| `ai:keywords`         |                      | Extracted 5 keywords             | `f"Please extract 5 Keywords from {file}? Just answer by a list separated by commas. Please answer in German."` |
+
+**Raw vs. Validated Data**:
+- **Raw columns** (`*_raw`): Unprocessed LLM output, stored by AI Metadata Extraction stage
+- **Validated columns** (`*_final`): Processed and validated by AIVerificationStage
+- Example: `ai:author_raw` (raw string) → `ai:author_final` (validated Name objects)
 
 ### OER Metadata Schema Mapping
 
 The structure from [LOM for Higher Education OER Repositories](https://dini-ag-kim.github.io/hs-oer-lom-profil/latest/) has been flattened here. The final schema will be determined during the project runtime and a transformation script will be integrated.
 
-| Field Name           | Notes                                          | `pipe:`          | `opal:`              | `file:`         | `ai:`         |
-| -------------------- | ---------------------------------------------- | ---------------- | -------------------- | --------------- | ------------- |
-| `<title>`            |                                                |                  | `opal:title`         | `file:title`    | `ai:title`    |
-| `<language>`         |                                                | `pipe:language`  | `opal:language`      | `file:language` |               |
-| `<description>`      |                                                |                  | `opal:comment`       | `file:subject`  |               |
-| `<keyword>`          |                                                |                  |                      | `file:keywords` | `ai:keywords` |
-| `<aggregationlevel>` | For individual, atomic materials (1)           | 1                |                      |                 |               |
-| `<format>`           | e.g. application/pdf or image/png              | `pipe:file_type` |                      |                 |               |
-| `<location>`         | Usually a Uniform Resource Locator (URL)       |                  | `opal:oer_permalink` |                 |               |
-| `<rights>`           | License parameters                             |                  | `opal:license`       |                 |               |
-| `<author>`           |                                                |                  | `opal:creator`       | `file:author`   | `ai:author`   |
-| `<date>`             |                                                |                  |                      | `file:modified` |               |
+| Field Name           | Notes                                          | `pipe:`          | `opal:`              | `file:`         | `ai:`                    |
+| -------------------- | ---------------------------------------------- | ---------------- | -------------------- | --------------- | ------------------------ |
+| `<title>`            |                                                |                  | `opal:title`         | `file:title`    | `ai:title`               |
+| `<language>`         |                                                | `pipe:language`  | `opal:language`      | `file:language` |                          |
+| `<description>`      |                                                |                  | `opal:comment`       | `file:subject`  |                          |
+| `<keyword>`          |                                                |                  |                      | `file:keywords` | `ai:keywords`            |
+| `<aggregationlevel>` | For individual, atomic materials (1)           | 1                |                      |                 |                          |
+| `<format>`           | e.g. application/pdf or image/png              | `pipe:file_type` |                      |                 |                          |
+| `<location>`         | Usually a Uniform Resource Locator (URL)       |                  | `opal:oer_permalink` |                 |                          |
+| `<rights>`           | License parameters                             |                  | `opal:license`       |                 |                          |
+| `<author>`           | Raw → Validated conversion in AIVerificationStage | |                  | `opal:author_raw` (raw) | `file:author_raw` (raw) | `ai:author_raw` (raw) → `ai:author_final` (validated) |
+| `<date>`             |                                                |                  |                      | `file:modified` |                          |
 
 ## Pipeline Stages
 
@@ -154,19 +164,97 @@ Creates vector embeddings for RAG
 
 ### 9. AI Metadata Extraction
 Extracts structured metadata using LLM (llama3.3:70b):
-- Author names
+- Author names (raw, to `ai:author_raw`)
 - Title
 - Document type
-- Affiliations
+- Affiliations (raw, to `ai:affiliation_raw`)
 - Keywords (extracted, generated, controlled vocabulary)
 - Dewey Classification
 - Summary
 
-### 10. GND Keyword Check
+**Raw Data Storage**: Since Session 5, extraction outputs are stored in `*_raw` columns (unprocessed LLM responses).
+
+### 10. AI Verification & Merge (NEW - Session 5)
+Consolidates and validates names/affiliations from multiple sources with priority-based conflict resolution:
+
+**Priority order**: OPAL > AI > File
+
+**Input sources**:
+- `opal:author_raw` - From OPAL metadata (user-entered, highest quality)
+- `ai:author_raw`, `ai:affiliation_raw` - From LLM extraction
+- `file:author_raw` - From document metadata (lowest priority)
+
+**Output**:
+- `ai:author_final` - Validated author names (List of Name objects)
+- `ai:author_source` - Which source was selected ('opal', 'ai', 'file', or None)
+- `ai:affiliation_final` - Normalized affiliation string
+- `ai:affiliation_source` - Which source was selected ('ai' or None)
+- `ai:_errors` - Validation errors if any
+
+This stage separates data extraction from validation, improving maintainability and allowing reprocessing without recomputation.
+
+### 11. GND Keyword Check
 Validates keywords against GND (German National Library)
 
-### 11. Document Similarity
+### 12. Document Similarity
 Calculates similarity between documents using embeddings
+
+## Multi-Source Name & Affiliation Handling
+
+Since **Session 5** (2026-04-08), the pipeline implements a unified multi-source data fusion architecture for handling names and affiliations:
+
+### Architecture Overview
+
+```
+Three Data Sources (Raw Collection)
+├── OPAL:known_creator (user-entered, highest quality)
+├── File metadata author (PDF/DOCX properties)
+└── LLM extraction (AI-generated)
+         │
+         ↓
+All sources stored with *_raw suffix
+├── opal:author_raw
+├── file:author_raw
+└── ai:author_raw, ai:affiliation_raw
+         │
+         ↓
+AIVerificationStage (Priority-based merge)
+├── Check OPAL → Use if available
+├── Else check AI → Use if available
+└── Else check File → Use if available
+         │
+         ↓
+Validated Output
+├── ai:author_final (validated names)
+├── ai:author_source (which source)
+├── ai:affiliation_final (normalized)
+└── ai:affiliation_source (which source)
+```
+
+### Why This Design?
+
+**Separation of Concerns**:
+- Extraction (LLM steps) separate from validation (verification step)
+- No data loss - raw data preserved for reprocessing
+- Validation can be updated without recomputing extraction
+
+**Priority-Based Resolution**:
+1. **OPAL** (highest): Manually entered by course creators, most accurate
+2. **AI**: LLM-extracted, good coverage but variable quality
+3. **File** (lowest): Document metadata, often incomplete but available
+
+**Quality Control**:
+- Each source labeled with provenance (`ai:author_source`, `ai:affiliation_source`)
+- Validation errors tracked in `ai:_errors` column
+- Can detect and resolve conflicts between sources
+
+### Backward Compatibility
+
+✅ **100% Backward Compatible**
+- Old column names preserved (`opal:known_creator`, `file:author`)
+- All other stages unchanged
+- Can skip AIVerificationStage if not needed
+- No breaking changes to existing pipelines
 
 ## Configuration Files
 
