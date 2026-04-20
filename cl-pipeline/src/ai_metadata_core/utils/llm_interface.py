@@ -6,13 +6,29 @@ Handles LLM communication and timeouts.
 import logging
 from typing import Any
 
+logger = logging.getLogger(__name__)
+
+# Try to import timeout decorator, but provide explicit fallback
+_timeout_available = True
 try:
     from wrapt_timeout_decorator import timeout
 except ImportError:
-    # Fallback wenn wrapt_timeout_decorator nicht verfügbar ist
+    _timeout_available = False
+    logger.warning(
+        "wrapt_timeout_decorator not installed. Timeout protection disabled. "
+        "Install with: pip install wrapt-timeout-decorator"
+    )
+
     def timeout(seconds):
+        """No-op timeout decorator - timeouts are disabled"""
         def decorator(func):
-            return func
+            def wrapper(*args, **kwargs):
+                logger.warning(
+                    f"Timeout decorator not available for {func.__name__}. "
+                    f"Request may hang indefinitely. Install wrapt-timeout-decorator."
+                )
+                return func(*args, **kwargs)
+            return wrapper
         return decorator
 
 

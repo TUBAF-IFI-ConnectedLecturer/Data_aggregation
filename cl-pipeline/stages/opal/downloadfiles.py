@@ -4,8 +4,15 @@ from tqdm import tqdm
 import urllib.request
 import urllib.error
 import os
+import sys
+import logging
 
 from pipeline.taskfactory import TaskWithInputFileMonitor
+
+# Import improved HTTP client with connection pooling and retry
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'src'))
+from error_handling.http_client import PooledHTTPClient, get_default_client, close_default_client
+from error_handling.retry_strategy import RetryStrategy, RetryConfig
 
 class DownloadOERFromOPAL(TaskWithInputFileMonitor):
     def __init__(self, config_stage, config_global):
@@ -21,6 +28,29 @@ class DownloadOERFromOPAL(TaskWithInputFileMonitor):
         self.max_downloads_per_type = stage_param.get('max_downloads_per_type', None)
         # Optional: Maximum total downloads (across all file types)
         self.max_total_downloads = stage_param.get('max_total_downloads', None)
+
+        # Initialize HTTP client with connection pooling
+        # 120s timeout for large file downloads
+        self.http_client = get_default_client() if hasattr(self, 'http_client') else None
+
+        # Create a new client with longer timeout for this download task
+        from error_handling.http_client import PooledHTTPClient
+        self.http_client = PooledHTTPClient(
+            timeout=120,  # 2 minutes for large files
+            max_retries=3,
+            pool_connections=5,
+            pool_maxsize=5
+        )
+
+        # Initialize retry strategy for resilient downloads
+        self.retry_config = RetryConfig(
+            max_retries=3,
+            initial_delay=2.0,  # Start with 2 seconds
+            max_delay=30.0,     # Cap at 30 seconds
+            exponential_base=2.0,
+            add_jitter=True
+        )
+        self.retry_strategy = RetryStrategy(self.retry_config)
 
     def execute_task(self):
 
@@ -46,23 +76,52 @@ class DownloadOERFromOPAL(TaskWithInputFileMonitor):
 
             if (not os.path.exists(file_path)):
                 download_list_sample['pipe:download_date'] = pd.to_datetime('now')
-                try:
-                    _, _ = urllib.request.urlretrieve(row['opal:oer_permalink'], file_path)
-                except urllib.error.HTTPError as e:
-                    print(f"Error while downloading {file_path.name}: HTTP {e.code}")
-                    if e.code == 404:
-                        download_list_sample["pipe:error_download"] = 'Missing(404)'
-                    else:
-                        download_list_sample["pipe:error_download"] = f'Unknown download error {e.code}'
-                except Exception as e:
-                    print(f"Error while downloading {file_path.name}: {str(e)}")
-                    download_list_sample["pipe:error_download"] = 'Unknown error'
+                # Use improved download method with retries
+                error = self._download_with_retry(row['opal:oer_permalink'], file_path)
+                download_list_sample['pipe:error_download'] = error
             else:
                 download_list_sample['pipe:download_date'] = pd.to_datetime(os.path.getmtime(file_path), unit='s')
             download_list.append(download_list_sample)
 
         df_download_list = pd.DataFrame(download_list)
         df_download_list.to_pickle(self.file_name_output)
+
+        # Clean up HTTP client
+        close_default_client()
+
+    def _download_with_retry(self, url: str, file_path: Path) -> str:
+        """
+        Download file with retry strategy and connection pooling.
+
+        Args:
+            url: URL to download from
+            file_path: Path where to save the file
+
+        Returns:
+            Error string ('none' for success, error description otherwise)
+        """
+        def download_file():
+            # Don't pass timeout here - it's already configured in http_client
+            response = self.http_client.get(url)
+            response.raise_for_status()
+
+            # Write to file
+            with open(file_path, 'wb') as f:
+                f.write(response.content)
+            return 'none'
+
+        try:
+            return self.retry_strategy.call_with_retry(download_file)
+        except urllib.error.HTTPError as e:
+            error_msg = f'HTTP{e.code}'
+            if e.code == 404:
+                error_msg = 'Missing(404)'
+            logging.error(f"HTTP Error downloading {file_path.name}: {error_msg}")
+            return error_msg
+        except Exception as e:
+            error_msg = f'Error: {type(e).__name__}'
+            logging.error(f"Error downloading {file_path.name}: {error_msg}")
+            return error_msg
 
     def _apply_download_limits(self, df_files):
         """
