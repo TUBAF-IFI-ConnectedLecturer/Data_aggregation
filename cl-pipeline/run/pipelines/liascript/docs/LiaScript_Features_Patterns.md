@@ -161,8 +161,8 @@ Diese Dokumentation beschreibt alle Features, die in der Feature-Extraktion erka
 ### Code-Projekte
 
 - **Beschreibung:** LiaScript Code-Projekte (mehrere verknüpfte Dateien)
-- **Syntax:** ``` ```language+ ``` (mit + Marker)
-- **Regex-Muster:** `^```\w*\+` (am Zeilenanfang)
+- **Syntax:** ```` ```language +(optionaler marker)```` (mit + Marker)
+- **Regex-Muster:** ```` ```[ \t]*([A-Za-z0-9_-]+)?(?:[ \t]+[^@\n]+)?$```` (am Zeilenanfang)
 - **Daten-Label:** `feature:code_project_count`, `feature:has_code_projects`
 - **Beispiel:**
   ````markdown
@@ -170,7 +170,6 @@ Diese Dokumentation beschreibt alle Features, die in der Feature-Extraktion erka
   import { helper } from './helper.js';
   console.log(helper());
   ```
-
   ```js helper.js
   export function helper() { return "Hello"; }
   ```
@@ -228,7 +227,7 @@ Diese Dokumentation beschreibt alle Features, die in der Feature-Extraktion erka
 
 - **Beschreibung:** Schrittweise Einblendungen (inline)
 - **Syntax:** `{{Nummer}}` oder `{{Start-Ende}}` für Bereiche
-- **Regex-Muster:** `(?<!--)\{\{\d+(?:-\d+)?\}\}` (nicht von `--` vorangestellt)
+- **Regex-Muster:** `(?<!--\s*)\{\{\d+(?:-\d+)?\}\}` (nicht von `--` vorangestellt)
 - **Daten-Label:** `feature:animation_fragment_count`, `feature:has_animation_fragments`
 - **Beispiele:**
   ```markdown
@@ -448,28 +447,21 @@ Der Header-Block (zwischen `<!--` und `-->`) wird automatisch extrahiert. Die fo
   @embed(https://example.com)
   ```
 
-### Effekte
+#### Block-Macro
 
-- **Beschreibung:** LiaScript Effekt-Annotationen
-- **Syntax:** `<!-- effect="..." -->` oder `data-effect="..."`
-- **Regex-Muster:** `effect\s*=\s*["\']|data-effect\s*=` (case-insensitive)
-- **Daten-Label:** `feature:effect_count`, `feature:has_effects`
+- **Beschreibung:** LiaScript Block-Makro Syntax
+- **Syntax:** ```` ``` yaml @macro(optionale parameter ... ````
+- **Regex-Muster:** ```` ```[ \t]*([A-Za-z0-9_-]+)(?:[ \t]+@[^\n]+)?$ ````
+- **Daten-Label:** `feature:macro_count`, `feature:has_macros`, `feature:custom_macro_def_count`, `feature:has_custom_macro_defs`, `feature:custom_macro_names`
 - **Beispiel:**
-  ```markdown
-  <!-- effect="bounce" -->
-  Dieser Text springt.
+  ````markdown
+  ``` yaml @macro(param ...
+  data:
+    - entry: 1
+    - entry: 2
+  ...
   ```
-
-### Classroom-Features
-
-- **Beschreibung:** Kollaborative Classroom-Funktionen
-- **Syntax:** `@classroom`
-- **Regex-Muster:** `@classroom` (case-insensitive)
-- **Daten-Label:** `feature:classroom_count`, `feature:has_classroom`
-- **Beispiel:**
-  ```markdown
-  @classroom
-  ```
+  ````
 
 ### ASCII-Diagramme
 
