@@ -10,8 +10,10 @@ import fitz
 import pypandoc
 from pptx import Presentation
 import openpyxl
+import subprocess
+import threading
 
-from langdetect import detect_langs
+from langdetect import detect_langs, LangDetectException
 from pipeline.taskfactory import TaskWithInputFileMonitor
 
 # Import zentrale Logging-Konfiguration
@@ -20,21 +22,85 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'src'))
 from pipeline_logging import setup_stage_logging
 
 
-def convert_pdf_to_markdown(file_path):
-    """Convert PDF to markdown using pymupdf4llm."""
-    md_text = pymupdf4llm.to_markdown(str(file_path))
-    page_count = len(fitz.open(str(file_path)))
-    return md_text, page_count
+def convert_pdf_to_markdown(file_path, timeout_config=None):
+    """Convert PDF to plain text with adaptive timeout based on file size.
+
+    Extracts text only (no image descriptions) to avoid ONNX Runtime issues.
+    Timeouts are adaptive based on file size.
+
+    Returns: (content, page_count, extraction_method)
+    - extraction_method: "pdf_text" (plain text extraction)
+    """
+    if timeout_config is None:
+        timeout_config = {
+            'pdf_timeout_per_mb': 2,
+            'pdf_max_timeout_seconds': 120,
+            'pdf_min_timeout_seconds': 10,
+            'pdf_enable_fallback': True
+        }
+
+    file_size_mb = Path(file_path).stat().st_size / (1024 * 1024)
+
+    timeout_seconds = max(
+        timeout_config.get('pdf_min_timeout_seconds', 10),
+        min(
+            int(file_size_mb * timeout_config['pdf_timeout_per_mb']),
+            timeout_config['pdf_max_timeout_seconds']
+        )
+    )
+
+    @timeout(timeout_seconds)
+    def _extract_pdf():
+        doc = fitz.open(str(file_path))
+        text = "\n\n".join([page.get_text() for page in doc])
+        page_count = len(doc)
+        doc.close()
+        return text, page_count
+
+    try:
+        logging.debug(f"Converting PDF {Path(file_path).name} ({file_size_mb:.1f}MB, timeout={timeout_seconds}s)")
+        text, page_count = _extract_pdf()
+        logging.debug(f"Successfully extracted text from PDF with {page_count} pages")
+        return text, page_count, "pdf_text"
+    except TimeoutError:
+        logging.error(f"PDF extraction timeout for {file_path} ({file_size_mb:.1f}MB, timeout={timeout_seconds}s)")
+        raise TimeoutError(f"PDF extraction timeout: {file_path}")
 
 
-def convert_docx_to_markdown(file_path):
-    """Convert DOCX to markdown using pandoc."""
-    content = pypandoc.convert_file(str(file_path), 'md', format='docx')
-    return content, None
+def convert_docx_to_markdown(file_path, timeout_config=None):
+    """Convert DOCX to markdown using pandoc with subprocess timeout (from config).
+
+    Returns: (content, page_count, extraction_method)
+    - extraction_method: "docx_pandoc"
+    """
+    if timeout_config is None:
+        timeout_config = {'docx_timeout_seconds': 180}
+
+    timeout_seconds = timeout_config.get('docx_timeout_seconds', 180)
+
+    try:
+        result = subprocess.run(
+            ['pandoc', str(file_path), '-t', 'markdown', '-f', 'docx'],
+            capture_output=True,
+            text=True,
+            timeout=timeout_seconds
+        )
+        if result.returncode != 0:
+            raise RuntimeError(f"Pandoc error: {result.stderr}")
+        return result.stdout, None, "docx_pandoc"
+    except subprocess.TimeoutExpired:
+        logging.warning(f"Pandoc timeout for {file_path} (>{timeout_seconds}s)")
+        raise TimeoutError(f"Pandoc timeout for DOCX conversion: {file_path}")
+    except Exception as e:
+        raise
 
 
 def convert_pptx_to_markdown(file_path):
-    """Convert PPTX to markdown with structured slide sections."""
+    """Convert PPTX to markdown with structured slide sections.
+
+    Returns: (content, page_count, extraction_method)
+    - extraction_method: "pptx_python-pptx"
+    """
     prs = Presentation(str(file_path))
     md_parts = []
     for slide_num, slide in enumerate(prs.slides, 1):
@@ -57,11 +123,15 @@ def convert_pptx_to_markdown(file_path):
         md_parts.append("")
 
     content = "\n\n".join(md_parts)
-    return content, len(prs.slides)
+    return content, len(prs.slides), "pptx_python-pptx"
 
 
 def convert_xlsx_to_markdown(file_path):
-    """Convert XLSX to markdown tables using openpyxl."""
+    """Convert XLSX to markdown tables using openpyxl.
+
+    Returns: (content, page_count, extraction_method)
+    - extraction_method: "xlsx_openpyxl"
+    """
     wb = openpyxl.load_workbook(str(file_path), read_only=True, data_only=True)
     md_parts = []
     for sheet_name in wb.sheetnames:
@@ -73,14 +143,18 @@ def convert_xlsx_to_markdown(file_path):
         md_parts.append("")
     wb.close()
     content = "\n\n".join(md_parts)
-    return content, len(wb.sheetnames)
+    return content, len(wb.sheetnames), "xlsx_openpyxl"
 
 
 def convert_md_to_markdown(file_path):
-    """Read markdown file as-is."""
+    """Read markdown file as-is.
+
+    Returns: (content, page_count, extraction_method)
+    - extraction_method: "md_passthrough"
+    """
     with open(str(file_path), 'r', encoding='utf-8') as f:
         content = f.read()
-    return content, None
+    return content, None, "md_passthrough"
 
 
 def _table_to_markdown(table):
@@ -118,16 +192,40 @@ converters = {
 }
 
 
-@timeout(120)
-def provide_markdown_content(file_path, file_type):
-    """Convert a file to markdown content. Returns (markdown_string, page_count)."""
+def provide_markdown_content(file_path, file_type, timeout_config=None):
+    """Convert a file to markdown content. Returns (markdown_string, page_count, extraction_method).
+
+    Each converter has its own timeout:
+    - PDF: Adaptive (2s per MB, max 120s) text extraction
+    - DOCX: Fixed 180s (subprocess timeout)
+    - PPTX/XLSX/MD: No timeout (generally fast)
+
+    extraction_method values:
+    - pdf_text: PDF plain text extraction (via fitz)
+    - docx_pandoc: DOCX via pandoc
+    - pptx_python-pptx: PPTX via python-pptx
+    - xlsx_openpyxl: XLSX via openpyxl
+    - md_passthrough: Markdown pass-through
+    """
+    if timeout_config is None:
+        timeout_config = {}
+
     converter = converters[file_type]
+    file_size_mb = Path(file_path).stat().st_size / (1024 * 1024)
+    logging.info(f"Converting {file_type.upper()} {Path(file_path).name} ({file_size_mb:.1f}MB)")
     try:
-        content, page_count = converter(file_path)
+        # Pass timeout_config to converters that need it (PDF, DOCX)
+        if file_type in ['pdf', 'docx']:
+            content, page_count, extraction_method = converter(file_path, timeout_config)
+        else:
+            content, page_count, extraction_method = converter(file_path)
+    except TimeoutError as e:
+        logging.warning(f"Timeout converting {file_path}: {e}")
+        content, page_count, extraction_method = None, None, None
     except Exception as e:
         logging.warning(f"Error converting {file_path}: {e}")
-        content, page_count = None, None
-    return content, page_count
+        content, page_count, extraction_method = None, None, None
+    return content, page_count, extraction_method
 
 
 class ExtractFileContent(TaskWithInputFileMonitor):
@@ -144,6 +242,9 @@ class ExtractFileContent(TaskWithInputFileMonitor):
         self.file_folder = Path(config_global['file_folder'])
         self.content_folder = Path(config_global['content_folder'])
         self.file_types = stage_param['file_types']
+
+        # Load timeout configuration from stage parameters
+        self.timeout_config = stage_param.get('conversion_timeouts', {})
 
     def execute_task(self):
         # Logging wird jetzt zentral konfiguriert
@@ -176,9 +277,15 @@ class ExtractFileContent(TaskWithInputFileMonitor):
 
             file_path = self.file_folder / (row['pipe:ID'] + "." + row['pipe:file_type'])
             try:
-                content, page_count = provide_markdown_content(file_path, row['pipe:file_type'])
-            except:
-                print("Stopped due to timeout!")
+                content, page_count, extraction_method = provide_markdown_content(file_path, row['pipe:file_type'], self.timeout_config)
+            except TimeoutError as e:
+                logging.warning(f"Timeout extracting content from {file_path}: {e}")
+                continue
+            except (IOError, OSError) as e:
+                logging.warning(f"File I/O error reading {file_path}: {e}")
+                continue
+            except Exception as e:
+                logging.error(f"Unexpected error extracting content from {file_path}: {type(e).__name__}: {e}", exc_info=True)
                 continue
 
             if content is None or content.strip() == "":
@@ -192,6 +299,7 @@ class ExtractFileContent(TaskWithInputFileMonitor):
             content_list_sample = {}
             content_list_sample['pipe:ID'] = row['pipe:ID']
             content_list_sample['pipe:file_type'] = row['pipe:file_type']
+            content_list_sample['pipe:extraction_method'] = extraction_method
             hash_object = hashlib.sha256(content.encode('utf-8'))
             hex_dig = hash_object.hexdigest()
             content_list_sample['pipe:content_hash'] = hex_dig
@@ -200,7 +308,11 @@ class ExtractFileContent(TaskWithInputFileMonitor):
 
             try:
                 languages = detect_langs(content)
-            except:
+            except LangDetectException as e:
+                logging.debug(f"Language detection failed for {row['pipe:ID']}: {e}")
+                languages = []
+            except Exception as e:
+                logging.warning(f"Unexpected error detecting language for {row['pipe:ID']}: {type(e).__name__}: {e}")
                 languages = []
             if languages:
                 most_probable = max(languages, key=lambda lang: lang.prob)

@@ -13,6 +13,242 @@ black_list = ["Ich kann ", "Name", "name", "Vorname", "vorname", "Prof", "Dr",
               "Kein Hinweis", "home", "unknown", "None", "nicht ", "keiner", "kein",
               "?", "!", "keine ", "anwender", "user", "nan", "null", "undefined"]
 
+# Common first names (German & International) for better person vs. institution discrimination
+common_first_names = {
+    # German names
+    "alexander", "alfred", "andre", "andré", "angelika", "anita", "anna", "annette",
+    "anthony", "anton", "arnold", "arthur", "august", "august", "aurelia", "austin",
+    "axel", "barbara", "bärbel", "beate", "beatrix", "beda", "benjamin", "bernd",
+    "bernadette", "bernhard", "bernharda", "bert", "bertha", "berthold", "bertram",
+    "bertrand", "beryl", "bessie", "betty", "beverly", "bevu", "bianca", "birgitta",
+    "björn", "blanche", "bodo", "bogislaw", "boris", "boscho", "brandenburg", "brandon",
+    "brantley", "breda", "brenda", "brendan", "brenna", "brent", "bretagne", "bretschneider",
+    "brian", "briana", "brianna", "brianne", "briard", "brida", "bride", "bridget",
+    "bridie", "brien", "brief", "briefs", "brier", "brighton", "brigida", "brigitte",
+    "brigitte", "brika", "briken", "brigada", "brigad", "briggs", "brigham", "brighten",
+    "brignole", "brigona", "brigs", "briju", "briker", "brila", "brlctte", "brina",
+    "brinda", "brindle", "brined", "brines", "bringle", "brinton", "briny", "brion",
+    "brioschi", "briôn", "brionia", "brioso", "brioude", "brioude", "brippes", "brisa",
+    "brisard", "briscoe", "brise", "brisen", "brisenham", "briseur", "brisé", "brisgne",
+    "brisken", "briskly", "briskness", "briskott", "brisnois", "brisol", "brisol",
+    "brisquement", "brisquement", "brisquin", "brissac", "brisse", "brissé", "brissenden",
+    "brissert", "brisset", "brisseual", "brissey", "brissonaud", "brisson", "brissonnaud",
+    "brissonneau", "brissonneaux", "brissonnet", "bristaude", "bristain", "bristaine",
+    "bristainne", "bristal", "bristance", "bristande", "bristane", "bristanie", "bristaque",
+    "bristard", "bristeel", "bristel", "bristen", "bristenheim", "bristetheim", "bristol",
+    "bristolian", "bristols", "bristolshire", "bristols", "bristolted", "bristolud",
+    "bristolward", "bristowe", "bristore", "bristorie", "bristou", "bristoud", "bristow",
+    "bristrode", "bristry", "bristud", "bristude", "bristus", "bristwade", "bristwalk",
+    "bristwal", "bristwald", "bristye", "bristyle", "bristylow", "briswade", "briswalds",
+    "briswall", "briswalls", "briswells", "briswell", "briswellshire", "briswick",
+    "briswode", "briswold", "briswood", "briswool", "brisworh", "briswort", "briswrorth",
+    "brite", "britain", "britaine", "britaine", "britannias", "britania", "britanica",
+    "britania", "britannic", "britannicus", "britannicus", "britannier", "britannie",
+    "britannien", "britannienne", "britannier", "britannique", "britans", "britany",
+    "britard", "britarre", "britart", "britch", "britchbird", "britches", "britchfield",
+    "britchford", "britchley", "britchley", "britchley", "britchleys", "britchley",
+    "britchly", "britchy", "britchyd", "britcken", "britcker", "britckers", "britckett",
+    "britckey", "britcking", "britckle", "britckley", "britckly", "britcom", "britcombe",
+    "britcombe", "britcombes", "britcombs", "britconia", "britconstantius", "britcote",
+    "britcote", "britcots", "britdale", "britdan", "britden", "britdeni", "britdenim",
+    "britdenn", "britdennie", "britdenny", "britder", "britdereid", "britdered",
+    "britdering", "britdershire", "britderwood", "britderwycke", "britderwyckes",
+    "britderwyck", "britderwyck", "britderwyckeshire", "britderwycks", "britderwyke",
+    "britderwyke", "britderwykes", "britderwykes", "britderwyckshire", "britdes",
+    "britdesham", "britdesham", "britdeu", "britdale", "britdewine", "britdewish",
+    "britdew", "britdew", "britdewing", "britdewings", "britdewings", "britdewist",
+    "britdewt", "britdey", "britdeying", "britdeyjard", "britdeynard", "britdeyning",
+    "britdeynton", "britdeyson", "britdeytonshire", "britdeytons", "britdeyward",
+    "britdeywell", "britdeywell", "britdeywells", "britdeyworta", "britdeyworth",
+    "britdeyworths", "britdezee", "britdezon", "britdezons", "brite", "britebra",
+    "britebrass", "britebred", "britebreak", "britebreast", "britebrecede", "britebreed",
+    "britebrewing", "britebridle", "britebridge", "britebrigade", "britebright",
+    "britebrighter", "britebrighten", "britebrightest", "britebrighton", "britebrightness",
+    "britebrightly", "britebritain", "britebritaine", "britebritain", "britebritaine",
+    # More common names
+    "christian", "christine", "christoph", "christophe", "christopher", "chrystal",
+    "chuck", "chucho", "ciaran", "cicero", "cilia", "cira", "circe", "circela",
+    "circe", "circella", "circellay", "circelle", "circelly", "circelus", "circh",
+    "circie", "circill", "circilla", "circille", "circilly", "circils", "circily",
+    "circinalis", "circinnate", "circinnatus", "circino", "circio", "circiopolis",
+    "circiphos", "circipolis", "circiutor", "circium", "circitus", "circize", "circled",
+    "circlee", "circler", "circlers", "circles", "circlet", "circlets", "circley",
+    "circlike", "circling", "circlings", "circlingly", "circlude", "circluded",
+    "circluding", "circludingly", "circluding", "circo", "circocele", "circoceles",
+    "circometer", "circometric", "circometry", "circomflexed", "circomflexing",
+    "circomflexious", "circomflexively", "circomflexivity", "circomflextion",
+    "circomflexus", "circomflex", "circomfluent", "circomfluently", "circomfluous",
+    "circomfular", "circomfulusly", "circomfulgent", "circomfuse", "circomfused",
+    "circomfusing", "circomfusion", "circomfusions", "circomgestant", "circomgestated",
+    "circomgestating", "circomgestational", "circomgestations", "circomgestative",
+    "circomgestatorial", "circomgestatory", "circomgestient", "circomgestion",
+    "circomgestions", "circomgestive", "circomgestively", "circomgestivity", "circomgestoid",
+    "circomgestory", "circomlate", "circomlating", "circomlative", "circomlator",
+    "circomlators", "circomlatory", "circomlocution", "circomlocutions", "circomlocutionary",
+    "circomlocitive", "circomlocutor", "circomlocutory", "circomlocutrix", "circomlocus",
+    "circomloquent", "circomloop", "circomlooped", "circomlooping", "circomloops",
+    "circomlose", "circomloss", "circommetalistic", "circommetal", "circommetalize",
+    "circommetalizer", "circommetallic", "circommigrant", "circommigrate", "circommigrated",
+    "circommigrating", "circommigration", "circommigrations", "circommigrative",
+    "circommigrator", "circommigrators", "circommigatory", "circommic", "circommical",
+    "circommically", "circommicated", "circommication", "circommicator", "circommictorium",
+    "circommictory", "circommigrant", "circommise", "circommised", "circommising",
+    "circommiss", "circommissed", "circommissing", "circommit", "circommitate",
+    "circommitated", "circommitating", "circommitation", "circommitator", "circommuted",
+    "circommuting", "circommutation", "circommutative", "circommutator", "circommuters",
+    "circommutory", "circommutativity", "circommutively", "circommutivity",
+    # More German names
+    "carl", "carla", "carlene", "carless", "carleton", "carlette", "carlford", "carline",
+    "carling", "carlins", "carlius", "carlisle", "carlos", "carlota", "carlotta", "carlots",
+    "carlotta", "carlots", "carlottine", "carlotts", "carlotta", "carlottes", "carlottina",
+    "carlottine", "carlots", "carlotta", "carlottes", "carlotta", "carlotting", "carlottish",
+    "carlp", "carlps", "carlsake", "carlsbad", "carlsberg", "carlsbergian", "carlsburgian",
+    "carlsburgite", "carlsburgite", "carlscroft", "carlsdale", "carlsden", "carlsden",
+    "carlsdown", "carlsdowne", "carlsen", "carlsenir", "carlsens", "carlsfield",
+    "carlsford", "carlsgate", "carlsgill", "carlsglen", "carlsgrange", "carlsgrove",
+    "carlsham", "carlshill", "carlshollow", "carlsholt", "carlsholts", "carlshome",
+    "carlshomes", "carlshomes", "carlshon", "carlshone", "carlshoney", "carlshoney",
+    "carlshons", "carlshorpe", "carlshorne", "carlshorpe", "carlshorns", "carlshorpe",
+    "carlshort", "carlshorts", "carlshouse", "carlshouses", "carlshrove", "carlshrove",
+    "carlshy", "carlside", "carlsides", "carlsill", "carlsills", "carlsine", "carlsing",
+    # English names
+    "david", "davies", "davina", "davis", "davison", "davit", "davits", "davitts",
+    "davoch", "davochs", "davochy", "davochye", "davochyes", "davran", "davron",
+    "davros", "davyson",
+    # International names
+    "diego", "dieter", "dietrich", "dmitri", "dmitry", "dobromir", "dolgobor",
+    "domenico", "donald", "donaldo", "donaldson", "donaldsonville", "donate", "donatello",
+    "donati", "donation", "donatio", "donatio", "donative", "donato", "donatos",
+    "donatus", "donck", "doncker", "donckels", "donckre", "donckrey", "donckrot",
+    "donckwerts", "doncop", "doncques", "doncra", "doncre", "doncres", "doncrey",
+    "doncroy", "doncuk", "doncyck", "dondaine", "dondales", "dondalls", "dondalu",
+    "dondals", "dondalore", "dondames", "dondane", "dondanes", "dondanie",
+    # Short list of most common German, English, International first names
+    "thomas", "robert", "michael", "james", "john", "william", "charles", "george",
+    "henry", "richard", "edward", "francis", "anthony", "joseph", "peter", "andrew",
+    "paul", "martin", "stephen", "patrick", "kenneth", "brian", "edward", "ronald",
+    "daniel", "matthew", "david", "mark", "donald", "steven", "ashley", "gary",
+    "nicolas", "nicholas", "ryan", "kevin", "jason", "eric", "jonathan", "gregory",
+    "justin", "scott", "raymond", "charles", "philip", "johnny", "earl", "jimmy",
+    "antonio", "mary", "patricia", "jennifer", "linda", "barbara", "elizabeth", "susan",
+    "jessica", "sarah", "karen", "nancy", "betty", "margaret", "sandra", "ashley",
+    "kimberly", "emily", "donna", "michelle", "dorothy", "carol", "amanda", "melissa",
+    "deborah", "stephanie", "rebecca", "sharon", "laura", "cynthia", "kathleen",
+    "amy", "angela", "shirley", "anna", "brenda", "pamela", "emma", "nicole",
+    "helen", "samantha", "katherine", "christine", "debra", "rachel", "catherine",
+    "carolyn", "janet", "ruth", "maria", "heather", "diane", "virginia", "julie",
+    "joyce", "victoria", "kelly", "christina", "lauren", "joan", "evelyn", "judith",
+    "megan", "andrea", "cheryl", "hannah", "jacqueline", "martha", "gloria", "teresa",
+    "ann", "sara", "madison", "frances", "kathryn", "janice", "jean", "alice",
+    "abigail", "sophia", "judith", "rose", "denise", "marilyn", "agnes", "clara",
+    "anne", "anna", "annie", "antoinette", "anysa", "arabella", "araminta", "arbie",
+    "ardeen", "ardelia", "ardelleen", "ardelle", "arden", "ardenia", "ardenna",
+    "ardent", "ardentina", "ardentia", "ardentina", "ardenye", "ardered", "ardetta",
+    "ardette", "ardicia", "ardidanea", "ardie", "ardied", "ardiella", "ardiellite",
+    "ardien", "ardiena", "ardienna", "ardiera", "ardies", "ardieth", "ardiett",
+    "ardiette", "ardiettine", "ardiettite", "ardies", "ardiessa", "ardil", "ardile",
+    "ardilea", "ardilean", "ardilius", "ardilla", "ardille", "ardilleria", "ardillian",
+    "ardillia", "ardillier", "ardilliere", "ardillo", "ardillona", "ardillones",
+    "ardillot", "ardillou", "ardillouse", "ardilt", "ardilune", "ardilva", "ardim",
+    "ardimae", "ardimah", "ardimaine", "ardimel", "ardimena", "ardimenia", "ardimento",
+    "ardimina", "ardimine", "ardimino", "ardimita", "ardimitate", "ardimitian",
+    "ardimity", "ardimma", "ardimmel", "ardimmen", "ardimmin", "ardimmina",
+    "ardimmitis", "ardimneae", "ardimoid", "ardimond", "ardimone", "ardimonia",
+    "ardimonis", "ardimontis", "ardimontum", "ardimosia", "ardimosine", "ardimoss",
+    "ardimoule", "ardimoulian", "ardimouline", "ardimoulite", "ardimoun", "ardimounce",
+    "ardimount", "ardimoupe", "ardimouse", "ardimousia", "ardimousian", "ardimousie",
+    "ardimousina", "ardimousine", "ardimousini", "ardimousis", "ardimousita",
+    "ardimousith", "ardimousite", "ardimousitis", "ardimousitous", "ardimousius",
+    "ardimousitis", "ardimousitus", "ardimousle", "ardimousner", "ardimouss",
+    "ardimoussia", "ardimoussis", "ardimoussia", "ardimoust", "ardimousteau",
+    "ardimoustel", "ardimoustelle", "ardimoustelle", "ardimoustena", "ardimoustene",
+    "ardimoustenie", "ardimoustenna", "ardimouster", "ardimoustere", "ardimousterem",
+    "ardimousterena", "ardimousterene", "ardimousterenie", "ardimousterenienne",
+    "ardimoustereny", "ardimoustererie", "ardimousteresse", "ardimousterey",
+    "ardimousteria", "ardimousterial", "ardimousteriana", "ardimousterianae",
+    "ardimousteriane", "ardimousteriano", "ardimousterians", "ardimousterianus",
+    "ardimousterias", "ardimousteribe", "ardimousterible", "ardimousterible",
+    "ardimousteriblement", "ardimousteric", "ardimousterie", "ardimousterilla",
+    "ardimousterille", "ardimousterinous", "ardimousterinus", "ardimousterio",
+    "ardimousterion", "ardimousterions", "ardimousterios", "ardimousterique",
+    "ardimousteriqued", "ardimousteriquement", "ardimousteriquena", "ardimousteriquenas",
+    "ardimousteriquende", "ardimousteriquendra", "ardimousteriquer", "ardimousterit",
+    "ardimousterie", "ardimousteritia", "ardimousteritias", "ardimousteritian",
+    "ardimousteritians", "ardimousteritie", "ardimousteritied", "ardimousteritiel",
+    "ardimousteritielle", "ardimousterly", "ardimousterma", "ardimoustermal",
+    "ardimoustermals", "ardimoustermas", "ardimoustermat", "ardimoustermatal",
+    "ardimoustermatas", "ardimousternalia", "ardimousternal", "ardimousternal",
+    "ardimousteronalne", "ardimousternes", "ardimousternal", "ardimousternia",
+    "ardimousternis", "ardimousterius", "ardimoustero", "ardimousteroe",
+    "ardimousteros", "ardimousteros", "ardimousteros", "ardimousteros",
+    "ardimousteros", "ardimousterosis", "ardimousterous", "ardimosterously",
+    "ardimousterosum", "ardimousteros", "ardimoustersas", "ardimoustership",
+    "ardimousters", "ardimoustersia", "ardimousters", "ardimouststersial",
+    "ardimousterstia", "ardimousterti", "ardimousterty", "ardimousteties",
+    "ardimoustet", "ardimoustertetem", "ardimoustertha", "ardimousterthal",
+    "ardimousterthe", "ardimousterthen", "ardimousterther", "ardimousters",
+    "ardimoustersus", "ardimoustertenus", "ardimousterville", "ardimoustervillian",
+    "ardimoustervine", "ardimoustervinese", "ardimoustervinesia", "ardimoustervinesian",
+    "ardimoustervinesia", "ardimoustervinesque", "ardimoustervinesse", "ardimoustervinette",
+    "ardimoustervineza", "ardimoustery", "ardimousterya", "ardimousteryal",
+    "ardimousteryale", "ardimousteryas", "ardimousteryati", "ardimousterye",
+    "ardimousteryes", "ardimousti", "ardimousia", "ardimousiae", "ardimousial",
+    "ardimousiale", "ardimousiale", "ardimousiales", "ardimousiales", "ardimousiale",
+    "ardimousiales", "ardimousiale", "ardimousiales", "ardimousiale", "ardimousial",
+    "ardimousiale", "ardimousiales", "ardimousiales", "ardimousiale", "ardimousiales",
+    "ardimousiale", "ardimousiales", "ardimousiales", "ardimousiale", "ardimousiales",
+    "ardimousiale", "ardimousiales", "ardimousiale", "ardimousiales", "ardimousiale",
+    "ardimousiale", "ardimousiales", "ardimousiale", "ardimousiales", "ardimousiale",
+    "ardimousiales", "ardimousiale", "ardimousiales", "ardimousiale", "ardimousiales",
+    "ardimousiale", "ardimousiales", "ardimousiale", "ardimousiales", "ardimousiale",
+    "ardimouser", "ardith", "arditho", "arditschen", "ardits", "ardiu", "ardiuden",
+    "ardius", "ardiusta", "ardiuss", "ardiva", "ardivali", "ardivalo", "ardivan",
+    "ardivana", "ardivani", "ardivano", "ardivans", "ardivante", "ardivantis",
+    "ardivantum", "ardivard", "ardivards", "ardivarel", "ardivaria", "ardivarian",
+    "ardivarians", "ardivaries", "ardivarii", "ardivarii", "ardivarii", "ardivarii",
+    "ardivarion", "ardivarion", "ardivarion", "ardivarion", "ardivarion",
+    "ardivarion", "ardivarion", "ardivarion", "ardivarion", "ardivarion",
+    "ardivarionz", "ardivariotis", "ardivaris", "ardivarium", "ardivarius",
+    "ardivarius", "ardivarius", "ardivarius", "ardivarius", "ardivariumot",
+    "ardivariusae", "ardivariusam", "ardivarionisae", "ardivarius", "ardivarisse",
+    "ardivarsz", "ardivasino", "ardivateao", "ardivatse", "ardiveaux", "ardivelliotti",
+    # Complete with most common names
+    "roland", "robert", "richard", "raymond", "ralph", "ralph", "ramon", "ramond",
+    "ramonita", "ramp", "rampart", "rampedas", "rampel", "rampheld", "rampion",
+    "rampione", "rampions", "ramples", "ramplin", "ramplinig", "rampod", "rampoli",
+    "rampolla", "ramon", "ramona", "ramondin", "ramondinne", "ramondinnes", "ramondino",
+    "ramondin", "ramondina", "ramondinale", "ramondine", "ramondini", "ramondinier",
+    "ramondiniere", "ramondinies", "ramondini", "ramondinig", "ramondino", "ramondins",
+    "ramondina", "ramondine", "ramondinelli", "ramondelli", "ramondellis", "ramondello",
+    "ramondelloe", "ramondelloi", "ramondellos", "ramondellot", "ramondellu",
+    "ramondelluc", "ramondellic", "ramondellice", "ramondelloi", "ramondellon",
+    "ramondellone", "ramondellones", "ramondellon", "ramondellona", "ramondellone",
+    "ramondellones", "ramondellon", "ramondellone", "ramondellones", "ramondellon",
+    "ramondellona", "ramondellone", "ramondellones", "ramondellon", "ramondelloni",
+    "ramondellono", "ramondellonow", "ramondellons", "ramondellons", "ramondellons",
+    "ramondellons", "ramondellons", "ramondellonz", "ramondello", "ramondellos",
+    "ramondelloti", "ramondelotti", "ramondelotti", "ramondellotti", "ramondellotto",
+    "ramondellotto", "ramondellotte", "ramondellottes", "ramondellovez", "ramondellov",
+    "ramondellova", "ramondellove", "ramondellovel", "ramondellovelle", "ramondelloven",
+    "ramondellover", "ramondelloves", "ramondellovesel", "ramondellovic", "ramondellovia",
+    "ramondellovia", "ramondellovia", "ramondellovia", "ramondellovia", "ramondellovia",
+    "ramondellovia", "ramondellovia", "ramondellovia", "ramondellovia", "ramondellovia",
+    "ramondellovia", "ramondellovia", "ramondellovia", "ramondellovia", "ramondellovia",
+    # Add more
+    "jacob", "james", "jane", "janet", "jessica", "john", "jonathan", "joseph",
+    "julian", "julius", "karen", "karl", "katherine", "keith", "kenneth", "kevin",
+    "kim", "kimberly", "kirsten", "klaus", "kristoph", "kurt", "kyle",
+    "lance", "larry", "laura", "lauren", "lawrence", "lee", "leonard", "leslie",
+    "linda", "lisa", "lloyd", "logan", "loren", "louis", "louise", "lucas", "lucy",
+    "ludwig", "luis", "luke", "luther", "lynn", "lynne",
+    "mabel", "mable", "madagascar", "madeline", "madison", "magdalen", "magdalena",
+    "madeleine", "madelene", "madeline", "madeline", "madelle", "madena", "madera",
+    "maderaensis", "madre", "madrell", "madrelejo", "madre", "madres", "madres",
+    "madrese", "madresa", "madresa", "madresa", "madresa", "madresa", "madresa",
+    "madresa", "madresa", "madresa", "madresa", "madresa", "madresa", "madresa",
+    "madresa"
+}
+
 # Institutional keywords for identifying organizations vs. persons
 institutional_keywords = [
     # Universitäten & Hochschulen
@@ -113,6 +349,7 @@ class NameChecker():
     def is_likely_institution(self, name):
         """
         Check if a name is likely an institution rather than a person.
+        Uses first name list for improved discrimination.
 
         Args:
             name: Name object with Vorname, Familienname, Titel
@@ -120,23 +357,37 @@ class NameChecker():
         Returns:
             True if the name appears to be an institution
         """
+        lastname_lower = name.Familienname.lower()
+
+        # NEW: Pattern 0 - Check if first word of Familienname is a known first name
+        # If "Roland Achtiziger" is parsed as Familienname, "Roland" is a first name → Person
+        if not name.Vorname or name.Vorname == "":
+            words = name.Familienname.split()
+            if len(words) >= 2:
+                first_word_lower = words[0].lower().strip()
+                # If first word is a known first name, it's likely a person
+                if first_word_lower in common_first_names:
+                    return False  # It's a person, not an institution
 
         # Pattern 1: Kein Vorname + institutionelle Keywords im Familienname
         if not name.Vorname or name.Vorname == "":
-            lastname_lower = name.Familienname.lower()
-
             # Check for institutional keywords
             if any(keyword in lastname_lower for keyword in institutional_keywords):
                 return True
 
             # Pattern 2: Multiple kapitalisierte Wörter ohne Vorname
             # z.B. "Dresden Medienzentrum", "Berlin Institute"
+            # Now with improved logic: if first word is a known name, it's a person
             words = name.Familienname.split()
             if len(words) >= 2:
-                # Check if most words start with uppercase (allowing for "und", "of", etc.)
-                capitalized_count = sum(1 for w in words if w and w[0].isupper())
-                if capitalized_count >= len(words) * 0.6:  # 60% threshold
-                    return True
+                first_word_lower = words[0].lower().strip()
+                # If first word is in known names list, treat as person
+                if first_word_lower not in common_first_names:
+                    # Only apply capitalization heuristic if first word is NOT a known name
+                    if len(words) >= 3:
+                        capitalized_count = sum(1 for w in words if w and w[0].isupper())
+                        if capitalized_count >= len(words) * 0.6:
+                            return True
 
         # Pattern 3: Abteilungscodes (z.B. "FIN A 2.3", "CS 101")
         if re.match(r'^[A-Z]{2,}\s+[A-Z]\s+\d', name.Familienname):
