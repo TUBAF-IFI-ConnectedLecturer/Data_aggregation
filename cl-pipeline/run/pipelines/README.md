@@ -69,20 +69,20 @@ Processes Open Educational Resources from Bildungsportal Sachsen.
 
 ### General Command
 ```bash
-cd /media/sz/Data/Veits_pdfs/Data_aggregation/cl-pipeline/run
-python -m pipeline.run pipelines/<pipeline_name>/config/<config_file>.yaml
+cd cl-pipeline/run
+pipenv run python3 run_pipeline.py -c pipelines/<pipeline_name>/config/<config_file>.yaml
 ```
 
 ### Examples
 ```bash
 # Local PDFs test run
-python -m pipeline.run pipelines/local_pdfs/config/test.yaml
+pipenv run python3 run_pipeline.py -c pipelines/local_pdfs/config/test.yaml
 
 # Local PDFs full run
-python -m pipeline.run pipelines/local_pdfs/config/full.yaml
+pipenv run python3 run_pipeline.py -c pipelines/local_pdfs/config/full.yaml
 
 # OPAL pipeline
-python -m pipeline.run pipelines/opal/config/full.yaml
+pipenv run python3 run_pipeline.py -c pipelines/opal/config/full.yaml
 ```
 
 ## Common Pipeline Stages

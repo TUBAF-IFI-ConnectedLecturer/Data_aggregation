@@ -11,7 +11,7 @@ Erstellt eine interaktive HTML-Tabelle mit allen verarbeiteten Dokumenten.
 #### Verwendung
 
 ```bash
-cd /media/sz/Data/Veits_pdfs/Data_aggregation/cl-pipeline
+cd cl-pipeline
 pipenv run python3 run/pipelines/local_pdfs/analysis/generate_overview.py
 ```
 
@@ -131,7 +131,7 @@ Beispiel für Farbanpassung:
 
 **Lösung:**
 ```bash
-cd /media/sz/Data/Veits_pdfs/Data_aggregation/cl-pipeline
+cd cl-pipeline
 pipenv run python3 run/pipelines/local_pdfs/analysis/generate_overview.py
 ```
 
