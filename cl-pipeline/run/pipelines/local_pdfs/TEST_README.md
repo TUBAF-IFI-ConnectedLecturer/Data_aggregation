@@ -31,7 +31,7 @@ scripts/
 ### Schritt 1: Test-Subset erstellen (bereits erledigt ✅)
 
 ```bash
-cd /media/sz/Data/Veits_pdfs/Data_aggregation/cl-pipeline
+cd cl-pipeline
 pipenv run python3 run/pipelines/local_pdfs/scripts/create_test_subset.py
 ```
 
@@ -40,7 +40,7 @@ pipenv run python3 run/pipelines/local_pdfs/scripts/create_test_subset.py
 ### Schritt 2: Test-Pipeline starten
 
 ```bash
-cd /media/sz/Data/Veits_pdfs/Data_aggregation/cl-pipeline/run
+cd cl-pipeline/run
 pipenv run python3 run_pipeline.py -c pipelines/local_pdfs/config/test_improved.yaml
 ```
 
@@ -57,7 +57,7 @@ pipenv run python3 run_pipeline.py -c pipelines/local_pdfs/config/test_improved.
 ### Schritt 3: Ergebnisse analysieren
 
 ```bash
-cd /media/sz/Data/Veits_pdfs/Data_aggregation/cl-pipeline
+cd cl-pipeline
 pipenv run python3 << 'EOF'
 import pandas as pd
 from pathlib import Path
@@ -168,11 +168,7 @@ Wenn die Ergebnisse gut sind:
 ### Option 1: Volle Pipeline neu laufen lassen
 
 ```bash
-cd /media/sz/Data/Veits_pdfs/Data_aggregation/cl-pipeline/run
-
-# Backup alte Daten
-cp /media/sz/Data/Veits_pdfs/data_pipeline/local_pdfs/raw/LOCAL_ai_meta.p \
-   /media/sz/Data/Veits_pdfs/data_pipeline/local_pdfs/raw/LOCAL_ai_meta_backup_$(date +%Y%m%d).p
+cd cl-pipeline/run
 
 # Stage 5 mit force_run: True
 # Editiere full.yaml: Zeile 104 ändern zu force_run: True
@@ -200,11 +196,11 @@ Erstelle eine Whitelist der Dokumente mit schlechter Übereinstimmung und verarb
 ### Fehler: "No module named 'checkAuthorNames'"
 
 ```bash
-cd /media/sz/Data/Veits_pdfs/Data_aggregation/cl-pipeline
+cd cl-pipeline/run
 pipenv run python3 run_pipeline.py -c pipelines/local_pdfs/config/test_improved.yaml
 ```
 
-Wichtig: Von `cl-pipeline` Verzeichnis ausführen, nicht von `/run`!
+Wichtig: Von `cl-pipeline/run` Verzeichnis ausführen!
 
 ### Fehler: "Ollama connection refused"
 

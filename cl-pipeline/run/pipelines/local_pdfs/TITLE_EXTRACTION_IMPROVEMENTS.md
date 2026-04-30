@@ -268,7 +268,7 @@ Nach Implementierung der Verbesserungen:
 
 ```bash
 # 1. Erneute Titel-Extraktion mit neuem Prompt
-cd /media/sz/Data/Veits_pdfs/Data_aggregation/cl-pipeline/run
+cd cl-pipeline/run
 pipenv run python3 run_pipeline.py -c pipelines/local_pdfs/config/full.yaml
 
 # 2. Analyse der Verbesserung
