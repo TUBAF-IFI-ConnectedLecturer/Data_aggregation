@@ -281,7 +281,7 @@ The pipeline automatically captures license information for each repository:
 ## Running the Pipeline
 
 ```bash
-cd /media/sz/Data/Veits_pdfs/Data_aggregation/cl-pipeline/run
+cd cl-pipeline/run
 pipenv run python3 run_pipeline.py -c pipelines/liascript/config/full.yaml
 ```
 
@@ -331,7 +331,7 @@ This script creates an interactive scatter plot showing:
 
 **Usage**:
 ```bash
-cd /media/sz/Data/Veits_pdfs/Data_aggregation/cl-pipeline/run/pipelines/liascript/scripts
+cd cl-pipeline/run/pipelines/liascript/scripts
 python visualize_commits.py
 ```
 

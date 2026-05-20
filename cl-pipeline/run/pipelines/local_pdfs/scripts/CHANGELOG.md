@@ -82,7 +82,7 @@ Die Funktion wird jetzt für alle BibTeX-Felder verwendet:
 
 1. **Daten neu generieren:**
 ```bash
-cd /media/sz/Data/Veits_pdfs/Data_aggregation/cl-pipeline
+cd cl-pipeline
 pipenv run python3 run/pipelines/local_pdfs/scripts/prepare_local_pdfs.py
 ```
 

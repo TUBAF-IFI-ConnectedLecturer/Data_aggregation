@@ -165,8 +165,8 @@ arbeitsbasis/
 
 ### Full Run (6.732 PDFs)
 ```bash
-cd /media/sz/Data/Veits_pdfs/Data_aggregation/cl-pipeline/run
-python -m pipeline.run pipelines/arbeitsbasis/config/full.yaml
+cd cl-pipeline/run
+pipenv run python3 run_pipeline.py -c pipelines/arbeitsbasis/config/full.yaml
 ```
 
 ## Unterstützte Journals

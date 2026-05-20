@@ -90,7 +90,7 @@ pipenv run python3 run_pipeline.py -c pipelines/liascript/config/full.yaml
 **Quick Start**:
 ```bash
 cd run
-python -m pipeline.run pipelines/local_pdfs/config/test.yaml
+pipenv run python3 run_pipeline.py -c pipelines/local_pdfs/config/test.yaml
 ```
 
 ## Core Features
@@ -202,7 +202,7 @@ grep "AIMetaDataExtraction" pipelines/<pipeline-name>/logs/*.log
 ## Dependencies
 
 ### Core Dependencies
-- **Python**: 3.8+
+- **Python**: 3.12
 - **Pipenv**: Virtual environment and dependency management
 - **LangChain**: LLM integration framework
 - **Ollama**: Local LLM inference (llama3.3:70b, gemma3:27b)
@@ -222,7 +222,7 @@ grep "AIMetaDataExtraction" pipelines/<pipeline-name>/logs/*.log
 ## Installation
 
 ```bash
-# Install dependencies
+# Install dependencies (run from the repository root)
 cd cl-pipeline
 pipenv install
 

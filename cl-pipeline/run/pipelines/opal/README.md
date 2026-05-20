@@ -295,7 +295,7 @@ Standard prompts for educational materials:
 
 ### Test Run (Recommended for first time)
 ```bash
-cd /media/sz/Data/Veits_pdfs/Data_aggregation/cl-pipeline/run
+cd cl-pipeline/run
 pipenv run python3 run_pipeline.py -c pipelines/opal/config/test.yaml
 ```
 
@@ -308,7 +308,7 @@ pipenv run python3 run_pipeline.py -c pipelines/opal/config/test.yaml
 
 ### Full Pipeline
 ```bash
-cd /media/sz/Data/Veits_pdfs/Data_aggregation/cl-pipeline/run
+cd cl-pipeline/run
 pipenv run python3 run_pipeline.py -c pipelines/opal/config/full.yaml
 ```
 

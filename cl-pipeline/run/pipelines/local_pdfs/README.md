@@ -169,14 +169,14 @@ Utility script for preparing the local PDF collection
 
 ### Test Run (100 PDFs)
 ```bash
-cd /media/sz/Data/Veits_pdfs/Data_aggregation/cl-pipeline/run
-python -m pipeline.run pipelines/local_pdfs/config/test.yaml
+cd cl-pipeline/run
+pipenv run python3 run_pipeline.py -c pipelines/local_pdfs/config/test.yaml
 ```
 
 ### Full Run (1,010 PDFs)
 ```bash
-cd /media/sz/Data/Veits_pdfs/Data_aggregation/cl-pipeline/run
-python -m pipeline.run pipelines/local_pdfs/config/full.yaml
+cd cl-pipeline/run
+pipenv run python3 run_pipeline.py -c pipelines/local_pdfs/config/full.yaml
 ```
 
 ## Key Features
